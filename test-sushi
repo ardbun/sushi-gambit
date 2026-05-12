@@ -305,7 +305,10 @@ local Rice = nil
 
 local Windows = Lib.new("Sushi Gambit", 250, 130)
 Windows:Show(false)
-
+local vegData = GameData.Ingredients.IngredientsStorage.Vegetables
+local fishData = GameData.Ingredients.IngredientsStorage.AssortedFish
+local fleshData = GameData.Ingredients.IngredientsStorage.HumanFlesh
+local riceData = GameData.Ingredients.IngredientsStorage.Rice
 -- HARDCODED OFFSETS (fixed - no HTTP request)
 local ScreenGuiEnabled = 0x8C
 local HoldDuration = 0x38
@@ -863,7 +866,28 @@ task.spawn(function()
         task.wait(.1)
     end
 end)
-
+-- Force create labels if toggles are ON
+if ESP_SETTINGS.Labels.waitinginline and not waitinginline then
+    waitinginline = Windows:AddLabel("WaitingInLine: 0")
+end
+if ESP_SETTINGS.Labels.day and not dayLabel then
+    dayLabel = Windows:AddLabel("Day: " .. tostring(GameData.CurrentDay.Value))
+end
+if ESP_SETTINGS.Labels.companymoney and not companyMoneyLabel then
+    companyMoneyLabel = Windows:AddLabel("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value))
+end
+if ESP_SETTINGS.Labels.vegstock and not vegLabel then
+    vegLabel = Windows:AddLabel("Vegetables: " .. vegData.Stock.Value .. "/" .. vegData.MaxStock.Value)
+end
+if ESP_SETTINGS.Labels.fishstock and not fishLabel then
+    fishLabel = Windows:AddLabel("Fish: " .. fishData.Stock.Value .. "/" .. fishData.MaxStock.Value)
+end
+if ESP_SETTINGS.Labels.humanfleshstock and not HumanFlesh then
+    HumanFlesh = Windows:AddLabel("Human Flesh: " .. fleshData.Stock.Value .. "/" .. fleshData.MaxStock.Value)
+end
+if ESP_SETTINGS.Labels.ricestock and not Rice then
+    Rice = Windows:AddLabel("Rice: " .. riceData.Stock.Value .. "/" .. riceData.MaxStock.Value)
+end
 task.spawn(function()
     while true do
         if ESP_SETTINGS.Labels.waitinginline then
