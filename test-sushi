@@ -883,30 +883,36 @@ task.spawn(function()
             end)
         end
         
-             -- Auto Chloroform
+                     -- Auto Chloroform
         if SETTINGS.Auto.ChloroformSpys.Enabled and now - lastTimes.chloroform >= 0.01 then
             lastTimes.chloroform = now
             pcall(function()
-                -- Check if chat is active first
-                local chatActive = false
-                local chatBar = PlayerGui.Chat.Frame.ChatBarParentFrame.ChatBar
-                if chatBar and chatBar:IsFocused() then
-                    chatActive = true
+                -- Check if chat is open
+                local chatOpen = false
+                local chatFrame = PlayerGui:FindFirstChild("Chat")
+                if chatFrame and chatFrame:FindFirstChild("Frame") and chatFrame.Frame.Visible then
+                    chatOpen = true
                 end
                 
-                if not chatActive then
+                -- Check if any TextBox is focused (typing)
+                local focused = game:GetService("GuiService").SelectedObject
+                if focused and focused:IsA("TextBox") then
+                    chatOpen = true
+                end
+                
+                -- Also check if the chat bar is specifically focused (more reliable)
+                local chatBar = chatFrame and chatFrame:FindFirstChild("ChatBarParentFrame")
+                if chatBar and chatBar:FindFirstChild("ChatBar") and chatBar.ChatBar:IsFocused() then
+                    chatOpen = true
+                end
+                
+                if not chatOpen then
                     local Tool = Character:FindFirstChild("Chloroform Spray")
                     if Tool then
                         local HitTextLabel = Tool.ChloroformChallenge.ButtonToHitFrame.Container:FindFirstChild("TextLabel")
-                        if HitTextLabel then
-                            local key = HitTextLabel.Text
-                            if key == "Q" then
-                                keypress(0x51)
-                                keyrelease(0x51)
-                            elseif key == "E" then
-                                keypress(0x45)
-                                keyrelease(0x45)
-                            end
+                        if HitTextLabel and HitTextLabel.Text == "Q" then
+                            keypress(0x51)
+                            keyrelease(0x51)
                         end
                     end
                 end
@@ -1185,7 +1191,8 @@ RunService.Heartbeat:Connect(function()
 end)
 
 notify('Sushi Gambit loaded!', "", 3)
--- SUN TATTOO ALERT - notifies at 4:50 PM
+
+-- SUN TATTOO ALERT - notifies at 4:50 PM (immediate)
 task.spawn(function()
     while true do
         local success, timeText = pcall(function()
@@ -1193,13 +1200,11 @@ task.spawn(function()
         end)
 
         if success and timeText then
-            -- Check for 4:50 PM (matches "04:50PM" or "4:50PM")
-            if string.find(timeText, "04:50PM") or string.find(timeText, "4:50PM") then
-                notify("⚠️ 4:50 PM - Remove your Sun Tattoo!", "TATTOO ALERT", 15)
-                task.wait(60) -- Don't spam alerts for 1 minute
+            if timeText == "04:50PM" or timeText == "4:50PM" then
+                notify("[TATTOO ALERT] 4:50 PM - Remove your Sun Tattoo!", "", 15)
             end
         end
 
-        task.wait(5) -- Check every 5 seconds
+        task.wait(1)
     end
 end)
