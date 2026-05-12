@@ -61,8 +61,8 @@ local SETTINGS = {
 }
 
 local ESP_SETTINGS = {
-    MAX_DIST = 80,
-    MAX_DIST_SQ = 80 * 80,
+    MAX_DIST = 200,
+    MAX_DIST_SQ = 200 * 200,
     Dasher = {
         Enabled = false,
         Color = Color3.new(1, 0, 0)
