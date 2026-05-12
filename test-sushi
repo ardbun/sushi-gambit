@@ -1182,15 +1182,15 @@ task.spawn(function()
         local success, timeText = pcall(function()
             return PlayerGui.clockGui.clockFrame.clockLabel.Text
         end)
-        
+
         if success and timeText then
-            -- Check for 4:50 PM (adjust format based on what you see)
-            if string.find(timeText, "16:50") or string.find(timeText, "4:50") then
+            -- Check for 4:50 PM (matches "04:50PM" or "4:50PM")
+            if string.find(timeText, "04:50PM") or string.find(timeText, "4:50PM") then
                 notify("⚠️ 4:50 PM - Remove your Sun Tattoo!", "TATTOO ALERT", 15)
                 task.wait(60) -- Don't spam alerts for 1 minute
             end
         end
-        
+
         task.wait(5) -- Check every 5 seconds
     end
 end)
