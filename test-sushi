@@ -598,8 +598,9 @@ UI.AddTab("Sushi Gambit", function(tab)
         ESP_SETTINGS.Labels.day = value
         if value then
             dayLabel = Windows:AddLabel("Day: " .. tostring(GameData.CurrentDay.Value))
-        else
+        elseif dayLabel then
             dayLabel:Delete()
+            dayLabel = nil
         end
     end)
 
@@ -611,8 +612,9 @@ UI.AddTab("Sushi Gambit", function(tab)
         end
         if value then
             waitinginline = Windows:AddLabel("WaitingInLine: 0")
-        else
+        elseif waitinginline then
             waitinginline:Delete()
+            waitinginline = nil
         end
     end)
 
@@ -620,8 +622,9 @@ UI.AddTab("Sushi Gambit", function(tab)
         ESP_SETTINGS.Labels.companymoney = value
         if value then
             companyMoneyLabel = Windows:AddLabel("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value))
-        else
+        elseif companyMoneyLabel then
             companyMoneyLabel:Delete()
+            companyMoneyLabel = nil
         end
     end)
 
@@ -629,8 +632,9 @@ UI.AddTab("Sushi Gambit", function(tab)
         ESP_SETTINGS.Labels.vegstock = value
         if value then
             vegLabel = Windows:AddLabel("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value))
-        else
+        elseif vegLabel then
             vegLabel:Delete()
+            vegLabel = nil
         end
     end)
 
@@ -638,8 +642,9 @@ UI.AddTab("Sushi Gambit", function(tab)
         ESP_SETTINGS.Labels.fishstock = value
         if value then
             fishLabel = Windows:AddLabel("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value))
-        else
+        elseif fishLabel then
             fishLabel:Delete()
+            fishLabel = nil
         end
     end)
 
@@ -647,8 +652,9 @@ UI.AddTab("Sushi Gambit", function(tab)
         ESP_SETTINGS.Labels.humanfleshstock = value
         if value then
             HumanFlesh = Windows:AddLabel("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value))
-        else
+        elseif HumanFlesh then
             HumanFlesh:Delete()
+            HumanFlesh = nil
         end
     end)
 
@@ -656,8 +662,9 @@ UI.AddTab("Sushi Gambit", function(tab)
         ESP_SETTINGS.Labels.ricestock = value
         if value then
             Rice = Windows:AddLabel("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value))
-        else
+        elseif Rice then
             Rice:Delete()
+            Rice = nil
         end
     end)
 
@@ -667,40 +674,40 @@ UI.AddTab("Sushi Gambit", function(tab)
     WindowSec:Spacing()
     
     WindowSec:Button("Enable All Labels", function()
-    UI.SetValue("show_daycounter", true)
-    UI.SetValue("show_company_money", true)
-    UI.SetValue("show_vegstock", true)
-    UI.SetValue("show_fishstock", true)
-    UI.SetValue("show_humanfleshstock", true)
-    UI.SetValue("show_ricestock", true)
-    
-    if Windows then
-        if not dayLabel then dayLabel = Windows:AddLabel("Day: " .. tostring(GameData.CurrentDay.Value)) end
-        if not companyMoneyLabel then companyMoneyLabel = Windows:AddLabel("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value)) end
-        if not vegLabel then vegLabel = Windows:AddLabel("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value)) end
-        if not fishLabel then fishLabel = Windows:AddLabel("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value)) end
-        if not HumanFlesh then HumanFlesh = Windows:AddLabel("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) end
-        if not Rice then Rice = Windows:AddLabel("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
-    end
-    notify("All labels enabled", "", 2)
-end)
+        UI.SetValue("show_daycounter", true)
+        UI.SetValue("show_company_money", true)
+        UI.SetValue("show_vegstock", true)
+        UI.SetValue("show_fishstock", true)
+        UI.SetValue("show_humanfleshstock", true)
+        UI.SetValue("show_ricestock", true)
+        
+        if Windows then
+            if not dayLabel then dayLabel = Windows:AddLabel("Day: " .. tostring(GameData.CurrentDay.Value)) end
+            if not companyMoneyLabel then companyMoneyLabel = Windows:AddLabel("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value)) end
+            if not vegLabel then vegLabel = Windows:AddLabel("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value)) end
+            if not fishLabel then fishLabel = Windows:AddLabel("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value)) end
+            if not HumanFlesh then HumanFlesh = Windows:AddLabel("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) end
+            if not Rice then Rice = Windows:AddLabel("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
+        end
+        notify("All labels enabled", "", 2)
+    end)
 
-WindowSec:Button("Disable All Labels", function()
-    UI.SetValue("show_daycounter", false)
-    UI.SetValue("show_company_money", false)
-    UI.SetValue("show_vegstock", false)
-    UI.SetValue("show_fishstock", false)
-    UI.SetValue("show_humanfleshstock", false)
-    UI.SetValue("show_ricestock", false)
-    
-    if dayLabel then dayLabel:Delete() dayLabel = nil end
-    if companyMoneyLabel then companyMoneyLabel:Delete() companyMoneyLabel = nil end
-    if vegLabel then vegLabel:Delete() vegLabel = nil end
-    if fishLabel then fishLabel:Delete() fishLabel = nil end
-    if HumanFlesh then HumanFlesh:Delete() HumanFlesh = nil end
-    if Rice then Rice:Delete() Rice = nil end
-    notify("All labels disabled", "", 2)
-end)
+    WindowSec:Button("Disable All Labels", function()
+        UI.SetValue("show_daycounter", false)
+        UI.SetValue("show_company_money", false)
+        UI.SetValue("show_vegstock", false)
+        UI.SetValue("show_fishstock", false)
+        UI.SetValue("show_humanfleshstock", false)
+        UI.SetValue("show_ricestock", false)
+        
+        if dayLabel then dayLabel:Delete() dayLabel = nil end
+        if companyMoneyLabel then companyMoneyLabel:Delete() companyMoneyLabel = nil end
+        if vegLabel then vegLabel:Delete() vegLabel = nil end
+        if fishLabel then fishLabel:Delete() fishLabel = nil end
+        if HumanFlesh then HumanFlesh:Delete() HumanFlesh = nil end
+        if Rice then Rice:Delete() Rice = nil end
+        notify("All labels disabled", "", 2)
+    end)
 
     local InfoSec = tab:Section("Info", "Right")
 
@@ -747,7 +754,7 @@ if ESP_SETTINGS.Windows.Enabled then
     Windows:Show(true)
 end
 
--- Force create labels if toggles are ON (put this BEFORE the update loop)
+-- Initialize labels based on saved settings
 if ESP_SETTINGS.Labels.waitinginline and not waitinginline then
     waitinginline = Windows:AddLabel("WaitingInLine: 0")
 end
@@ -783,18 +790,23 @@ end)
 task.spawn(function()
     while true do
         if SETTINGS.Auto.Cooking.Enabled then
-            if not PlayerGui:FindFirstChild("MakeSushiMinigame") then continue end
+            if not PlayerGui:FindFirstChild("MakeSushiMinigame") then 
+                task.wait(.05)
+                continue 
+            end
             local addr = PlayerGui.MakeSushiMinigame.Address
             local Visible = memory_read("byte", addr + ScreenGuiEnabled)
             if Visible == 1 then
                 local CuttingBarFrame = PlayerGui.MakeSushiMinigame.MainFrame:FindFirstChild("CuttingBarFrame")
-                local SliderPos = CuttingBarFrame.CutBar.Slider.AbsolutePosition
-                local GreenBarPos = CuttingBarFrame.CutBar.GreenBar.AbsolutePosition
+                if CuttingBarFrame then
+                    local SliderPos = CuttingBarFrame.CutBar.Slider.AbsolutePosition
+                    local GreenBarPos = CuttingBarFrame.CutBar.GreenBar.AbsolutePosition
 
-                if SliderPos.X >= GreenBarPos.X and SliderPos.X <= GreenBarPos.X +
-                    CuttingBarFrame.CutBar.GreenBar.AbsoluteSize.X then
-                    keypress(0x43)
-                    keyrelease(0x43)
+                    if SliderPos.X >= GreenBarPos.X and SliderPos.X <= GreenBarPos.X +
+                        CuttingBarFrame.CutBar.GreenBar.AbsoluteSize.X then
+                        keypress(0x43)
+                        keyrelease(0x43)
+                    end
                 end
             end
         end
@@ -812,12 +824,17 @@ local key_map = {
 task.spawn(function()
     while true do
         if SETTINGS.Auto.Washing.Enabled then
-            if not PlayerGui:FindFirstChild("DishWashingGui") then continue end
-            if not SETTINGS.Auto.Washing.Enabled then return end
+            if not PlayerGui:FindFirstChild("DishWashingGui") then 
+                task.wait(0.1)
+                continue 
+            end
             local sink = game.Workspace.Kitchen:FindFirstChild("TheSink")
             local amount = sink and sink.DirtyDishAmount.Value
+            if amount and amount == 0 then 
+                task.wait(0.1)
+                continue 
+            end
             local addr = PlayerGui.DishWashingGui.Address
-            if amount and amount == 0 then continue end
             local Visible = memory_read("byte", addr + ScreenGuiEnabled)
             if Visible == 1 then
                 for i, v in pairs(PlayerGui.DishWashingGui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
@@ -881,63 +898,45 @@ task.spawn(function()
         task.wait(.1)
     end
 end)
--- Force create labels if toggles are ON
-if ESP_SETTINGS.Labels.waitinginline and not waitinginline then
-    waitinginline = Windows:AddLabel("WaitingInLine: 0")
-end
-if ESP_SETTINGS.Labels.day and not dayLabel then
-    dayLabel = Windows:AddLabel("Day: " .. tostring(GameData.CurrentDay.Value))
-end
-if ESP_SETTINGS.Labels.companymoney and not companyMoneyLabel then
-    companyMoneyLabel = Windows:AddLabel("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value))
-end
-if ESP_SETTINGS.Labels.vegstock and not vegLabel then
-    vegLabel = Windows:AddLabel("Vegetables: " .. vegData.Stock.Value .. "/" .. vegData.MaxStock.Value)
-end
-if ESP_SETTINGS.Labels.fishstock and not fishLabel then
-    fishLabel = Windows:AddLabel("Fish: " .. fishData.Stock.Value .. "/" .. fishData.MaxStock.Value)
-end
-if ESP_SETTINGS.Labels.humanfleshstock and not HumanFlesh then
-    HumanFlesh = Windows:AddLabel("Human Flesh: " .. fleshData.Stock.Value .. "/" .. fleshData.MaxStock.Value)
-end
-if ESP_SETTINGS.Labels.ricestock and not Rice then
-    Rice = Windows:AddLabel("Rice: " .. riceData.Stock.Value .. "/" .. riceData.MaxStock.Value)
-end
+
+-- Fixed update loop with nil checks
 task.spawn(function()
     while true do
         if ESP_SETTINGS.Labels.waitinginline and waitinginline then
-    local i = 0
-    for _, npc in next, game.Workspace.NpcDestination.SpawnedNPCs:GetChildren() do
-        if npc:IsA("Model") and npc:GetAttribute("CurrentState") == "WaitingInLine" then
-            i = i + 1
+            local i = 0
+            for _, npc in next, game.Workspace.NpcDestination.SpawnedNPCs:GetChildren() do
+                if npc:IsA("Model") and npc:GetAttribute("CurrentState") == "WaitingInLine" then
+                    i = i + 1
+                end
+            end
+            waitinginline:SetText("WaitingInLine: " .. i)
         end
-    end
-    waitinginline:SetText("WaitingInLine: " .. i)
-end
-        if ESP_SETTINGS.Labels.day then
+        
+        if ESP_SETTINGS.Labels.day and dayLabel then
             dayLabel:SetText("Day: " .. tostring(GameData.CurrentDay.Value))
         end
 
-        if ESP_SETTINGS.Labels.companymoney then
+        if ESP_SETTINGS.Labels.companymoney and companyMoneyLabel then
             companyMoneyLabel:SetText("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value))
         end
 
-        if ESP_SETTINGS.Labels.vegstock then
+        if ESP_SETTINGS.Labels.vegstock and vegLabel then
             vegLabel:SetText("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value))
         end
 
-        if ESP_SETTINGS.Labels.fishstock then
+        if ESP_SETTINGS.Labels.fishstock and fishLabel then
             fishLabel:SetText("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value))
         end
 
-        if ESP_SETTINGS.Labels.humanfleshstock then
+        if ESP_SETTINGS.Labels.humanfleshstock and HumanFlesh then
             HumanFlesh:SetText("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value))
         end
 
-        if ESP_SETTINGS.Labels.ricestock then
+        if ESP_SETTINGS.Labels.ricestock and Rice then
             Rice:SetText("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value))
         end
-        task.wait(.1)
+        
+        task.wait(0.5)
     end
 end)
 
@@ -1067,7 +1066,7 @@ task.spawn(function()
             local npc = cached.inst
 
             -- SeatCustomer
-            if SETTINGS.Cheat.Instant.SeatCustomer
+            if SETTINGS.Cheat.Instant.SeatCustomer.Enabled
                 and npc:GetAttribute("CurrentState") == "WaitingInLine"
                 and not customer_list[addr]
                 then
