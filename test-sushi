@@ -883,30 +883,36 @@ task.spawn(function()
             end)
         end
         
-                     -- Auto Chloroform
+                             -- Auto Chloroform
         if SETTINGS.Auto.ChloroformSpys.Enabled and now - lastTimes.chloroform >= 0.01 then
             lastTimes.chloroform = now
             pcall(function()
-                -- Check if chat is open
-                local chatOpen = false
-                local chatFrame = PlayerGui:FindFirstChild("Chat")
-                if chatFrame and chatFrame:FindFirstChild("Frame") and chatFrame.Frame.Visible then
-                    chatOpen = true
+                -- Get the chat bar
+                local chatBar = PlayerGui:FindFirstChild("Chat")
+                local isTyping = false
+                
+                if chatBar then
+                    -- Check if chat bar is visible OR if it has focus
+                    local chatFrame = chatBar:FindFirstChild("Frame")
+                    local chatBarParent = chatBar:FindFirstChild("ChatBarParentFrame")
+                    
+                    if chatFrame and chatFrame.Visible then
+                        isTyping = true
+                    end
+                    
+                    if chatBarParent and chatBarParent:FindFirstChild("ChatBar") then
+                        local chatInput = chatBarParent.ChatBar
+                        if chatInput:IsFocused() or chatInput.Text ~= "" then
+                            isTyping = true
+                        end
+                    end
                 end
                 
-                -- Check if any TextBox is focused (typing)
-                local focused = game:GetService("GuiService").SelectedObject
-                if focused and focused:IsA("TextBox") then
-                    chatOpen = true
-                end
+                -- Also check if the chat is open from pressing /
+                local userInput = game:GetService("UserInputService")
+                local isChatKeyPressed = userInput:IsKeyDown(Enum.KeyCode.Slash) or userInput:IsKeyDown(Enum.KeyCode.T)
                 
-                -- Also check if the chat bar is specifically focused (more reliable)
-                local chatBar = chatFrame and chatFrame:FindFirstChild("ChatBarParentFrame")
-                if chatBar and chatBar:FindFirstChild("ChatBar") and chatBar.ChatBar:IsFocused() then
-                    chatOpen = true
-                end
-                
-                if not chatOpen then
+                if not isTyping and not isChatKeyPressed then
                     local Tool = Character:FindFirstChild("Chloroform Spray")
                     if Tool then
                         local HitTextLabel = Tool.ChloroformChallenge.ButtonToHitFrame.Container:FindFirstChild("TextLabel")
@@ -918,7 +924,6 @@ task.spawn(function()
                 end
             end)
         end
-
         -- Stats Spoofing (keeps your 0.1s timing)
         if now - lastTimes.stats >= 0.1 then
             lastTimes.stats = now
@@ -1192,7 +1197,7 @@ end)
 
 notify('Sushi Gambit loaded!', "", 3)
 
--- SUN TATTOO ALERT - notifies at 4:50 PM (immediate)
+-- SUN TATTOO ALERT - notifies at 4:45 PM and 4:50 PM
 task.spawn(function()
     while true do
         local success, timeText = pcall(function()
@@ -1200,8 +1205,10 @@ task.spawn(function()
         end)
 
         if success and timeText then
-            if timeText == "04:50PM" or timeText == "4:50PM" then
-                notify("[TATTOO ALERT] 4:50 PM - Remove your Sun Tattoo!", "", 15)
+            if timeText == "04:45PM" or timeText == "4:45PM" then
+                notify("[TATTOO ALERT] 4:45 PM - remove sun tat", "", 15)
+            elseif timeText == "04:50PM" or timeText == "4:50PM" then
+                notify("[TATTOO ALERT] 4:50 PM - remove sun tat", "", 15)
             end
         end
 
