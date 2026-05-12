@@ -883,27 +883,36 @@ task.spawn(function()
             end)
         end
         
-        -- Auto Chloroform (keeps your 0.01s timing)
+             -- Auto Chloroform
         if SETTINGS.Auto.ChloroformSpys.Enabled and now - lastTimes.chloroform >= 0.01 then
             lastTimes.chloroform = now
             pcall(function()
-                local Tool = Character:FindFirstChild("Chloroform Spray")
-                if Tool then
-                    local HitTextLabel = Tool.ChloroformChallenge.ButtonToHitFrame.Container:FindFirstChild("TextLabel")
-                    if HitTextLabel then
-                        local key = HitTextLabel.Text
-                        if key == "Q" then
-                            keypress(0x51)
-                            keyrelease(0x51)
-                        elseif key == "E" then
-                            keypress(0x45)
-                            keyrelease(0x45)
+                -- Check if chat is active first
+                local chatActive = false
+                local chatBar = PlayerGui.Chat.Frame.ChatBarParentFrame.ChatBar
+                if chatBar and chatBar:IsFocused() then
+                    chatActive = true
+                end
+                
+                if not chatActive then
+                    local Tool = Character:FindFirstChild("Chloroform Spray")
+                    if Tool then
+                        local HitTextLabel = Tool.ChloroformChallenge.ButtonToHitFrame.Container:FindFirstChild("TextLabel")
+                        if HitTextLabel then
+                            local key = HitTextLabel.Text
+                            if key == "Q" then
+                                keypress(0x51)
+                                keyrelease(0x51)
+                            elseif key == "E" then
+                                keypress(0x45)
+                                keyrelease(0x45)
+                            end
                         end
                     end
                 end
             end)
         end
-        
+
         -- Stats Spoofing (keeps your 0.1s timing)
         if now - lastTimes.stats >= 0.1 then
             lastTimes.stats = now
