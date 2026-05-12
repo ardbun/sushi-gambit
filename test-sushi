@@ -747,13 +747,28 @@ if ESP_SETTINGS.Windows.Enabled then
     Windows:Show(true)
 end
 
-if ESP_SETTINGS.Labels.day then dayLabel = Windows:AddLabel("Day: " .. tostring(GameData.CurrentDay.Value)) end
-if ESP_SETTINGS.Labels.waitinginline then waitinginline = Windows:AddLabel("WaitingInLine: 0") end
-if ESP_SETTINGS.Labels.companymoney then companyMoneyLabel = Windows:AddLabel("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value)) end
-if ESP_SETTINGS.Labels.vegstock then vegLabel = Windows:AddLabel("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value)) end
-if ESP_SETTINGS.Labels.fishstock then fishLabel = Windows:AddLabel("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value)) end
-if ESP_SETTINGS.Labels.humanfleshstock then HumanFlesh = Windows:AddLabel("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) end
-if ESP_SETTINGS.Labels.ricestock then Rice = Windows:AddLabel("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
+-- Force create labels if toggles are ON (put this BEFORE the update loop)
+if ESP_SETTINGS.Labels.waitinginline and not waitinginline then
+    waitinginline = Windows:AddLabel("WaitingInLine: 0")
+end
+if ESP_SETTINGS.Labels.day and not dayLabel then
+    dayLabel = Windows:AddLabel("Day: " .. tostring(GameData.CurrentDay.Value))
+end
+if ESP_SETTINGS.Labels.companymoney and not companyMoneyLabel then
+    companyMoneyLabel = Windows:AddLabel("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value))
+end
+if ESP_SETTINGS.Labels.vegstock and not vegLabel then
+    vegLabel = Windows:AddLabel("Vegetables: " .. vegData.Stock.Value .. "/" .. vegData.MaxStock.Value)
+end
+if ESP_SETTINGS.Labels.fishstock and not fishLabel then
+    fishLabel = Windows:AddLabel("Fish: " .. fishData.Stock.Value .. "/" .. fishData.MaxStock.Value)
+end
+if ESP_SETTINGS.Labels.humanfleshstock and not HumanFlesh then
+    HumanFlesh = Windows:AddLabel("Human Flesh: " .. fleshData.Stock.Value .. "/" .. fleshData.MaxStock.Value)
+end
+if ESP_SETTINGS.Labels.ricestock and not Rice then
+    Rice = Windows:AddLabel("Rice: " .. riceData.Stock.Value .. "/" .. riceData.MaxStock.Value)
+end
 
 local Admin = {
     ["UserIds"] = { 105479622, 65095440, 1425697210, 126961971, 127528152, 319065798, 2754844524, 125440222, 1783725423 }
@@ -890,14 +905,15 @@ if ESP_SETTINGS.Labels.ricestock and not Rice then
 end
 task.spawn(function()
     while true do
-        if ESP_SETTINGS.Labels.waitinginline then
-            local i = 0
-            for _, npc in next, game.Workspace.NpcDestination.SpawnedNPCs:GetChildren() do
-                if npc:IsA("Model") and npc:GetAttribute("CurrentState") == "WaitingInLine" then
-                    i = i + 1                end
-            end
-            waitinginline:SetText("WaitingInLine: " .. i)
+        if ESP_SETTINGS.Labels.waitinginline and waitinginline then
+    local i = 0
+    for _, npc in next, game.Workspace.NpcDestination.SpawnedNPCs:GetChildren() do
+        if npc:IsA("Model") and npc:GetAttribute("CurrentState") == "WaitingInLine" then
+            i = i + 1
         end
+    end
+    waitinginline:SetText("WaitingInLine: " .. i)
+end
         if ESP_SETTINGS.Labels.day then
             dayLabel:SetText("Day: " .. tostring(GameData.CurrentDay.Value))
         end
