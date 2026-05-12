@@ -11,6 +11,17 @@ local GameData = ReplicatedStorage:WaitForChild("GameData")
 local PlayerStats = LocalPlayer:WaitForChild("PlayerStats")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
+-- Toggle Auto Chloroform with Caps Lock
+local UserInputService = game:GetService("UserInputService")
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.CapsLock then
+        SETTINGS.Auto.ChloroformSpys.Enabled = not SETTINGS.Auto.ChloroformSpys.Enabled
+        local status = SETTINGS.Auto.ChloroformSpys.Enabled and "ON" or "OFF"
+        notify("Auto Chloroform: " .. status, "", 2)
+    end
+end)
 local SETTINGS = {
     Auto = {
         Cooking = {
@@ -883,42 +894,21 @@ task.spawn(function()
             end)
         end
         
-                             -- Auto Chloroform
+           -- Auto Chloroform (keeps your 0.01s timing)
         if SETTINGS.Auto.ChloroformSpys.Enabled and now - lastTimes.chloroform >= 0.01 then
             lastTimes.chloroform = now
             pcall(function()
-                -- Get the chat bar
-                local chatBar = PlayerGui:FindFirstChild("Chat")
-                local isTyping = false
-                
-                if chatBar then
-                    -- Check if chat bar is visible OR if it has focus
-                    local chatFrame = chatBar:FindFirstChild("Frame")
-                    local chatBarParent = chatBar:FindFirstChild("ChatBarParentFrame")
-                    
-                    if chatFrame and chatFrame.Visible then
-                        isTyping = true
-                    end
-                    
-                    if chatBarParent and chatBarParent:FindFirstChild("ChatBar") then
-                        local chatInput = chatBarParent.ChatBar
-                        if chatInput:IsFocused() or chatInput.Text ~= "" then
-                            isTyping = true
-                        end
-                    end
-                end
-                
-                -- Also check if the chat is open from pressing /
-                local userInput = game:GetService("UserInputService")
-                local isChatKeyPressed = userInput:IsKeyDown(Enum.KeyCode.Slash) or userInput:IsKeyDown(Enum.KeyCode.T)
-                
-                if not isTyping and not isChatKeyPressed then
-                    local Tool = Character:FindFirstChild("Chloroform Spray")
-                    if Tool then
-                        local HitTextLabel = Tool.ChloroformChallenge.ButtonToHitFrame.Container:FindFirstChild("TextLabel")
-                        if HitTextLabel and HitTextLabel.Text == "Q" then
+                local Tool = Character:FindFirstChild("Chloroform Spray")
+                if Tool then
+                    local HitTextLabel = Tool.ChloroformChallenge.ButtonToHitFrame.Container:FindFirstChild("TextLabel")
+                    if HitTextLabel then
+                        local key = HitTextLabel.Text
+                        if key == "Q" then
                             keypress(0x51)
                             keyrelease(0x51)
+                        elseif key == "E" then
+                            keypress(0x45)
+                            keyrelease(0x45)
                         end
                     end
                 end
