@@ -236,7 +236,7 @@ function Lib:Delete()
     end
 end
 
-local LABEL_SIZE = 12
+local LABEL_SIZE = 20
 local LABEL_X = 12
 local LABEL_START_Y = 32
 local LABEL_STEP = 18
@@ -303,7 +303,7 @@ local fishLabel = nil
 local HumanFlesh = nil
 local Rice = nil
 
-local Windows = Lib.new("Sushi Gambit", 150, 55)
+local Windows = Lib.new("Sushi Gambit", 250, 130)
 Windows:Show(false)
 
 -- HARDCODED OFFSETS (fixed - no HTTP request)
