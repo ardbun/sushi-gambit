@@ -10,18 +10,6 @@ local Character = LocalPlayer.Character
 local GameData = ReplicatedStorage:WaitForChild("GameData")
 local PlayerStats = LocalPlayer:WaitForChild("PlayerStats")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-
--- Toggle Auto Chloroform with Caps Lock
-local UserInputService = game:GetService("UserInputService")
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.CapsLock then
-        SETTINGS.Auto.ChloroformSpys.Enabled = not SETTINGS.Auto.ChloroformSpys.Enabled
-        local status = SETTINGS.Auto.ChloroformSpys.Enabled and "ON" or "OFF"
-        notify("Auto Chloroform: " .. status, "", 2)
-    end
-end)
 local SETTINGS = {
     Auto = {
         Cooking = {
@@ -109,7 +97,17 @@ local ESP_SETTINGS = {
         ricestock = false,
     }
 }
+-- Toggle Auto Chloroform with Caps Lock
+local UserInputService = game:GetService("UserInputService")
 
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.CapsLock then
+        SETTINGS.Auto.ChloroformSpys.Enabled = not SETTINGS.Auto.ChloroformSpys.Enabled
+        local status = SETTINGS.Auto.ChloroformSpys.Enabled and "ON" or "OFF"
+        notify("Auto Chloroform: " .. status, "", 2)
+    end
+end)
 local Lib = {}
 Lib.__index = Lib
 
