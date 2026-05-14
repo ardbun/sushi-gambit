@@ -1168,17 +1168,43 @@ RunService.Heartbeat:Connect(function()
 end)
 
 task.spawn(function()
-    local warned = { ["4:40PM"] = false, ["4:45PM"] = false, ["4:50PM"] = false, ["4:55PM"] = false }
+    local warned = {}
+    local clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
+    
+    if not clockLabel then
+        print("[TATTOO] Clock not found")
+        return
+    end
+    
+    local lastTime = clockLabel.Text
+    
     while true do
-        local clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
-        if clockLabel then
-            local t = clockLabel.Text
-            if warned[t] == false then
-                warned[t] = true
+        local currentTime = clockLabel.Text
+        
+        -- Check for target times (use EXACT format from your test)
+        local targetTimes = {
+            "04:40PM",
+            "04:45PM",
+            "04:50PM", 
+            "04:55PM"
+        }
+        
+        for _, target in ipairs(targetTimes) do
+            if currentTime == target and not warned[target] then
+                warned[target] = true
                 notify("remove sun tat", "Reminder", 5)
+                print("[TATTOO] Reminder sent at: " .. currentTime)
             end
         end
-        task.wait(1)
+        
+        -- Reset warnings at 8:00AM (new day)
+        if currentTime == "08:00AM" and lastTime ~= "08:00AM" then
+            warned = {}
+            print("[TATTOO] Day reset, warnings cleared")
+        end
+        
+        lastTime = currentTime
+        task.wait(0.5)
     end
 end)
 
