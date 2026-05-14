@@ -193,7 +193,7 @@ function Window:AddLabel(text, color)
     label.Center = false
     table.insert(self.labels, label)
     
-    self:RefreshPositions()
+self:Update()
     
     local handle = {}
     handle.setText = function(newText) label.Text = newText end
@@ -217,25 +217,41 @@ function Window:RefreshPositions()
     
     local neededHeight = 35 + #self.labels * 18 + 10
     self.size = Vector2.new(self.size.X, math.max(neededHeight, 130))
-    self:UpdateGeometry()
+    -- REMOVE THIS LINE:
+    -- self:UpdateGeometry()
 end
 
 function Window:UpdateGeometry()
+    self:UpdateGeometryNoRecurse()
+    self:RefreshPositionsNoRecurse()  -- Call non-recursive version
+end
+
+function Window:UpdateGeometryNoRecurse()
     local x, y = self.position.X, self.position.Y
     local w, h = self.size.X, self.size.Y
     local r = self.radius
     
-    self.topLeft.Position = Vector2.new(x + r, y + r)
-    self.topRight.Position = Vector2.new(x + w - r, y + r)
-    self.bottomLeft.Position = Vector2.new(x + r, y + h - r)
-    self.bottomRight.Position = Vector2.new(x + w - r, y + h - r)
-    self.verticalFill.Position = Vector2.new(x + r, y)
-    self.verticalFill.Size = Vector2.new(w - 2 * r, h)
-    self.horizontalFill.Position = Vector2.new(x, y + r)
-    self.horizontalFill.Size = Vector2.new(w, h - 2 * r)
-    self.title.Position = Vector2.new(x + 12, y + 15)
-    
-    self:RefreshPositions()
+    if self.topLeft then
+        self.topLeft.Position = Vector2.new(x + r, y + r)
+        self.topRight.Position = Vector2.new(x + w - r, y + r)
+        self.bottomLeft.Position = Vector2.new(x + r, y + h - r)
+        self.bottomRight.Position = Vector2.new(x + w - r, y + h - r)
+        self.verticalFill.Position = Vector2.new(x + r, y)
+        self.verticalFill.Size = Vector2.new(w - 2 * r, h)
+        self.horizontalFill.Position = Vector2.new(x, y + r)
+        self.horizontalFill.Size = Vector2.new(w, h - 2 * r)
+        self.title.Position = Vector2.new(x + 12, y + 15)
+    end
+end
+
+function Window:RefreshPositionsNoRecurse()
+function Window:Update()
+    self:UpdateGeometryNoRecurse()
+    self:RefreshPositionsNoRecurse()
+end
+    for i, label in ipairs(self.labels) do
+        label.Position = self.position + Vector2.new(12, 35 + (i - 1) * 18)
+    end
 end
 
 function Window:Show(visible)
