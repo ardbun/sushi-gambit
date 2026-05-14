@@ -958,7 +958,9 @@ local notified450 = false
 local notified455 = false
 task.spawn(function()
     while true do
-        local success, timeText = pcall(function() return PlayerGui.clockGui.clockFrame.clockLabel.Text end)
+        local success, timeText = pcall(function() 
+            return PlayerGui.clockGui.clockFrame.clockLabel.Text 
+        end)
         if success and timeText then
             if (timeText == "04:45PM" or timeText == "4:45PM") and not notified445 then
                 notify("[TATTOO ALERT] 4:45 PM - remove sun tat", "", 15)
@@ -970,6 +972,7 @@ task.spawn(function()
                 notify("[TATTOO ALERT] 4:55 PM - remove sun tat", "", 15)
                 notified455 = true
             end
+            
             if timeText == "05:00PM" or timeText == "5:00PM" then
                 notified445 = false
                 notified450 = false
@@ -978,6 +981,6 @@ task.spawn(function()
         end
         task.wait(1)
     end
-end)  -- <-- MAKE SURE THIS END IS HERE
+end)  -- <-- THIS END closes the task.spawn
 
 notify('Sushi Gambit loaded!', "", 3)
