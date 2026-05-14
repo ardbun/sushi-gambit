@@ -4,8 +4,10 @@ local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character
-
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+LocalPlayer.CharacterAdded:Connect(function(char)
+    Character = char
+end)
 local GameData = ReplicatedStorage:WaitForChild("GameData")
 local PlayerStats = LocalPlayer:WaitForChild("PlayerStats")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
@@ -39,22 +41,20 @@ local ESP_SETTINGS = {
     }
 }
 
--- X key to toggle Auto Chloroform
 local chloroformToggleCooldown = false
 task.spawn(function()
-    while true do
+    while task.wait(0.05) do
         if iskeypressed(0x58) and not chloroformToggleCooldown then
             chloroformToggleCooldown = true
             SETTINGS.Auto.ChloroformSpys.Enabled = not SETTINGS.Auto.ChloroformSpys.Enabled
+            UI.SetValue("auto_chloroform_spys", SETTINGS.Auto.ChloroformSpys.Enabled)
             notify("Auto Chloroform: " .. (SETTINGS.Auto.ChloroformSpys.Enabled and "ON" or "OFF"), "", 2)
             task.wait(0.5)
         elseif not iskeypressed(0x58) then
             chloroformToggleCooldown = false
         end
-        task.wait()
     end
 end)
-
 -- LIB CLASS
 local Lib = {}
 Lib.__index = Lib
@@ -138,8 +138,27 @@ function Lib.new(titleText, width, height, cornerRadius)
         end
 
         if dragging then
-            self:Edit(Vector2.new(mx - dragOffset.X, my - dragOffset.Y))
-        end
+    local newPos = Vector2.new(mx - dragOffset.X, my - dragOffset.Y)
+    self.Position = newPos
+
+    local x, y = newPos.X, newPos.Y
+    local w, h = self.Size.X, self.Size.Y
+    local r = self.Radius
+
+    self.TopLeft.Position = Vector2.new(x + r, y + r)
+    self.TopRight.Position = Vector2.new(x + w - r, y + r)
+    self.BottomLeft.Position = Vector2.new(x + r, y + h - r)
+    self.BottomRight.Position = Vector2.new(x + w - r, y + h - r)
+    self.VerticalFill.Position = Vector2.new(x + r, y)
+    self.HorizontalFill.Position = Vector2.new(x, y + r)
+    self.Title.Position = Vector2.new(x + 12, y + 15)
+
+    -- only move labels if they exist
+    for i = 1, #self.Labels do
+        local entry = self.Labels[i]
+        entry.drawing.Position = newPos + entry.relPos
+    end
+end
     end)
 
     return self
@@ -530,6 +549,12 @@ ESP_SETTINGS.Labels.day = UI.GetValue("show_daycounter")
 ESP_SETTINGS.Labels.waitinginline = UI.GetValue("show_waitinginline")
 
 if ESP_SETTINGS.Windows.Enabled then Windows:Show(true) end
+-- Force NPC ESP to apply on execute
+UI.SetValue("show_dasher", true)
+UI.SetValue("show_armed", true)
+UI.SetValue("show_police", true)
+UI.SetValue("show_critic", true)
+UI.SetValue("show_health_inspector", true)
 
 -- Create labels on execute (all EXCEPT waitinginline)
 if ESP_SETTINGS.Labels.humanfleshstock and not HumanFlesh then HumanFlesh = Windows:AddLabel("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) end
@@ -549,148 +574,145 @@ end)
 
 local key_map = { Q = 0x51, E = 0x45, R = 0x52, F = 0x46 }
 
--- AUTO COOKING LOOP
-task.spawn(function()
-    while true do
-        if SETTINGS.Auto.Cooking.Enabled then
-            pcall(function()
-                if PlayerGui:FindFirstChild("MakeSushiMinigame") then
-                    local addr = PlayerGui.MakeSushiMinigame.Address
-                    if memory_read("byte", addr + ScreenGuiEnabled) == 1 then
-                        local CuttingBarFrame = PlayerGui.MakeSushiMinigame.MainFrame:FindFirstChild("CuttingBarFrame")
-                        if CuttingBarFrame then
-                            local SliderPos = CuttingBarFrame.CutBar.Slider.AbsolutePosition
-                            local GreenBarPos = CuttingBarFrame.CutBar.GreenBar.AbsolutePosition
-                            local greenBarSize = CuttingBarFrame.CutBar.GreenBar.AbsoluteSize.X
-                            if SliderPos.X >= GreenBarPos.X and SliderPos.X <= GreenBarPos.X + greenBarSize then
-                                keypress(0x43)
-                                keyrelease(0x43)
-                            end
-                        end
-                    end
-                end
-            end)
+-- SCHEDULER SYSTEM (replaces all timers)
+local Scheduler = {}
+Scheduler.tasks = {}
+
+function Scheduler:add(interval, fn)
+    table.insert(self.tasks, { interval = interval, time = 0, fn = fn })
+end
+
+function Scheduler:update(dt)
+    for _, task in ipairs(self.tasks) do
+        task.time = task.time + dt
+        if task.time >= task.interval then
+            task.time = 0
+            task.fn()
         end
-        task.wait(0.05)
     end
+end
+
+local scheduler = setmetatable({}, { __index = Scheduler })
+scheduler.tasks = {}
+
+-- SINGLE HEARTBEAT WITH SCHEDULER
+RunService.Heartbeat:Connect(function(dt)
+    scheduler:update(dt)
 end)
 
--- AUTO WASHING LOOP
-task.spawn(function()
-    while true do
-        if SETTINGS.Auto.Washing.Enabled then
-            pcall(function()
-                local washingGui = PlayerGui:FindFirstChild("DishWashingGui")
-                if washingGui then
-                    local addr = washingGui.Address
-                    if memory_read("byte", addr + ScreenGuiEnabled) == 1 then
-                        local keysHolder = washingGui.MainFrame.QueueBarFrame.Queue.KeysHolder
-                        if keysHolder then
-                            local keysToPress = {}
-                            for _, v in pairs(keysHolder:GetChildren()) do
-                                if v:IsA("Frame") and v.Name == "KeyTemplate" then
-                                    local key = v:GetAttribute("Key")
-                                    if key then table.insert(keysToPress, key) end
-                                end
-                            end
-                            for _, key in ipairs(keysToPress) do
-                                local vk = key_map[key]
-                                if vk then
-                                    keypress(vk)
-                                    keyrelease(vk)
-                                    task.wait(SETTINGS.Auto.Washing.delay)
-                                end
-                            end
-                            task.wait(0.3)
-                        end
-                    end
-                end
-            end)
-        end
-        task.wait(0.1)
-    end
-end)
-
--- AUTO CHLOROFORM LOOP
-task.spawn(function()
-    while true do
-        if SETTINGS.Auto.ChloroformSpys.Enabled then
-            pcall(function()
-                local Tool = Character:FindFirstChild("Chloroform Spray")
-                if Tool then
-                    local HitTextLabel = Tool.ChloroformChallenge.ButtonToHitFrame.Container:FindFirstChild("TextLabel")
-                    if HitTextLabel then
-                        local key = HitTextLabel.Text
-                        if key == "Q" then
-                            keypress(0x51)
-                            keyrelease(0x51)
-                        elseif key == "E" then
-                            keypress(0x45)
-                            keyrelease(0x45)
-                        end
-                    end
-                end
-            end)
-        end
-        task.wait(0.05)  -- Changed from 0.01 to 0.05 as you wanted
-    end
-end)
-
--- STATS SPOOFING LOOP
-task.spawn(function()
-    while true do
+-- ADD TASKS (remove your cookTimer, washTimer, etc.)
+scheduler:add(0.05, function()
+    if SETTINGS.Auto.Cooking.Enabled then
         pcall(function()
-            if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
-                PlayerStats.EffectiveCookingLevel.Value = 1000
-                PlayerStats.NoIngredientUseChance.Value = 1
-            end
-            if SETTINGS.Cheat.Instant.CleanDish.Enabled then
-                PlayerStats.EffectiveCleaningLevel.Value = 9999
-            end
-            if SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled then
-                PlayerStats.SpongeEffectiveness.Value = 9999
+            if PlayerGui:FindFirstChild("MakeSushiMinigame") then
+                local addr = PlayerGui.MakeSushiMinigame.Address
+                if memory_read("byte", addr + ScreenGuiEnabled) == 1 then
+                    local CuttingBarFrame = PlayerGui.MakeSushiMinigame.MainFrame:FindFirstChild("CuttingBarFrame")
+                    if CuttingBarFrame then
+                        local SliderPos = CuttingBarFrame.CutBar.Slider.AbsolutePosition
+                        local GreenBarPos = CuttingBarFrame.CutBar.GreenBar.AbsolutePosition
+                        local greenBarSize = CuttingBarFrame.CutBar.GreenBar.AbsoluteSize.X
+                        if SliderPos.X >= GreenBarPos.X and SliderPos.X <= GreenBarPos.X + greenBarSize then
+                            keypress(0x43)
+                            keyrelease(0x43)
+                        end
+                    end
+                end
             end
         end)
-        task.wait(0.1)
     end
 end)
 
--- LABEL UPDATE LOOP
-task.spawn(function()
-    while true do
-        if ESP_SETTINGS.Windows.Enabled then
-            if ESP_SETTINGS.Labels.waitinginline and waitinginline then
-                local i = 0
-                for _, npc in next, game.Workspace.NpcDestination.SpawnedNPCs:GetChildren() do
-                    if npc:IsA("Model") and npc:GetAttribute("CurrentState") == "WaitingInLine" then
-                        i = i + 1
+scheduler:add(0.1, function()
+    if SETTINGS.Auto.Washing.Enabled then
+        pcall(function()
+            local washingGui = PlayerGui:FindFirstChild("DishWashingGui")
+            if washingGui then
+                local addr = washingGui.Address
+                if memory_read("byte", addr + ScreenGuiEnabled) == 1 then
+                    local keysHolder = washingGui.MainFrame.QueueBarFrame.Queue.KeysHolder
+                    if keysHolder then
+                        local keysToPress = {}
+                        for _, v in pairs(keysHolder:GetChildren()) do
+                            if v:IsA("Frame") and v.Name == "KeyTemplate" then
+                                local key = v:GetAttribute("Key")
+                                if key then table.insert(keysToPress, key) end
+                            end
+                        end
+                        for _, key in ipairs(keysToPress) do
+                            local vk = key_map[key]
+                            if vk then
+                                keypress(vk)
+                                keyrelease(vk)
+                                task.wait(SETTINGS.Auto.Washing.delay)
+                            end
+                        end
+                        task.wait(0.3)
                     end
                 end
-                waitinginline:SetText("WaitingInLine: " .. i)
             end
-            if ESP_SETTINGS.Labels.humanfleshstock and HumanFlesh then
-                HumanFlesh:SetText("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value))
-            end
-            if ESP_SETTINGS.Labels.fishstock and fishLabel then
-                fishLabel:SetText("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value))
-            end
-            if ESP_SETTINGS.Labels.ricestock and Rice then
-                Rice:SetText("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value))
-            end
-            if ESP_SETTINGS.Labels.vegstock and vegLabel then
-                vegLabel:SetText("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value))
-            end
-            if ESP_SETTINGS.Labels.companymoney and companyMoneyLabel then
-                companyMoneyLabel:SetText("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value))
-            end
-            if ESP_SETTINGS.Labels.day and dayLabel then
-                dayLabel:SetText("Day: " .. tostring(GameData.CurrentDay.Value))
-            end
-        end
-        task.wait(0.1)
+        end)
     end
 end)
-
+scheduler:add(0.05, function()
+    if SETTINGS.Auto.ChloroformSpys.Enabled then
+        pcall(function()
+            local Tool = Character:FindFirstChild("Chloroform Spray")
+            if Tool then
+                local HitTextLabel = Tool.ChloroformChallenge.ButtonToHitFrame.Container:FindFirstChild("TextLabel")
+                if HitTextLabel then
+                    local key = HitTextLabel.Text
+                    if key == "Q" then
+                        keypress(0x51)
+                        keyrelease(0x51)
+                    elseif key == "E" then
+                        keypress(0x45)
+                        keyrelease(0x45)
+                    end
+                end
+            end
+        end)
+    end
+end)
+scheduler:add(0.1, function()
+    if ESP_SETTINGS.Windows.Enabled then
+        if ESP_SETTINGS.Labels.waitinginline and waitinginline then
+            local i = 0
+            for _, npc in next, game.Workspace.NpcDestination.SpawnedNPCs:GetChildren() do
+                if npc:IsA("Model") and npc:GetAttribute("CurrentState") == "WaitingInLine" then
+                    i = i + 1
+                end
+            end
+            waitinginline:SetText("WaitingInLine: " .. i)
+        end
+        if ESP_SETTINGS.Labels.humanfleshstock and HumanFlesh then
+            local stock = GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value
+            local maxStock = GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value
+            HumanFlesh:SetText("Human Flesh: " .. stock .. "/" .. maxStock)
+        end
+        if ESP_SETTINGS.Labels.fishstock and fishLabel then
+            local stock = GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value
+            local maxStock = GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value
+            fishLabel:SetText("Fish: " .. stock .. "/" .. maxStock)
+        end
+        if ESP_SETTINGS.Labels.ricestock and Rice then
+            local stock = GameData.Ingredients.IngredientsStorage.Rice.Stock.Value
+            local maxStock = GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value
+            Rice:SetText("Rice: " .. stock .. "/" .. maxStock)
+        end
+        if ESP_SETTINGS.Labels.vegstock and vegLabel then
+            local stock = GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value
+            local maxStock = GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value
+            vegLabel:SetText("Vegetables: " .. stock .. "/" .. maxStock)
+        end
+        if ESP_SETTINGS.Labels.companymoney and companyMoneyLabel then
+            companyMoneyLabel:SetText("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value))
+        end
+        if ESP_SETTINGS.Labels.day and dayLabel then
+            dayLabel:SetText("Day: " .. tostring(GameData.CurrentDay.Value))
+        end
+    end
+end)
 -- ESP SYSTEM
 local STATE = { ACTIVE = 1, DESTROYED = 2 }
 local Entity = {}
@@ -738,34 +760,76 @@ function Manager:Remove(id)
     end
 end
 
+-- EVENT-DRIVEN NPC CACHE (no polling!)
 local folder = game.Workspace.NpcDestination.SpawnedNPCs
 local customer_list = {}
 local npc_cache = {}
-task.spawn(function()
-    while true do
-        local seen = {}
-        for _, npc in ipairs(folder:GetChildren()) do
-            local addr = npc.Address
-            seen[addr] = true
-            if not npc_cache[addr] then
-                npc_cache[addr] = { inst = npc, head = npc:FindFirstChild("Head") }
-            end
-        end
-        for addr in pairs(npc_cache) do
-            if not seen[addr] then
-                npc_cache[addr] = nil
-            end
-        end
-        task.wait(0.5)
+
+-- Cache attributes once per NPC
+local function cacheNPCAttributes(npc)
+    local addr = npc.Address
+    if npc_cache[addr] then
+        npc_cache[addr].attrs = {
+            Cop = npc:GetAttribute("Cop"),
+            Critic = npc:GetAttribute("Critic"),
+            Behavior = npc:GetAttribute("Behavior"),
+            CurrentState = npc:GetAttribute("CurrentState"),
+            WeaponOfChoice = npc:GetAttribute("WeaponOfChoice")
+        }
     end
+end
+
+-- When NPC is added
+folder.ChildAdded:Connect(function(npc)
+    local addr = npc.Address
+    npc_cache[addr] = {
+        inst = npc,
+        head = npc:FindFirstChild("Head"),
+        attrs = {}
+    }
+    cacheNPCAttributes(npc)
+    
+    -- Watch for attribute changes
+    npc.AttributeChanged:Connect(function()
+        cacheNPCAttributes(npc)
+    end)
 end)
 
+-- When NPC is removed
+folder.ChildRemoved:Connect(function(npc)
+    local addr = npc.Address
+    npc_cache[addr] = nil
+    Manager:Remove(addr)
+    customer_list[addr] = nil
+end)
+
+-- Cache existing NPCs on script load
+for _, npc in ipairs(folder:GetChildren()) do
+    local addr = npc.Address
+    npc_cache[addr] = {
+        inst = npc,
+        head = npc:FindFirstChild("Head"),
+        attrs = {}
+    }
+    cacheNPCAttributes(npc)
+    
+    npc.AttributeChanged:Connect(function()
+        cacheNPCAttributes(npc)
+    end)
+end
+
+
+-- NPC ACTION LOOP (processes seat customer and creates ESP entities)
 task.spawn(function()
-    while true do
-        if not isrbxactive() then task.wait(0.2) continue end
+    while task.wait(0.2) do
+        if not isrbxactive() then continue end
+        
         for addr, cached in pairs(npc_cache) do
             local npc = cached.inst
-            if SETTINGS.Cheat.Instant.SeatCustomer and npc:GetAttribute("CurrentState") == "WaitingInLine" and not customer_list[addr] then
+            local attrs = cached.attrs
+            
+            -- SeatCustomer
+            if SETTINGS.Cheat.Instant.SeatCustomer and attrs.CurrentState == "WaitingInLine" and not customer_list[addr] then
                 local torso = npc:FindFirstChild("Torso")
                 local prompt = torso and torso:FindFirstChild("WaitProximityPrompt")
                 if prompt and prompt.Address then
@@ -773,6 +837,8 @@ task.spawn(function()
                     customer_list[addr] = true
                 end
             end
+            
+            -- Dasher
             if ESP_SETTINGS.Dasher.Enabled then
                 local ent = Manager.Entities[addr]
                 if customer_list[addr] then
@@ -791,7 +857,9 @@ task.spawn(function()
             elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Dasher" then
                 Manager:Remove(addr)
             end
-            if ESP_SETTINGS.Police.Enabled and npc:GetAttribute("Cop") == true then
+            
+            -- Police
+            if ESP_SETTINGS.Police.Enabled and attrs.Cop == true then
                 if not Manager.Entities[addr] then
                     Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Police"))
                 else
@@ -800,7 +868,9 @@ task.spawn(function()
             elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Police" then
                 Manager:Remove(addr)
             end
-            if ESP_SETTINGS.Armed.Enabled and npc:GetAttribute("WeaponOfChoice") == "Knife" then
+            
+            -- Armed
+            if ESP_SETTINGS.Armed.Enabled and attrs.WeaponOfChoice == "Knife" then
                 if not Manager.Entities[addr] then
                     Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Armed"))
                 else
@@ -809,7 +879,9 @@ task.spawn(function()
             elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Armed" then
                 Manager:Remove(addr)
             end
-            if ESP_SETTINGS.Critic.Enabled and npc:GetAttribute("Critic") == true then
+            
+            -- Critic
+            if ESP_SETTINGS.Critic.Enabled and attrs.Critic == true then
                 if not Manager.Entities[addr] then
                     Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Critic"))
                 else
@@ -818,7 +890,9 @@ task.spawn(function()
             elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Critic" then
                 Manager:Remove(addr)
             end
-            if ESP_SETTINGS.HealthInspector.Enabled and npc:GetAttribute("Behavior") == "Inspector" then
+            
+            -- Health Inspector
+            if ESP_SETTINGS.HealthInspector.Enabled and attrs.Behavior == "Inspector" then
                 if not Manager.Entities[addr] then
                     Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Health Inspector"))
                 else
@@ -828,41 +902,51 @@ task.spawn(function()
                 Manager:Remove(addr)
             end
         end
+        
+        -- Reset customer list at 8:00 AM
         if PlayerGui.clockGui.clockFrame.clockLabel.Text == "08:00" then
             customer_list = {}
         end
-        task.wait(0.2)
     end
 end)
 
-RunService.Heartbeat:Connect(function()
+-- ============================================
+-- ESP RENDER LOOP (runs every frame)
+-- ONLY draws existing entities, no logic
+-- ============================================
+RunService.RenderStepped:Connect(function()
     local root = Character and Character:FindFirstChild("HumanoidRootPart")
-    for id, entity in pairs(Manager.Entities) do
+    local entities = Manager.Entities
+    
+    for id, entity in pairs(entities) do
         local cached = npc_cache[id]
         if not cached then
             Manager:Remove(id)
             continue
         end
+        
         local head = cached.head
-        if not head or not head.Parent or not head:IsDescendantOf(game) then
+        if not head or not head:IsDescendantOf(game) then
             entity:Hide()
-            Manager:Remove(id)
             continue
         end
+        
         local cfg = ESP_SETTINGS[entity.Type]
-        if not cfg then
-            Manager:Remove(id)
-            continue
-        end
-        if not cfg.Enabled then
+        if not cfg or not cfg.Enabled then
             entity:Hide()
             continue
         end
+        
         if root and (head.Position - root.Position).Magnitude > ESP_SETTINGS.MAX_DIST then
             entity:Hide()
             continue
         end
-        entity:SetColor(cfg.Color)
+        
+        -- Only update color if it changed
+        if entity.Text and entity.Text.Color ~= cfg.Color then
+            entity:SetColor(cfg.Color)
+        end
+        
         local pos, onScreen = WorldToScreen(head.Position + Vector3.new(0, 1.5, 0))
         entity:Update(pos, onScreen, true)
     end
