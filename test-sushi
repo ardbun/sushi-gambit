@@ -141,7 +141,6 @@ function Lib.new(titleText, width, height, cornerRadius)
             self:Edit(Vector2.new(mx - dragOffset.X, my - dragOffset.Y))
         end
     end)
-    -- No dragging code to prevent clicking issues
     return self
 end
 
