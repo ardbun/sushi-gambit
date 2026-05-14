@@ -4,8 +4,11 @@ local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
+LocalPlayer.CharacterAdded:Connect(function(char)
+    Character = char
+end)
 local GameData = ReplicatedStorage:WaitForChild("GameData")
 local PlayerStats = LocalPlayer:WaitForChild("PlayerStats")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
@@ -294,13 +297,22 @@ UI.AddTab("Sushi Gambit", function(tab)
             notify("Spoof Sponge Effectiveness: " .. tostring(value), "", 3)
         end)
     elseif MainSec.page == 2 then
-        MainSec:Toggle('always_computer', 'Use computer during blackout', function(value)
-            spawn(function() while true do
+       local alwaysComputerRunning = false
+
+MainSec:Toggle('always_computer', 'Use computer during blackout', function(value)
+    alwaysComputerRunning = value
+    if value then
+        task.spawn(function()
+            while alwaysComputerRunning do
                 local computer = game.Workspace.RestaurantArea.restaurant.Table.computer.ProximityPrompt.Address
-                memory_write("byte", computer + PromptEnabled, 1)
-                task.wait(.1)
-            end end)
+                if computer then
+                    memory_write("byte", computer + PromptEnabled, 1)
+                end
+                task.wait(0.1)
+            end
         end)
+    end
+end)
         local promptc = MainSec:Combo('prompt_type', 'Prompt Type', { 'ALL', 'Computer', 'Conveyor', 'Freezer', 'Toolbin', 'SeatingStation' }, 0)
         MainSec:Button('Set instant prompt', function()
             local text = promptc:GetText()
@@ -828,10 +840,14 @@ task.spawn(function()
         for addr, cached in pairs(npc_cache) do
             local npc = cached.inst
             local attrs = cached.attrs
-            
+            -- Refresh attributes
+attrs.Cop = npc:GetAttribute("Cop")
+attrs.Critic = npc:GetAttribute("Critic")
+attrs.Behavior = npc:GetAttribute("Behavior")
+attrs.CurrentState = npc:GetAttribute("CurrentState")
+attrs.WeaponOfChoice = npc:GetAttribute("WeaponOfChoice")
             -- SeatCustomer
-            if SETTINGS.Cheat.Instant.SeatCustomer and attrs.CurrentState == "WaitingInLine" and not customer_list[addr] then
-                local torso = npc:FindFirstChild("Torso")
+if SETTINGS.Cheat.Instant.SeatCustomer.Enabled and attrs.CurrentState == "WaitingInLine" and not customer_list[addr] then                local torso = npc:FindFirstChild("Torso")
                 local prompt = torso and torso:FindFirstChild("WaitProximityPrompt")
                 if prompt and prompt.Address then
                     memory_write("float", prompt.Address + HoldDuration, 0)
@@ -916,8 +932,8 @@ end)
 -- ONLY draws existing entities, no logic
 -- ============================================
 RunService.Heartbeat:Connect(function()
-    local root = Character and Character:FindFirstChild("HumanoidRootPart")
-    local entities = Manager.Entities
+local root = Character and Character:FindFirstChild("HumanoidRootPart")
+if not root then return end    local entities = Manager.Entities
     
     for id, entity in pairs(entities) do
         local cached = npc_cache[id]
