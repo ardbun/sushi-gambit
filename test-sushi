@@ -129,8 +129,8 @@ local ESP_SETTINGS = {
     Police = { Enabled = false, Color = Color3.new(0, 0, 1) },
     Critic = { Enabled = false, Color = Color3.new(1, 0.988, 0) },
     HealthInspector = { Enabled = false, Color = Color3.new(1, 0, 0) },
-    Windows = { Enabled = false },
-    Labels = {
+Windows = { Enabled = true },
+Labels = {
         day = false,
         waitinginline = false,
         companymoney = false,
@@ -652,8 +652,8 @@ if folder then
         
         -- NPC Action Loop
         Scheduler:Add(0.2, function()
-            if not isrbxactive then return end
-            for addr, cached in pairs(npc_cache) do
+if type(isrbxactive) == "function" and not isrbxactive() then return end
+for addr, cached in pairs(npc_cache) do
                 local npc = cached.inst
                 if not npc then continue end
                 
