@@ -1212,6 +1212,4 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
-print("[KEYBIND] Press X to toggle Auto Chloroform On/Off")
-
 notify('Sushi Gambit loaded!', "", 3)
