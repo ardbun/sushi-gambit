@@ -157,7 +157,7 @@ function Lib.new(titleText, width, height, cornerRadius)
         entry.drawing.Position = newPos + entry.relPos
     end
 end
-    end)
+end)
 
     return self
 end
@@ -338,7 +338,7 @@ UI.AddTab("Sushi Gambit", function(tab)
                 memory_write("float", SeatingStation + HoldDuration, 0)
             end
         end)
-    end
+    
 
     local PlayerTab = tab:Section("Player", "Left", { "Player", "Notify" })
     if PlayerTab.page == 0 then
