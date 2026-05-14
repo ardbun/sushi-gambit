@@ -384,17 +384,6 @@ function NPCManager:Init(folder)
         ESP:Destroy(npc)
     end))
 end
-    
-    for _, npc in ipairs(folder:GetChildren()) do
-        track(npc)
-    end
-    
-    ConnectionManager:Add(folder.ChildAdded:Connect(track))
-    ConnectionManager:Add(folder.ChildRemoved:Connect(function(npc)
-        self.npcs[tostring(npc)] = nil
-        ESP:Destroy(npc)
-    end))
-end
 
 -- AUTO ACTIONS
 local AutoActions = {
