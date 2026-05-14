@@ -367,12 +367,14 @@ function NPCManager:Init(folder)
         
         local attrs = {"Cop", "Critic", "Behavior", "CurrentState", "WeaponOfChoice"}
         for _, attr in ipairs(attrs) do
-            local conn = npc:GetAttributeChangedSignal(attr):Connect(function()
-                ESP:UpdateNPC(npc)
-            end)
-            ConnectionManager:Add(conn)
-        end
+    local signal = npc.GetAttributeChangedSignal and npc:GetAttributeChangedSignal(attr)
+    if signal then
+        local conn = signal:Connect(function()
+            ESP:UpdateNPC(npc)
+        end)
+        ConnectionManager:Add(conn)
     end
+end
     
     for _, npc in ipairs(folder:GetChildren()) do
         track(npc)
@@ -513,7 +515,10 @@ function AdminAlerts:Init()
         checkAdmin(p)
     end
     
-    ConnectionManager:Add(Players.PlayerAdded:Connect(checkAdmin))
+    local playerAdded = Players.PlayerAdded
+    if playerAdded then
+        ConnectionManager:Add(playerAdded:Connect(checkAdmin))
+    end
 end
 
 -- WINDOW LABEL UPDATES
@@ -620,12 +625,15 @@ end
 local function SetupDrag()
     local dragging = false
     local dragOffset = Vector2.new(0, 0)
-    local lastMousePos = Vector2.new(0, 0)
     
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
+        if not input or not input.UserInputType then return end
+        
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             local mousePos = UserInputService:GetMouseLocation()
+            if not mousePos then return end
+            
             local px, py = Window.position.X, Window.position.Y
             local w, h = Window.size.X, Window.size.Y
             
@@ -637,16 +645,20 @@ local function SetupDrag()
     end)
     
     UserInputService.InputEnded:Connect(function(input)
+        if not input or not input.UserInputType then return end
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = false
         end
     end)
     
     UserInputService.InputChanged:Connect(function(input)
+        if not input or not input.UserInputType then return end
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local mousePos = UserInputService:GetMouseLocation()
-            Window.position = Vector2.new(mousePos.X - dragOffset.X, mousePos.Y - dragOffset.Y)
-            Window:UpdateGeometry()
+            if mousePos then
+                Window.position = Vector2.new(mousePos.X - dragOffset.X, mousePos.Y - dragOffset.Y)
+                Window:UpdateGeometry()
+            end
         end
     end)
 end
