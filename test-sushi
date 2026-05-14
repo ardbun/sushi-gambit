@@ -39,13 +39,13 @@ local ESP_SETTINGS = {
     }
 }
 
--- X key to toggle Auto Chloroform
 local chloroformToggleCooldown = false
 task.spawn(function()
     while true do
         if iskeypressed(0x58) and not chloroformToggleCooldown then
             chloroformToggleCooldown = true
             SETTINGS.Auto.ChloroformSpys.Enabled = not SETTINGS.Auto.ChloroformSpys.Enabled
+            UI.SetValue("auto_chloroform_spys", SETTINGS.Auto.ChloroformSpys.Enabled)
             notify("Auto Chloroform: " .. (SETTINGS.Auto.ChloroformSpys.Enabled and "ON" or "OFF"), "", 2)
             task.wait(0.5)
         elseif not iskeypressed(0x58) then
@@ -55,7 +55,6 @@ task.spawn(function()
     end
 end)
 
--- LIB CLASS
 local Lib = {}
 Lib.__index = Lib
 
@@ -223,7 +222,6 @@ function Lib:AddLabel(text, color)
     return handle
 end
 
--- LABEL VARIABLES
 local dayLabel = nil
 local waitinginline = nil
 local companyMoneyLabel = nil
@@ -254,7 +252,10 @@ UI.AddTab("Sushi Gambit", function(tab)
         MainSec:Toggle('auto_cooking', 'Auto Cooking', function(value) SETTINGS.Auto.Cooking.Enabled = value; notify("Auto Cooking: " .. tostring(value), "", 3) end)
         MainSec:Toggle('auto_washing', 'Auto DishWashing', function(value) SETTINGS.Auto.Washing.Enabled = value; notify("Auto DishWashing: " .. tostring(value), "", 3) end)
         MainSec:SliderFloat('auto_washing_delay', 'Delay (ms)', 0.1, 2.0, 0.1, '%.1f', function(value) SETTINGS.Auto.Washing.delay = value end)
-        MainSec:Toggle('auto_chloroform_spys', 'Auto Chloroform Spys', function(value) SETTINGS.Auto.ChloroformSpys.Enabled = value; notify("Auto Chloroform Spys: " .. tostring(value), "", 3) end)
+        MainSec:Toggle('auto_chloroform_spys', 'Auto Chloroform Spys', function(value)
+    SETTINGS.Auto.ChloroformSpys.Enabled = value
+    notify("Auto Chloroform Spys: " .. tostring(value), "", 3)
+end)
     elseif MainSec.page == 1 then
         MainSec:Toggle("enable_all_cheats", "Enable All Cheats", function(value)
             SETTINGS.Cheat.Spoof.Greenbar.Enabled = value
@@ -505,7 +506,6 @@ UI.AddTab("Sushi Gambit", function(tab)
     end)
 end)
 
--- Load saved settings
 SETTINGS.Auto.Cooking.Enabled = UI.GetValue("auto_cooking")
 SETTINGS.Auto.Washing.Enabled = UI.GetValue("auto_washing")
 SETTINGS.Auto.ChloroformSpys.Enabled = UI.GetValue("auto_chloroform_spys")
@@ -531,7 +531,6 @@ ESP_SETTINGS.Labels.waitinginline = UI.GetValue("show_waitinginline")
 
 if ESP_SETTINGS.Windows.Enabled then Windows:Show(true) end
 
--- Create labels on execute (all EXCEPT waitinginline)
 if ESP_SETTINGS.Labels.humanfleshstock and not HumanFlesh then HumanFlesh = Windows:AddLabel("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) end
 if ESP_SETTINGS.Labels.fishstock and not fishLabel then fishLabel = Windows:AddLabel("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value)) end
 if ESP_SETTINGS.Labels.ricestock and not Rice then Rice = Windows:AddLabel("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
@@ -549,7 +548,6 @@ end)
 
 local key_map = { Q = 0x51, E = 0x45, R = 0x52, F = 0x46 }
 
--- AUTO FEATURES LOOP
 task.spawn(function()
     local lastTimes = { cooking = 0, washing = 0, chloroform = 0, stats = 0 }
     while true do
@@ -647,7 +645,6 @@ task.spawn(function()
     end
 end)
 
--- LABEL UPDATE LOOP
 task.spawn(function()
     while true do
         if ESP_SETTINGS.Windows.Enabled then
@@ -683,7 +680,6 @@ task.spawn(function()
     end
 end)
 
--- ESP SYSTEM
 local STATE = { ACTIVE = 1, DESTROYED = 2 }
 local Entity = {}
 Entity.__index = Entity
