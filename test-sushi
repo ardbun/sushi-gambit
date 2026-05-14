@@ -978,5 +978,6 @@ task.spawn(function()
         end
         task.wait(1)
     end
-end)
+end)  -- <-- MAKE SURE THIS END IS HERE
+
 notify('Sushi Gambit loaded!', "", 3)
