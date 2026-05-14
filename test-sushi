@@ -241,7 +241,7 @@ function Lib:Delete()
     self.Labels = {}
 end
 
-local LABEL_SIZE = 12
+local LABEL_SIZE = 20
 local LABEL_X = 12
 local LABEL_START_Y = 32
 local LABEL_STEP = 18
@@ -308,7 +308,7 @@ local fishLabel = nil
 local HumanFlesh = nil
 local Rice = nil
 
-local Windows = Lib.new("Sushi Gambit", 150, 55)
+local Windows = Lib.new("Sushi Gambit", 250, 130)
 Windows:Show(false)
 
 function get_offsets()
@@ -498,7 +498,7 @@ end)
     elseif PlayerTab.page == 1 then
         PlayerTab:Toggle('notify_admin_join', 'Admin Alert', function(value)
             notify("Admin Alert: " .. tostring(value), "", 3)
-            SETTINGS.NotifyAdminJoin = value
+        SETTINGS.Notify.AdminJoin.Enabled = value
         end)
     end
 
@@ -717,6 +717,9 @@ end)
 SETTINGS.Auto.Cooking.Enabled = UI.GetValue("auto_cooking")
 
 -- Force enable all cheats/esp/window labels on execute
+UI.SetValue("inf_stamina", true)
+UI.SetValue("notify_admin_join", true)
+UI.SetValue("inf_stamina", true)
 UI.SetValue("spoof_greenbar", true)
 UI.SetValue("instant_clean_dish", true)
 UI.SetValue("spoof_sponge_effectiveness", true)
@@ -766,7 +769,7 @@ SETTINGS.Cheat.Spoof.Greenbar.Enabled = UI.GetValue("spoof_greenbar")
 SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled = UI.GetValue("spoof_sponge_effectiveness")
 
 SETTINGS.Notify.DineAndDash.Enabled = UI.GetValue("notify_dineanddash")
-SETTINGS.Notify.AdminJoin.Enabled = UI.GetValue("notify_admin_join")
+SETTINGS.Notify.AdminJoin.Enabled = true
 
 ESP_SETTINGS.Dasher.Enabled = UI.GetValue("show_dasher")
 ESP_SETTINGS.Armed.Enabled = UI.GetValue("show_armed")
@@ -786,6 +789,11 @@ ESP_SETTINGS.Labels.ricestock = UI.GetValue("show_ricestock")
 if ESP_SETTINGS.Windows.Enabled then
     Windows:Show(true)
 end
+
+-- Force infinite stamina stats on execute
+PlayerStats.StaminaUsageMultiplier.Value = -1
+PlayerStats.StaminaGainMultiplier.Value = 100
+PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
 
 if ESP_SETTINGS.Labels.day then dayLabel = Windows:AddLabel("Day: " .. tostring(GameData.CurrentDay.Value)) end
 if ESP_SETTINGS.Labels.waitinginline then waitinginline = Windows:AddLabel("WaitingInLine: 0") end
@@ -1123,7 +1131,7 @@ task.spawn(function()
             -- Health Inspector
             if ESP_SETTINGS.HealthInspector.Enabled and npc:GetAttribute("Behavior") == "Inspector" then
                 if not Manager.Entities[addr] then
-                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Health Inspector"))
+                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "HealthInspector"))
                 else
                     Manager.Entities[addr].Instance = npc
                 end
@@ -1176,6 +1184,21 @@ RunService.Heartbeat:Connect(function()
 
         local pos, onScreen = WorldToScreen(head.Position + Vector3.new(0, 1.5, 0))
         entity:Update(pos, onScreen, true)
+    end
+end)
+
+task.spawn(function()
+    local warned = { ["4:40PM"] = false, ["4:45PM"] = false, ["4:50PM"] = false, ["4:55PM"] = false }
+    while true do
+        local clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
+        if clockLabel then
+            local t = clockLabel.Text
+            if warned[t] == false then
+                warned[t] = true
+                notify("remove sun tat", "Reminder", 5)
+            end
+        end
+        task.wait(1)
     end
 end)
 
