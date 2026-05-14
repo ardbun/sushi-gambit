@@ -514,11 +514,12 @@ UI.AddTab("Sushi Gambit", function(tab)
     end)
 
        WindowSec:Toggle("show_waitinginline", "Waiting In Line", function(value)
+    ESP_SETTINGS.Labels.waitinginline = value
     if value and ESP_SETTINGS.Windows.Enabled then
         if not waitinginline then waitinginline = Windows:AddLabel("WaitingInLine: 0") end
     elseif waitinginline then waitinginline:Delete(); waitinginline = nil end
-end)  -- <-- ADD THIS )
-
+    end)  -- closes the last Toggle (show_waitinginline)
+end)  -- closes UI.AddTab
 -- Load saved settings
 SETTINGS.Auto.Cooking.Enabled = UI.GetValue("auto_cooking")
 SETTINGS.Auto.Washing.Enabled = UI.GetValue("auto_washing")
