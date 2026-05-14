@@ -401,7 +401,7 @@ function AutoActions:Start()
         warn("keypress function not available - auto actions will not work")
         return
     end
-    
+
     self.cookingTask = Scheduler:Add(0.05, function()
         if not State.Auto.Cooking then return end
         
@@ -470,52 +470,6 @@ function AutoActions:Start()
         end
     end)
 end
-    
-    self.washingTask = Scheduler:Add(0.1, function()
-        if not State.Auto.Washing then return end
-        
-        local washingGui = safeGet(playerGui, "DishWashingGui")
-        if washingGui and washingGui.Enabled then
-            local keysHolder = safeGet(washingGui, "MainFrame", "QueueBarFrame", "Queue", "KeysHolder")
-            if keysHolder then
-                local keyMap = {Q = 0x51, E = 0x45, R = 0x52, F = 0x46}
-                for _, v in pairs(keysHolder:GetChildren()) do
-                    if v:IsA("Frame") and v.Name == "KeyTemplate" then
-                        local key = v:GetAttribute("Key")
-                        local vk = keyMap[key]
-                        if vk and keypress then
-                            keypress(vk)
-                            keyrelease(vk)
-                            task.wait(State.Auto.WashingDelay)
-                        end
-                    end
-                end
-            end
-        end
-    end)
-    
-    self.chloroformTask = Scheduler:Add(0.05, function()
-        if not State.Auto.Chloroform then return end
-        
-        local char = player.Character
-        if not char then return end
-        
-        local tool = char:FindFirstChild("Chloroform Spray")
-        if tool then
-            local hitLabel = safeGet(tool, "ChloroformChallenge", "ButtonToHitFrame", "Container", "TextLabel")
-            if hitLabel then
-                local key = hitLabel.Text
-                if key == "Q" and keypress then
-                    keypress(0x51)
-                    keyrelease(0x51)
-                elseif key == "E" and keypress then
-                    keypress(0x45)
-                    keyrelease(0x45)
-                end
-            end
-        end
-    end)
-end
 
 -- CHEATS
 local Cheats = {
@@ -565,10 +519,7 @@ function AdminAlerts:Init()
         checkAdmin(p)
     end
     
-    local playerAdded = Players.PlayerAdded
-    if playerAdded then
-        ConnectionManager:Add(playerAdded:Connect(checkAdmin))
-    end
+    ConnectionManager:Add(Players.PlayerAdded:Connect(checkAdmin))
 end
 
 -- WINDOW LABEL UPDATES
