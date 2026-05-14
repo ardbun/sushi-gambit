@@ -786,22 +786,48 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- SINGLE HEARTBEAT FOR SCHEDULER
-local heartbeatConn = RunService.Heartbeat:Connect(function(dt)
-    Scheduler:Update(dt)
-end)
-ConnectionManager:Add(heartbeatConn)
+-- Safe heartbeat connection
+local heartbeatConn = nil
+if RunService.Heartbeat then
+    heartbeatConn = RunService.Heartbeat:Connect(function(dt)
+        Scheduler:Update(dt)
+    end)
+elseif RunService.RenderStepped then
+    heartbeatConn = RunService.RenderStepped:Connect(function(dt)
+        Scheduler:Update(dt)
+    end)
+elseif RunService.Stepped then
+    heartbeatConn = RunService.Stepped:Connect(function()
+        Scheduler:Update(1/60)
+    end)
+else
+    warn("No RunService event available - scheduler will not update")
+    -- Fallback manual loop
+    task.spawn(function()
+        while true do
+            task.wait(0.05)
+            Scheduler:Update(0.05)
+        end
+    end)
+end
 
--- Character Added handler
-local charAddedConn = LocalPlayer.CharacterAdded:Connect(function(char)
-    Character = char
-end)
-ConnectionManager:Add(charAddedConn)
+if heartbeatConn then
+    ConnectionManager:Add(heartbeatConn)
+end
+local charAddedConn = nil
+if LocalPlayer.CharacterAdded then
+    charAddedConn = LocalPlayer.CharacterAdded:Connect(function(char)
+        Character = char
+    end)
+    ConnectionManager:Add(charAddedConn)
+end
 
--- Cleanup on script unload
-game:GetService("ScriptContext").ScriptRemoved:Connect(function()
-    ConnectionManager:Cleanup()
-    Windows:Delete()
-end)
-
+-- Note: ScriptContext.ScriptRemoved doesn't exist in all environments
+-- Use BindToClose instead if available
+if game.BindToClose then
+    game:BindToClose(function()
+        ConnectionManager:Cleanup()
+        Windows:Delete()
+    end)
+end
 print("[Sushi Gambit] Loaded with scheduler and memory leak fixes!")
