@@ -4,7 +4,13 @@ local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Character = nil
+
+if LocalPlayer.Character then
+    Character = LocalPlayer.Character
+else
+    Character = LocalPlayer.CharacterAdded:Wait()
+end
 LocalPlayer.CharacterAdded:Connect(function(char)
     Character = char
 end)
@@ -672,6 +678,18 @@ scheduler:add(0.05, function()
                 end
             end
         end)
+    end
+end)
+scheduler:add(0.1, function()
+    if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
+        PlayerStats.EffectiveCookingLevel.Value = 1000
+        PlayerStats.NoIngredientUseChance.Value = 1
+    end
+    if SETTINGS.Cheat.Instant.CleanDish.Enabled then
+        PlayerStats.EffectiveCleaningLevel.Value = 9999
+    end
+    if SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled then
+        PlayerStats.SpongeEffectiveness.Value = 9999
     end
 end)
 scheduler:add(0.1, function()
