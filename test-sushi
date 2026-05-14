@@ -321,6 +321,16 @@ local ScreenGuiEnabled = get_offsets()["Offsets"]["GuiObject"]["ScreenGui_Enable
 local HoldDuration = get_offsets()["Offsets"]["ProximityPrompt"]["HoldDuration"]
 local PromptEnabled = get_offsets()["Offsets"]["ProximityPrompt"]["Enabled"]
 
+local function safePath(root, ...)
+    local current = root
+    for _, key in ipairs({...}) do
+        if typeof(current) ~= "Instance" then return nil end
+        current = current:FindFirstChild(key)
+        if not current then return nil end
+    end
+    return current
+end
+
 local Hat = {
     "",
     "BunnyEars",
@@ -393,8 +403,8 @@ MainSec:Toggle('always_computer', 'Use computer during blackout', function(value
     if value then
         task.spawn(function()
             while alwaysComputerEnabled do
-                local computer = game.Workspace.RestaurantArea.restaurant.Table.computer.ProximityPrompt.Address
-                memory_write("byte", computer + PromptEnabled, 1)
+                local prompt = safePath(game.Workspace, "RestaurantArea", "restaurant", "Table", "computer", "ProximityPrompt")
+                if prompt then memory_write("byte", prompt.Address + PromptEnabled, 1) end
                 task.wait(.1)
             end
         end)
@@ -404,46 +414,46 @@ end)
             notify("Click button to set instant prompt: " .. text, "", 3)
         end)
 
-        MainSec:Button('Set instant prompt', function()
-            local text = promptc:GetText()
-            if text == 'ALL' then
-                spawn(function()
-                    while true do
-                        local computer = game.Workspace.RestaurantArea.restaurant.Table.computer.ProximityPrompt.Address
-                        memory_write("float", computer + HoldDuration, 0)
-                        task.wait(.1)
-                    end
-                end)
-                local conveyor_keypad = game.Workspace.RestaurantArea.restaurant.mainStuff.conveyors.keypad.PromptPart.ProximityPrompt.Address
-                memory_write("float", conveyor_keypad + HoldDuration, 0)
-                local freezer = game.Workspace.RestaurantArea.restaurant.FreezerDoor.PromptHitbox.ProximityPrompt.Address
-                memory_write("float", freezer + HoldDuration, 0)
-                local toolbin = game.Workspace.Toolbin.PromptHitbox.ProximityPrompt.Address
-                memory_write("float", toolbin + HoldDuration, 0)
-                local SeatingStation = game.Workspace.RestaurantArea.restaurant["the waiter stand thingy"].Stations.SeatingStation.TriggerPart.SeatCustomersPrompt.Address
-                memory_write("float", SeatingStation + HoldDuration, 0)
-           elseif text == 'Computer' then
-    task.spawn(function()
-        while alwaysComputerEnabled do
-            local computer = game.Workspace.RestaurantArea.restaurant.Table.computer.ProximityPrompt.Address
-            memory_write("float", computer + HoldDuration, 0)
-            task.wait(.1)
-        end
-    end)
-            elseif text == 'Conveyor' then
-                local conveyor_keypad = game.Workspace.RestaurantArea.restaurant.mainStuff.conveyors.keypad.PromptPart.ProximityPrompt.Address
-                memory_write("float", conveyor_keypad + HoldDuration, 0)
-            elseif text == 'Freezer' then
-                local freezer = game.Workspace.RestaurantArea.restaurant.FreezerDoor.PromptHitbox.ProximityPrompt.Address
-                memory_write("float", freezer + HoldDuration, 0)
-            elseif text == 'Toolbin' then
-                local toolbin = game.Workspace.Toolbin.PromptHitbox.ProximityPrompt.Address
-                memory_write("float", toolbin + HoldDuration, 0)
-            elseif text == 'SeatingStation' then
-                local SeatingStation = game.Workspace.RestaurantArea.restaurant["the waiter stand thingy"].Stations.SeatingStation.TriggerPart.SeatCustomersPrompt.Address
-                memory_write("float", SeatingStation + HoldDuration, 0)
+MainSec:Button('Set instant prompt', function()
+    local text = promptc:GetText()
+    if text == 'ALL' then
+        task.spawn(function()
+            while alwaysComputerEnabled do
+                local prompt = safePath(game.Workspace, "RestaurantArea", "restaurant", "Table", "computer", "ProximityPrompt")
+                if prompt then memory_write("float", prompt.Address + HoldDuration, 0) end
+                task.wait(.1)
             end
         end)
+        local conveyor = safePath(game.Workspace, "RestaurantArea", "restaurant", "mainStuff", "conveyors", "keypad", "PromptPart", "ProximityPrompt")
+        if conveyor then memory_write("float", conveyor.Address + HoldDuration, 0) end
+        local freezer = safePath(game.Workspace, "RestaurantArea", "restaurant", "FreezerDoor", "PromptHitbox", "ProximityPrompt")
+        if freezer then memory_write("float", freezer.Address + HoldDuration, 0) end
+        local toolbin = safePath(game.Workspace, "Toolbin", "PromptHitbox", "ProximityPrompt")
+        if toolbin then memory_write("float", toolbin.Address + HoldDuration, 0) end
+        local seating = safePath(game.Workspace, "RestaurantArea", "restaurant", "the waiter stand thingy", "Stations", "SeatingStation", "TriggerPart", "SeatCustomersPrompt")
+        if seating then memory_write("float", seating.Address + HoldDuration, 0) end
+    elseif text == 'Computer' then
+        task.spawn(function()
+            while alwaysComputerEnabled do
+                local prompt = safePath(game.Workspace, "RestaurantArea", "restaurant", "Table", "computer", "ProximityPrompt")
+                if prompt then memory_write("float", prompt.Address + HoldDuration, 0) end
+                task.wait(.1)
+            end
+        end)
+    elseif text == 'Conveyor' then
+        local conveyor = safePath(game.Workspace, "RestaurantArea", "restaurant", "mainStuff", "conveyors", "keypad", "PromptPart", "ProximityPrompt")
+        if conveyor then memory_write("float", conveyor.Address + HoldDuration, 0) end
+    elseif text == 'Freezer' then
+        local freezer = safePath(game.Workspace, "RestaurantArea", "restaurant", "FreezerDoor", "PromptHitbox", "ProximityPrompt")
+        if freezer then memory_write("float", freezer.Address + HoldDuration, 0) end
+    elseif text == 'Toolbin' then
+        local toolbin = safePath(game.Workspace, "Toolbin", "PromptHitbox", "ProximityPrompt")
+        if toolbin then memory_write("float", toolbin.Address + HoldDuration, 0) end
+    elseif text == 'SeatingStation' then
+        local seating = safePath(game.Workspace, "RestaurantArea", "restaurant", "the waiter stand thingy", "Stations", "SeatingStation", "TriggerPart", "SeatCustomersPrompt")
+        if seating then memory_write("float", seating.Address + HoldDuration, 0) end
+    end
+end)
     end
 
     local PlayerTab = tab:Section("Player", "Left", { "Player", "Notify" } )
@@ -941,9 +951,10 @@ task.spawn(function()
             end
         end
 
-        for addr in pairs(npc_cache) do
-    if not seen[addr] then
+       for addr in pairs(npc_cache) do
+    if not seen[addr] or not npc_cache[addr].inst:IsDescendantOf(game.Workspace) then
         customer_list[addr] = nil
+        Manager:Remove(addr)
         npc_cache[addr] = nil
     end
 end
@@ -1038,9 +1049,10 @@ task.spawn(function()
             end
         end
 
-        if PlayerGui.clockGui.clockFrame.clockLabel.Text == "08:00" then
-            customer_list = {}
-        end
+       local clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
+if clockLabel and clockLabel.Text == "08:00" then
+    customer_list = {}
+end
 
         task.wait(0.2)
     end
