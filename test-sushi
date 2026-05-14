@@ -392,7 +392,6 @@ local AutoActions = {
     chloroformTask = nil
 }
 
-end
 
 function AutoActions:Start()
 self.cookingTask = Scheduler:Add(0.05, function()
