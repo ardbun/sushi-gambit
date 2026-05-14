@@ -40,12 +40,17 @@ local ESP_SETTINGS = {
 }
 
 local chloroformToggleCooldown = false
+local chloroformStatusText = nil
+
 task.spawn(function()
     while true do
         if iskeypressed(0x58) and not chloroformToggleCooldown then
             chloroformToggleCooldown = true
             SETTINGS.Auto.ChloroformSpys.Enabled = not SETTINGS.Auto.ChloroformSpys.Enabled
             UI.SetValue("auto_chloroform_spys", SETTINGS.Auto.ChloroformSpys.Enabled)
+            if chloroformStatusText then
+                chloroformStatusText:SetText("Auto Chloroform: " .. (SETTINGS.Auto.ChloroformSpys.Enabled and "ON" or "OFF"))
+            end
             notify("Auto Chloroform: " .. (SETTINGS.Auto.ChloroformSpys.Enabled and "ON" or "OFF"), "", 2)
             task.wait(0.5)
         elseif not iskeypressed(0x58) then
@@ -248,14 +253,17 @@ local background = { 'Intern', 'SofaSurfer', 'LineCook', 'TechEnthusiast', 'Amis
 UI.AddTab("Sushi Gambit", function(tab)
     local MainSec = tab:Section("Main", "Left", { "Auto", "Cheat", "Prompt" })
 
-    if MainSec.page == 0 then
+       if MainSec.page == 0 then
         MainSec:Toggle('auto_cooking', 'Auto Cooking', function(value) SETTINGS.Auto.Cooking.Enabled = value; notify("Auto Cooking: " .. tostring(value), "", 3) end)
         MainSec:Toggle('auto_washing', 'Auto DishWashing', function(value) SETTINGS.Auto.Washing.Enabled = value; notify("Auto DishWashing: " .. tostring(value), "", 3) end)
         MainSec:SliderFloat('auto_washing_delay', 'Delay (ms)', 0.1, 2.0, 0.1, '%.1f', function(value) SETTINGS.Auto.Washing.delay = value end)
-        MainSec:Toggle('auto_chloroform_spys', 'Auto Chloroform Spys', function(value)
-    SETTINGS.Auto.ChloroformSpys.Enabled = value
-    notify("Auto Chloroform Spys: " .. tostring(value), "", 3)
-end)
+        chloroformStatusText = MainSec:Text("Auto Chloroform: OFF")
+        MainSec:Toggle('auto_chloroform', 'Auto Chloroform', function(value)
+            SETTINGS.Auto.ChloroformSpys.Enabled = value
+            chloroformStatusText:SetText("Auto Chloroform: " .. (value and "ON" or "OFF"))
+            UI.SetValue("auto_chloroform_spys", value)
+            notify("Auto Chloroform: " .. (value and "ON" or "OFF"), "", 3)
+        end)
     elseif MainSec.page == 1 then
         MainSec:Toggle("enable_all_cheats", "Enable All Cheats", function(value)
             SETTINGS.Cheat.Spoof.Greenbar.Enabled = value
