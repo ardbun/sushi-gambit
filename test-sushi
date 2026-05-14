@@ -1197,15 +1197,12 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
     if input.KeyCode == Enum.KeyCode.X then
-        -- Toggle the setting
         SETTINGS.Auto.ChloroformSpys.Enabled = not SETTINGS.Auto.ChloroformSpys.Enabled
         
-        -- Update UI if it exists
         if UI and UI.SetValue then
             UI.SetValue("auto_chloroform_spys", SETTINGS.Auto.ChloroformSpys.Enabled)
         end
         
-        -- Show notification
         local status = SETTINGS.Auto.ChloroformSpys.Enabled and "ON" or "OFF"
         notify("Auto Chloroform: " .. status, "Keybind X", 2)
     end
