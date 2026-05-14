@@ -338,7 +338,7 @@ UI.AddTab("Sushi Gambit", function(tab)
                 memory_write("float", SeatingStation + HoldDuration, 0)
             end
         end)
-    
+    end
 
     local PlayerTab = tab:Section("Player", "Left", { "Player", "Notify" })
     if PlayerTab.page == 0 then
@@ -513,13 +513,13 @@ UI.AddTab("Sushi Gambit", function(tab)
         elseif dayLabel then dayLabel:Delete(); dayLabel = nil end
     end)
 
-    WindowSec:Toggle("show_waitinginline", "Waiting In Line", function(value)
+        WindowSec:Toggle("show_waitinginline", "Waiting In Line", function(value)
         ESP_SETTINGS.Labels.waitinginline = value
         if value and ESP_SETTINGS.Windows.Enabled then
             if not waitinginline then waitinginline = Windows:AddLabel("WaitingInLine: 0") end
         elseif waitinginline then waitinginline:Delete(); waitinginline = nil end
-    end)
-end)
+    end
+end)  -- <-- THIS closes UI.AddTab
 
 -- Load saved settings
 SETTINGS.Auto.Cooking.Enabled = UI.GetValue("auto_cooking")
