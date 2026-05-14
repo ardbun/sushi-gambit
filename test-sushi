@@ -799,11 +799,7 @@ folder.ChildAdded:Connect(function(npc)
     }
     cacheNPCAttributes(npc)
     
-    -- Watch for attribute changes
-    npc.AttributeChanged:Connect(function()
-        cacheNPCAttributes(npc)
-    end)
-end)
+ 
 
 -- When NPC is removed
 folder.ChildRemoved:Connect(function(npc)
@@ -822,11 +818,6 @@ for _, npc in ipairs(folder:GetChildren()) do
         attrs = {}
     }
     cacheNPCAttributes(npc)
-    
-    npc.AttributeChanged:Connect(function()
-        cacheNPCAttributes(npc)
-    end)
-end
 
 
 -- NPC ACTION LOOP (processes seat customer and creates ESP entities)
