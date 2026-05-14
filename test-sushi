@@ -121,7 +121,26 @@ function Lib.new(titleText, width, height, cornerRadius)
     local mouse = Players.LocalPlayer:GetMouse()
     local dragging = false
     local dragOffset = Vector2.new(0, 0)
+    RunService.RenderStepped:Connect(function()
+        local mx, my = mouse.X, mouse.Y
+        local px, py = self.Position.X, self.Position.Y
+        local sw, sh = self.Size.X, self.Size.Y
 
+        if ismouse1pressed() then
+            if not dragging then
+                if mx >= px and mx <= px + sw and my >= py and my <= py + sh then
+                    dragging = true
+                    dragOffset = Vector2.new(mx - px, my - py)
+                end
+            end
+        else
+            dragging = false
+        end
+
+        if dragging then
+            self:Edit(Vector2.new(mx - dragOffset.X, my - dragOffset.Y))
+        end
+    end)
     -- No dragging code to prevent clicking issues
     return self
 end
