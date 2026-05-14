@@ -119,8 +119,8 @@ function Lib.new(titleText, width, height, cornerRadius)
     local dragging = false
     local dragOffset = Vector2.new(0, 0)
 
-    RunService.Heartbeat:Connect
-        local mx, my = mouse.X, mouse.Y
+    RunService.Heartbeat:Connect(function()
+    local mx, my = mouse.X, mouse.Y
         local px, py = self.Position.X, self.Position.Y
         local sw, sh = self.Size.X, self.Size.Y
 
@@ -918,8 +918,8 @@ end)
 -- ESP RENDER LOOP (runs every frame)
 -- ONLY draws existing entities, no logic
 -- ============================================
-RunService.Heartbeat:Connect    local root = Character and Character:FindFirstChild("HumanoidRootPart")
-    local entities = Manager.Entities
+RunService.Heartbeat:Connect(function()
+    local root = Character and Character:FindFirstChild("HumanoidRootPart")
     
     for id, entity in pairs(entities) do
         local cached = npc_cache[id]
