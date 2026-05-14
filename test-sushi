@@ -956,10 +956,11 @@ end)
 local notified445 = false
 local notified450 = false
 local notified455 = false
+
 task.spawn(function()
     while true do
-        local success, timeText = pcall(function() 
-            return PlayerGui.clockGui.clockFrame.clockLabel.Text 
+        local success, timeText = pcall(function()
+            return PlayerGui.clockGui.clockFrame.clockLabel.Text
         end)
         if success and timeText then
             if (timeText == "04:45PM" or timeText == "4:45PM") and not notified445 then
@@ -980,7 +981,7 @@ task.spawn(function()
             end
         end
         task.wait(1)
-    end
+    end  -- <-- THIS END closes the while loop
 end)  -- <-- THIS END closes the task.spawn
 
 notify('Sushi Gambit loaded!', "", 3)
