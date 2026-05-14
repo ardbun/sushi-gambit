@@ -367,14 +367,15 @@ function NPCManager:Init(folder)
         
         local attrs = {"Cop", "Critic", "Behavior", "CurrentState", "WeaponOfChoice"}
         for _, attr in ipairs(attrs) do
-    local signal = npc.GetAttributeChangedSignal and npc:GetAttributeChangedSignal(attr)
-    if signal then
-        local conn = signal:Connect(function()
-            ESP:UpdateNPC(npc)
-        end)
-        ConnectionManager:Add(conn)
-    end
-end
+            local signal = npc:GetAttributeChangedSignal(attr)
+            if signal then
+                local conn = signal:Connect(function()
+                    ESP:UpdateNPC(npc)
+                end)
+                ConnectionManager:Add(conn)
+            end
+        end
+    end  -- <-- This closes the track function
     
     for _, npc in ipairs(folder:GetChildren()) do
         track(npc)
@@ -385,7 +386,7 @@ end
         self.npcs[tostring(npc)] = nil
         ESP:Destroy(npc)
     end))
-end
+end  -- <-- This closes the Init function
 
 -- AUTO ACTIONS
 local AutoActions = {
@@ -630,7 +631,7 @@ local function SetupDrag()
         if gameProcessed then return end
         if not input or not input.UserInputType then return end
         
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+if input and input.UserInputType and input.UserInputType == Enum.UserInputType.MouseButton1 then
             local mousePos = UserInputService:GetMouseLocation()
             if not mousePos then return end
             
@@ -646,14 +647,14 @@ local function SetupDrag()
     
     UserInputService.InputEnded:Connect(function(input)
         if not input or not input.UserInputType then return end
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+if input and input.UserInputType and input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = false
         end
     end)
     
     UserInputService.InputChanged:Connect(function(input)
         if not input or not input.UserInputType then return end
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+if dragging and input and input.UserInputType and input.UserInputType == Enum.UserInputType.MouseMovement then
             local mousePos = UserInputService:GetMouseLocation()
             if mousePos then
                 Window.position = Vector2.new(mousePos.X - dragOffset.X, mousePos.Y - dragOffset.Y)
