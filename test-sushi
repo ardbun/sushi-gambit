@@ -39,61 +39,64 @@ local ESP_SETTINGS = {
         humanfleshstock = false, ricestock = false, spoilage = false
     }
 }
-LocalPlayer.CharacterAdded:Connect(function(newChar)
-    Character = newChar
-    task.wait(1)
-    
-    if UI.GetValue("inf_stamina") then
-        PlayerStats.StaminaUsageMultiplier.Value = -1
-        PlayerStats.StaminaGainMultiplier.Value = 100
-        PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
-    end
-    
-    if SETTINGS.Cheat.Instant.CleanDish.Enabled then
-        PlayerStats.EffectiveCleaningLevel.Value = 9999
-    end
-    
-    if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
-        PlayerStats.EffectiveCookingLevel.Value = 1000
-        PlayerStats.NoIngredientUseChance.Value = 1
-    end
-    
-    if SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled then
-        PlayerStats.SpongeEffectiveness.Value = 9999
-    end
-    
-    local walkSpeed = UI.GetValue("player_walkspeed")
-    if walkSpeed and walkSpeed ~= 16 then
-        PlayerStats.WalkSpeed.Value = walkSpeed
-    end
-    
-    if SETTINGS.Cheat.Instant.SeatCustomer.Enabled then
-        task.spawn(function()
-            local computer = game.Workspace.RestaurantArea.restaurant.Table.computer
-            if computer and computer.ProximityPrompt and computer.ProximityPrompt.Address then
-                memory_write("float", computer.ProximityPrompt.Address + HoldDuration, 0)
-            end
-            local conveyor_keypad = game.Workspace.RestaurantArea.restaurant.mainStuff.conveyors.keypad.PromptPart
-            if conveyor_keypad and conveyor_keypad.ProximityPrompt and conveyor_keypad.ProximityPrompt.Address then
-                memory_write("float", conveyor_keypad.ProximityPrompt.Address + HoldDuration, 0)
-            end
-            local freezer = game.Workspace.RestaurantArea.restaurant.FreezerDoor.PromptHitbox
-            if freezer and freezer.ProximityPrompt and freezer.ProximityPrompt.Address then
-                memory_write("float", freezer.ProximityPrompt.Address + HoldDuration, 0)
-            end
-            local toolbin = game.Workspace.Toolbin.PromptHitbox
-            if toolbin and toolbin.ProximityPrompt and toolbin.ProximityPrompt.Address then
-                memory_write("float", toolbin.ProximityPrompt.Address + HoldDuration, 0)
-            end
-            local seating = game.Workspace.RestaurantArea.restaurant["the waiter stand thingy"].Stations.SeatingStation.TriggerPart.SeatCustomersPrompt
-            if seating and seating.Address then
-                memory_write("float", seating.Address + HoldDuration, 0)
-            end
-        end)
-    end
-    
-    notify("Character respawned - settings reapplied", "", 3)
-end)
+task.wait(1)
+if LocalPlayer then
+    LocalPlayer.CharacterAdded:Connect(function(newChar)
+        Character = newChar
+        task.wait(1)
+        
+        if UI.GetValue("inf_stamina") then
+            PlayerStats.StaminaUsageMultiplier.Value = -1
+            PlayerStats.StaminaGainMultiplier.Value = 100
+            PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
+        end
+        
+        if SETTINGS.Cheat.Instant.CleanDish.Enabled then
+            PlayerStats.EffectiveCleaningLevel.Value = 9999
+        end
+        
+        if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
+            PlayerStats.EffectiveCookingLevel.Value = 1000
+            PlayerStats.NoIngredientUseChance.Value = 1
+        end
+        
+        if SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled then
+            PlayerStats.SpongeEffectiveness.Value = 9999
+        end
+        
+        local walkSpeed = UI.GetValue("player_walkspeed")
+        if walkSpeed and walkSpeed ~= 16 then
+            PlayerStats.WalkSpeed.Value = walkSpeed
+        end
+        
+        if SETTINGS.Cheat.Instant.SeatCustomer.Enabled then
+            task.spawn(function()
+                local computer = game.Workspace.RestaurantArea.restaurant.Table.computer
+                if computer and computer.ProximityPrompt and computer.ProximityPrompt.Address then
+                    memory_write("float", computer.ProximityPrompt.Address + HoldDuration, 0)
+                end
+                local conveyor_keypad = game.Workspace.RestaurantArea.restaurant.mainStuff.conveyors.keypad.PromptPart
+                if conveyor_keypad and conveyor_keypad.ProximityPrompt and conveyor_keypad.ProximityPrompt.Address then
+                    memory_write("float", conveyor_keypad.ProximityPrompt.Address + HoldDuration, 0)
+                end
+                local freezer = game.Workspace.RestaurantArea.restaurant.FreezerDoor.PromptHitbox
+                if freezer and freezer.ProximityPrompt and freezer.ProximityPrompt.Address then
+                    memory_write("float", freezer.ProximityPrompt.Address + HoldDuration, 0)
+                end
+                local toolbin = game.Workspace.Toolbin.PromptHitbox
+                if toolbin and toolbin.ProximityPrompt and toolbin.ProximityPrompt.Address then
+                    memory_write("float", toolbin.ProximityPrompt.Address + HoldDuration, 0)
+                end
+                local seating = game.Workspace.RestaurantArea.restaurant["the waiter stand thingy"].Stations.SeatingStation.TriggerPart.SeatCustomersPrompt
+                if seating and seating.Address then
+                    memory_write("float", seating.Address + HoldDuration, 0)
+                end
+            end)
+        end
+        
+        notify("Character respawned - settings reapplied", "", 3)
+    end)
+end
 local UserInputService = game:GetService("UserInputService")
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
