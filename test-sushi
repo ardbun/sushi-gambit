@@ -11,9 +11,12 @@ if LocalPlayer.Character then
 else
     Character = LocalPlayer.CharacterAdded:Wait()
 end
-LocalPlayer.CharacterAdded:Connect(function(char)
-    Character = char
-end)
+-- Matcha uses Players.LocalPlayer.CharacterAdded
+if Players.LocalPlayer.CharacterAdded then
+    Players.LocalPlayer.CharacterAdded:Connect(function(char)
+        Character = char
+    end)
+end
 local GameData = ReplicatedStorage:WaitForChild("GameData")
 local PlayerStats = LocalPlayer:WaitForChild("PlayerStats")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
