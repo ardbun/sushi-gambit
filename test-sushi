@@ -679,7 +679,7 @@ task.spawn(function()
                 dayLabel:SetText("Day: " .. tostring(GameData.CurrentDay.Value))
             end
         end
-        task.wait(0.05)
+        task.wait(0.1)
     end
 end)
 
