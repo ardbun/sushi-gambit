@@ -10,6 +10,35 @@ local GameData = ReplicatedStorage:WaitForChild("GameData")
 local PlayerStats = LocalPlayer:WaitForChild("PlayerStats")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
+local SETTINGS = {
+    Auto = {
+        Cooking = { Enabled = false, delay = 0 },
+        Washing = { Enabled = false, delay = 0.1 },
+        ChloroformSpys = { Enabled = false, delay = 0 }
+    },
+    Cheat = {
+        Spoof = { Greenbar = { Enabled = false }, SpongeEffectiveness = { Enabled = false } },
+        Instant = { CleanDish = { Enabled = false }, SeatCustomer = { Enabled = true } }
+    },
+    Notify = { DineAndDash = { Enabled = false }, AdminJoin = { Enabled = false } },
+    Npcs = {}
+}
+
+local ESP_SETTINGS = {
+    MAX_DIST = 200,
+    MAX_DIST_SQ = 200 * 200,
+    Dasher = { Enabled = false, Color = Color3.new(1, 0, 0) },
+    Armed = { Enabled = false, Color = Color3.new(1, 0, 0) },
+    Police = { Enabled = false, Color = Color3.new(0, 0, 1) },
+    Critic = { Enabled = false, Color = Color3.new(255, 252, 0) },
+    HealthInspector = { Enabled = false, Color = Color3.new(1, 0, 0) },
+    Windows = { Enabled = false },
+    Labels = {
+        day = false, waitinginline = false, companymoney = false,
+        electricitybill = false, vegstock = false, fishstock = false,
+        humanfleshstock = false, ricestock = false, spoilage = false
+    }
+}
 LocalPlayer.CharacterAdded:Connect(function(newChar)
     Character = newChar
     task.wait(1)
@@ -65,37 +94,6 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
     
     notify("Character respawned - settings reapplied", "", 3)
 end)
-
-local SETTINGS = {
-    Auto = {
-        Cooking = { Enabled = false, delay = 0 },
-        Washing = { Enabled = false, delay = 0.1 },
-        ChloroformSpys = { Enabled = false, delay = 0 }
-    },
-    Cheat = {
-        Spoof = { Greenbar = { Enabled = false }, SpongeEffectiveness = { Enabled = false } },
-        Instant = { CleanDish = { Enabled = false }, SeatCustomer = { Enabled = true } }
-    },
-    Notify = { DineAndDash = { Enabled = false }, AdminJoin = { Enabled = false } },
-    Npcs = {}
-}
-
-local ESP_SETTINGS = {
-    MAX_DIST = 200,
-    MAX_DIST_SQ = 200 * 200,
-    Dasher = { Enabled = false, Color = Color3.new(1, 0, 0) },
-    Armed = { Enabled = false, Color = Color3.new(1, 0, 0) },
-    Police = { Enabled = false, Color = Color3.new(0, 0, 1) },
-    Critic = { Enabled = false, Color = Color3.new(255, 252, 0) },
-    HealthInspector = { Enabled = false, Color = Color3.new(1, 0, 0) },
-    Windows = { Enabled = false },
-    Labels = {
-        day = false, waitinginline = false, companymoney = false,
-        electricitybill = false, vegstock = false, fishstock = false,
-        humanfleshstock = false, ricestock = false, spoilage = false
-    }
-}
-
 local UserInputService = game:GetService("UserInputService")
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
