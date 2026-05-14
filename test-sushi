@@ -817,7 +817,7 @@ for _, npc in ipairs(folder:GetChildren()) do
         attrs = {}
     }
     cacheNPCAttributes(npc)
-end)  -- <-- ADD THIS END
+end  -- <-- REMOVE THE ) 
 
 
 -- NPC ACTION LOOP (processes seat customer and creates ESP entities)
