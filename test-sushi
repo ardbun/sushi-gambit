@@ -96,7 +96,6 @@ local ESP_SETTINGS = {
         fishstock = false,
         humanfleshstock = false,
         ricestock = false,
-        spoilage = false,
     }
 }
 
@@ -307,7 +306,6 @@ local vegLabel = nil
 local fishLabel = nil
 local HumanFlesh = nil
 local Rice = nil
-local spoilageLabel = nil
 
 local Windows = Lib.new("Sushi Gambit", 260, 130)
 Windows:Show(false)
@@ -637,17 +635,7 @@ NpcTab:SliderInt('npc_esp_maxdist', 'Max Distance', 10, 200, 200, function(value
             vegLabel:Delete()
         end
     end)
-   WindowSec:Toggle("show_spoilage", "Spoilage Rate", function(value)
-        ESP_SETTINGS.Labels.spoilage = value
-        if value then
-            spoilageLabel = Windows:AddLabel("Spoilage Rate: " .. string.format("%.2f", GameData.GameStats.Stats.SpoilageRate.Value))
-        else
-            if spoilageLabel then
-                spoilageLabel:Delete()
-                spoilageLabel = nil
-            end
-        end
-    end)
+   
     WindowSec:Toggle("show_fishstock", "Fish Stock", function(value)
         ESP_SETTINGS.Labels.fishstock = value
         if value then
@@ -711,7 +699,6 @@ UI.SetValue("show_vegstock", true)
 UI.SetValue("show_fishstock", true)
 UI.SetValue("show_humanfleshstock", true)
 UI.SetValue("show_ricestock", true)
-UI.SetValue("show_spoilage", true)
 
 SETTINGS.Cheat.Spoof.Greenbar.Enabled = true
 SETTINGS.Cheat.Instant.CleanDish.Enabled = true
@@ -729,7 +716,6 @@ ESP_SETTINGS.Labels.vegstock = true
 ESP_SETTINGS.Labels.fishstock = true
 ESP_SETTINGS.Labels.humanfleshstock = true
 ESP_SETTINGS.Labels.ricestock = true
-ESP_SETTINGS.Labels.spoilage = true
 
 SETTINGS.Auto.Washing.Enabled = false
 SETTINGS.Auto.ChloroformSpys.Enabled = false
@@ -771,7 +757,6 @@ if ESP_SETTINGS.Labels.fishstock then fishLabel = Windows:AddLabel("Fish: " .. t
 if ESP_SETTINGS.Labels.ricestock then Rice = Windows:AddLabel("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
 if ESP_SETTINGS.Labels.vegstock then vegLabel = Windows:AddLabel("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value)) end
 if ESP_SETTINGS.Labels.companymoney then companyMoneyLabel = Windows:AddLabel("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value)) end
-if ESP_SETTINGS.Labels.spoilage then spoilageLabel = Windows:AddLabel("Spoilage Rate: " .. string.format("%.2f", GameData.GameStats.Stats.SpoilageRate.Value)) end
 if ESP_SETTINGS.Labels.day then dayLabel = Windows:AddLabel("Day: " .. tostring(GameData.CurrentDay.Value)) end
 
 local Admin = {
@@ -893,7 +878,6 @@ if not _labelStarted then
             if ESP_SETTINGS.Labels.fishstock and fishLabel then fishLabel:SetText("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value)) end
             if ESP_SETTINGS.Labels.humanfleshstock and HumanFlesh then HumanFlesh:SetText("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) end
             if ESP_SETTINGS.Labels.ricestock and Rice then Rice:SetText("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
-            if ESP_SETTINGS.Labels.spoilage and spoilageLabel then spoilageLabel:SetText("Spoilage Rate: " .. string.format("%.2f", GameData.GameStats.Stats.SpoilageRate.Value)) end
             task.wait(.1)
         end
     end)
