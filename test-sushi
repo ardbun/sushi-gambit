@@ -121,6 +121,7 @@ function Lib.new(titleText, width, height, cornerRadius)
     local mouse = Players.LocalPlayer:GetMouse()
     local dragging = false
     local dragOffset = Vector2.new(0, 0)
+
     RunService.RenderStepped:Connect(function()
         local mx, my = mouse.X, mouse.Y
         local px, py = self.Position.X, self.Position.Y
