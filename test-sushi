@@ -771,7 +771,10 @@ function Manager:Remove(id)
 end
 
 -- EVENT-DRIVEN NPC CACHE (no polling!)
-local folder = game.Workspace.NpcDestination.SpawnedNPCs
+local folder = workspace:WaitForChild("NpcDestination"):WaitForChild("SpawnedNPCs")
+if not folder then
+    warn("SpawnedNPCs folder not found - NPC ESP disabled")
+end
 local customer_list = {}
 local npc_cache = {}
 
