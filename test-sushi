@@ -260,7 +260,7 @@ function Lib:Delete()
     end
 end
 
-local LABEL_SIZE = 12
+local LABEL_SIZE = 20
 local LABEL_X = 12
 local LABEL_START_Y = 32
 local LABEL_STEP = 18
@@ -310,8 +310,13 @@ function Lib:AddLabel(text, color)
 end
 
 -- Initialize Window
-local Windows = Lib.new("Sushi Gambit", 150, 55)
-Windows:Show(false)
+local Windows = Lib.new("Sushi Gambit", 250, 130)
+Windows:AddLabel("Window Loaded - Enable labels in UI")
+
+-- IMPORTANT: Delay showing the window to ensure Drawing objects are registered
+task.defer(function()
+    Windows:Show(true)
+end)
 
 -- Drag handling (SAFE VERSION)
 local function SetupDrag()
@@ -416,15 +421,35 @@ local fishLabel = nil
 local HumanFlesh = nil
 local Rice = nil
 
+
 if ESP_SETTINGS.Windows.Enabled then
-    Windows:Show(true)
-    if ESP_SETTINGS.Labels.day then dayLabel = Windows:AddLabel("Day: " .. tostring(GameData.CurrentDay.Value)) end
-    if ESP_SETTINGS.Labels.waitinginline then waitinginline = Windows:AddLabel("WaitingInLine: 0") end
-    if ESP_SETTINGS.Labels.companymoney then companyMoneyLabel = Windows:AddLabel("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value)) end
-    if ESP_SETTINGS.Labels.vegstock then vegLabel = Windows:AddLabel("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value)) end
-    if ESP_SETTINGS.Labels.fishstock then fishLabel = Windows:AddLabel("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value)) end
-    if ESP_SETTINGS.Labels.humanfleshstock then HumanFlesh = Windows:AddLabel("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) end
-    if ESP_SETTINGS.Labels.ricestock then Rice = Windows:AddLabel("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
+    -- Add labels first (they'll be hidden initially)
+    if ESP_SETTINGS.Labels.day then 
+        dayLabel = Windows:AddLabel("Day: " .. tostring(GameData.CurrentDay.Value)) 
+    end
+    if ESP_SETTINGS.Labels.waitinginline then 
+        waitinginline = Windows:AddLabel("WaitingInLine: 0") 
+    end
+    if ESP_SETTINGS.Labels.companymoney then 
+        companyMoneyLabel = Windows:AddLabel("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value)) 
+    end
+    if ESP_SETTINGS.Labels.vegstock then 
+        vegLabel = Windows:AddLabel("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value)) 
+    end
+    if ESP_SETTINGS.Labels.fishstock then 
+        fishLabel = Windows:AddLabel("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value)) 
+    end
+    if ESP_SETTINGS.Labels.humanfleshstock then 
+        HumanFlesh = Windows:AddLabel("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) 
+    end
+    if ESP_SETTINGS.Labels.ricestock then 
+        Rice = Windows:AddLabel("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) 
+    end
+    
+    -- Then show the window after a delay
+    task.defer(function()
+        Windows:Show(true)
+    end)
 end
 
 -- Admin Alert
