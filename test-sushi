@@ -39,9 +39,8 @@ local ESP_SETTINGS = {
         humanfleshstock = false, ricestock = false, spoilage = false
     }
 }
-task.wait(1)
-if LocalPlayer then
-    LocalPlayer.CharacterAdded:Connect(function(newChar)
+repeat task.wait() until LocalPlayer
+LocalPlayer.CharacterAdded:Connect(function(newChar)
         Character = newChar
         task.wait(1)
         
@@ -96,7 +95,6 @@ if LocalPlayer then
         
         notify("Character respawned - settings reapplied", "", 3)
     end)
-end
 local UserInputService = game:GetService("UserInputService")
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
