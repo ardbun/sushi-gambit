@@ -367,14 +367,23 @@ function NPCManager:Init(folder)
         
         local attrs = {"Cop", "Critic", "Behavior", "CurrentState", "WeaponOfChoice"}
         for _, attr in ipairs(attrs) do
-            if npc:GetAttributeChangedSignal then
-                local conn = npc:GetAttributeChangedSignal(attr):Connect(function()
-                    ESP:UpdateNPC(npc)
-                end)
-                ConnectionManager:Add(conn)
-            end
+            local conn = npc:GetAttributeChangedSignal(attr):Connect(function()
+                ESP:UpdateNPC(npc)
+            end)
+            ConnectionManager:Add(conn)
         end
     end
+    
+    for _, npc in ipairs(folder:GetChildren()) do
+        track(npc)
+    end
+    
+    ConnectionManager:Add(folder.ChildAdded:Connect(track))
+    ConnectionManager:Add(folder.ChildRemoved:Connect(function(npc)
+        self.npcs[tostring(npc)] = nil
+        ESP:Destroy(npc)
+    end))
+end
     
     for _, npc in ipairs(folder:GetChildren()) do
         track(npc)
