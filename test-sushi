@@ -389,51 +389,19 @@ UI.AddTab("Sushi Gambit", function(tab)
         ESP_SETTINGS.Windows.Enabled = value
         if ESP_SETTINGS.Windows.Enabled then Windows:Show(true) else Windows:Show(false) end
     end)
-    WindowSec:Toggle("show_humanfleshstock", "Human Flesh Stock", function(value)
-        ESP_SETTINGS.Labels.humanfleshstock = value
+    
+    -- Add Day Counter FIRST (will appear at BOTTOM of window)
+    WindowSec:Toggle("show_daycounter", "Day Counter", function(value)
+        ESP_SETTINGS.Labels.day = value
         if value then
-            HumanFlesh = Windows:AddLabel("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value))
-        elseif HumanFlesh then
-            HumanFlesh:Delete()
-            HumanFlesh = nil
+            dayLabel = Windows:AddLabel("Day: " .. tostring(GameData.CurrentDay.Value))
+        elseif dayLabel then
+            dayLabel:Delete()
+            dayLabel = nil
         end
     end)
-    WindowSec:Toggle("show_fishstock", "Fish Stock", function(value)
-        ESP_SETTINGS.Labels.fishstock = value
-        if value then
-            fishLabel = Windows:AddLabel("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value))
-        elseif fishLabel then
-            fishLabel:Delete()
-            fishLabel = nil
-        end
-    end)
-    WindowSec:Toggle("show_ricestock", "Rice Stock", function(value)
-        ESP_SETTINGS.Labels.ricestock = value
-        if value then
-            Rice = Windows:AddLabel("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value))
-        elseif Rice then
-            Rice:Delete()
-            Rice = nil
-        end
-    end)
-    WindowSec:Toggle("show_vegstock", "Vegetables Stock", function(value)
-        ESP_SETTINGS.Labels.vegstock = value
-        if value then
-            vegLabel = Windows:AddLabel("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value))
-        elseif vegLabel then
-            vegLabel:Delete()
-            vegLabel = nil
-        end
-    end)
-    WindowSec:Toggle("show_company_money", "Company Money", function(value)
-        ESP_SETTINGS.Labels.companymoney = value
-        if value then
-            companyMoneyLabel = Windows:AddLabel("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value))
-        elseif companyMoneyLabel then
-            companyMoneyLabel:Delete()
-            companyMoneyLabel = nil
-        end
-    end)
+    
+    -- Add Spoilage Rate SECOND
     WindowSec:Toggle("show_spoilage", "Spoilage Rate", function(value)
         ESP_SETTINGS.Labels.spoilage = value
         if value then
@@ -455,13 +423,59 @@ UI.AddTab("Sushi Gambit", function(tab)
             spoilageLabel = nil
         end
     end)
-    WindowSec:Toggle("show_daycounter", "Day Counter", function(value)
-        ESP_SETTINGS.Labels.day = value
+    
+    -- Add Company Money THIRD
+    WindowSec:Toggle("show_company_money", "Company Money", function(value)
+        ESP_SETTINGS.Labels.companymoney = value
         if value then
-            dayLabel = Windows:AddLabel("Day: " .. tostring(GameData.CurrentDay.Value))
-        elseif dayLabel then
-            dayLabel:Delete()
-            dayLabel = nil
+            companyMoneyLabel = Windows:AddLabel("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value))
+        elseif companyMoneyLabel then
+            companyMoneyLabel:Delete()
+            companyMoneyLabel = nil
+        end
+    end)
+    
+    -- Add Vegetables Stock FOURTH
+    WindowSec:Toggle("show_vegstock", "Vegetables Stock", function(value)
+        ESP_SETTINGS.Labels.vegstock = value
+        if value then
+            vegLabel = Windows:AddLabel("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value))
+        elseif vegLabel then
+            vegLabel:Delete()
+            vegLabel = nil
+        end
+    end)
+    
+    -- Add Rice Stock FIFTH
+    WindowSec:Toggle("show_ricestock", "Rice Stock", function(value)
+        ESP_SETTINGS.Labels.ricestock = value
+        if value then
+            Rice = Windows:AddLabel("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value))
+        elseif Rice then
+            Rice:Delete()
+            Rice = nil
+        end
+    end)
+    
+    -- Add Fish Stock SIXTH
+    WindowSec:Toggle("show_fishstock", "Fish Stock", function(value)
+        ESP_SETTINGS.Labels.fishstock = value
+        if value then
+            fishLabel = Windows:AddLabel("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value))
+        elseif fishLabel then
+            fishLabel:Delete()
+            fishLabel = nil
+        end
+    end)
+    
+    -- Add Human Flesh Stock LAST (will appear at TOP of window)
+    WindowSec:Toggle("show_humanfleshstock", "Human Flesh Stock", function(value)
+        ESP_SETTINGS.Labels.humanfleshstock = value
+        if value then
+            HumanFlesh = Windows:AddLabel("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value))
+        elseif HumanFlesh then
+            HumanFlesh:Delete()
+            HumanFlesh = nil
         end
     end)
     WindowSec:Spacing()
