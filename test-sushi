@@ -254,8 +254,8 @@ UI.AddTab("Sushi Gambit", function(tab)
         MainSec:Toggle('auto_cooking', 'Auto Cooking', function(value) SETTINGS.Auto.Cooking.Enabled = value; notify("Auto Cooking: " .. tostring(value), "", 3) end)
         MainSec:Toggle('auto_washing', 'Auto DishWashing', function(value) SETTINGS.Auto.Washing.Enabled = value; notify("Auto DishWashing: " .. tostring(value), "", 3) end)
         MainSec:SliderFloat('auto_washing_delay', 'Delay (ms)', 0.1, 2.0, 0.1, '%.1f', function(value) SETTINGS.Auto.Washing.delay = value end)
-        MainSec:Toggle('auto_chloroform_spys', 'Auto Chloroform', function(value) SETTINGS.Auto.ChloroformSpys.Enabled = value; end)
-        elseif MainSec.page == 1 then
+        MainSec:Toggle('auto_chloroform_spys', 'Auto Chloroform Spys', function(value) SETTINGS.Auto.ChloroformSpys.Enabled = value; notify("Auto Chloroform Spys: " .. tostring(value), "", 3) end)
+    elseif MainSec.page == 1 then
         MainSec:Toggle("enable_all_cheats", "Enable All Cheats", function(value)
             SETTINGS.Cheat.Spoof.Greenbar.Enabled = value
             SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled = value
@@ -549,14 +549,10 @@ end)
 
 local key_map = { Q = 0x51, E = 0x45, R = 0x52, F = 0x46 }
 
--- AUTO FEATURES LOOP
+-- AUTO COOKING LOOP
 task.spawn(function()
-    local lastTimes = { cooking = 0, washing = 0, chloroform = 0, stats = 0 }
     while true do
-        local now = tick()
-        
-        if SETTINGS.Auto.Cooking.Enabled and now - lastTimes.cooking >= 0.05 then
-            lastTimes.cooking = now
+        if SETTINGS.Auto.Cooking.Enabled then
             pcall(function()
                 if PlayerGui:FindFirstChild("MakeSushiMinigame") then
                     local addr = PlayerGui.MakeSushiMinigame.Address
@@ -575,9 +571,14 @@ task.spawn(function()
                 end
             end)
         end
-        
-        if SETTINGS.Auto.Washing.Enabled and now - lastTimes.washing >= 0.1 then
-            lastTimes.washing = now
+        task.wait(0.05)
+    end
+end)
+
+-- AUTO WASHING LOOP
+task.spawn(function()
+    while true do
+        if SETTINGS.Auto.Washing.Enabled then
             pcall(function()
                 local washingGui = PlayerGui:FindFirstChild("DishWashingGui")
                 if washingGui then
@@ -606,9 +607,14 @@ task.spawn(function()
                 end
             end)
         end
-        
-        if SETTINGS.Auto.ChloroformSpys.Enabled and now - lastTimes.chloroform >= 0.05 then
-            lastTimes.chloroform = now
+        task.wait(0.1)
+    end
+end)
+
+-- AUTO CHLOROFORM LOOP
+task.spawn(function()
+    while true do
+        if SETTINGS.Auto.ChloroformSpys.Enabled then
             pcall(function()
                 local Tool = Character:FindFirstChild("Chloroform Spray")
                 if Tool then
@@ -626,24 +632,26 @@ task.spawn(function()
                 end
             end)
         end
-        
-        if now - lastTimes.stats >= 0.1 then
-            lastTimes.stats = now
-            pcall(function()
-                if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
-                    PlayerStats.EffectiveCookingLevel.Value = 1000
-                    PlayerStats.NoIngredientUseChance.Value = 1
-                end
-                if SETTINGS.Cheat.Instant.CleanDish.Enabled then
-                    PlayerStats.EffectiveCleaningLevel.Value = 9999
-                end
-                if SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled then
-                    PlayerStats.SpongeEffectiveness.Value = 9999
-                end
-            end)
-        end
-        
-        task.wait(0.05)
+        task.wait(0.05)  -- Changed from 0.01 to 0.05 as you wanted
+    end
+end)
+
+-- STATS SPOOFING LOOP
+task.spawn(function()
+    while true do
+        pcall(function()
+            if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
+                PlayerStats.EffectiveCookingLevel.Value = 1000
+                PlayerStats.NoIngredientUseChance.Value = 1
+            end
+            if SETTINGS.Cheat.Instant.CleanDish.Enabled then
+                PlayerStats.EffectiveCleaningLevel.Value = 9999
+            end
+            if SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled then
+                PlayerStats.SpongeEffectiveness.Value = 9999
+            end
+        end)
+        task.wait(0.1)
     end
 end)
 
@@ -679,7 +687,7 @@ task.spawn(function()
                 dayLabel:SetText("Day: " .. tostring(GameData.CurrentDay.Value))
             end
         end
-        task.wait(0.4)
+        task.wait(0.1)
     end
 end)
 
@@ -859,5 +867,31 @@ RunService.Heartbeat:Connect(function()
         entity:Update(pos, onScreen, true)
     end
 end)
-
+-- TATTOO ALERTS
+local notified445 = false
+local notified450 = false
+local notified455 = false
+task.spawn(function()
+    while true do
+        local success, timeText = pcall(function() return PlayerGui.clockGui.clockFrame.clockLabel.Text end)
+        if success and timeText then
+            if (timeText == "04:45PM" or timeText == "4:45PM") and not notified445 then
+                notify("[TATTOO ALERT] 4:45 PM - remove sun tat", "", 15)
+                notified445 = true
+            elseif (timeText == "04:50PM" or timeText == "4:50PM") and not notified450 then
+                notify("[TATTOO ALERT] 4:50 PM - remove sun tat", "", 15)
+                notified450 = true
+            elseif (timeText == "04:55PM" or timeText == "4:55PM") and not notified455 then
+                notify("[TATTOO ALERT] 4:55 PM - remove sun tat", "", 15)
+                notified455 = true
+            end
+            if timeText == "05:00PM" or timeText == "5:00PM" then
+                notified445 = false
+                notified450 = false
+                notified455 = false
+            end
+        end
+        task.wait(1)
+    end
+end)
 notify('Sushi Gambit loaded!', "", 3)
