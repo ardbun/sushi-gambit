@@ -1,1003 +1,697 @@
+-- CORE SERVICES
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
-local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+local gameData = ReplicatedStorage:WaitForChild("GameData")
+local playerStats = player:WaitForChild("PlayerStats")
 
-LocalPlayer.CharacterAdded:Connect(function(char)
-    Character = char
-end)
-local GameData = ReplicatedStorage:WaitForChild("GameData")
-local PlayerStats = LocalPlayer:WaitForChild("PlayerStats")
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+-- SAFETY WRAPPER
+local function safeCall(fn, ...)
+    local ok, err = pcall(fn, ...)
+    if not ok then
+        warn(err)
+    end
+end
 
-local SETTINGS = {
+-- STATE
+local State = {
     Auto = {
-        Cooking = { Enabled = false, delay = 0 },
-        Washing = { Enabled = false, delay = 0.1 },
-        ChloroformSpys = { Enabled = false, delay = 0.05 }
+        Cooking = false,
+        Washing = false,
+        WashingDelay = 0.1,
+        Chloroform = false
     },
-    Cheat = {
-        Spoof = { Greenbar = { Enabled = true }, SpongeEffectiveness = { Enabled = true } },
-        Instant = { CleanDish = { Enabled = true }, SeatCustomer = { Enabled = true } }
+    Cheats = {
+        Greenbar = true,
+        SpongeEffectiveness = true,
+        CleanDish = true,
+        SeatCustomer = true,
+        InfiniteStamina = false
     },
-    Notify = { DineAndDash = { Enabled = false }, AdminJoin = { Enabled = true } },
-    Npcs = {}
-}
-
-local ESP_SETTINGS = {
-    MAX_DIST = 200,
-    MAX_DIST_SQ = 200 * 200,
-    Dasher = { Enabled = true, Color = Color3.new(1, 0, 0) },
-    Armed = { Enabled = true, Color = Color3.new(1, 0, 0) },
-    Police = { Enabled = true, Color = Color3.new(0, 0, 1) },
-    Critic = { Enabled = true, Color = Color3.new(255, 252, 0) },
-    HealthInspector = { Enabled = true, Color = Color3.new(1, 0, 0) },
-    Windows = { Enabled = true },
-    Labels = {
-        day = true, waitinginline = false, companymoney = true,
-        vegstock = true, fishstock = true, humanfleshstock = true, ricestock = true
+    ESP = {
+        MaxDist = 200,
+        Enabled = true,
+        ShowDasher = true,
+        ShowArmed = true,
+        ShowPolice = true,
+        ShowCritic = true,
+        ShowHealthInspector = true,
+        Colors = {
+            Dasher = Color3.new(1, 0, 0),
+            Armed = Color3.new(1, 0, 0),
+            Police = Color3.new(0, 0, 1),
+            Critic = Color3.new(1, 0.988, 0),
+            HealthInspector = Color3.new(1, 0, 0)
+        }
+    },
+    Notify = {
+        AdminJoin = true
+    },
+    Window = {
+        Visible = true,
+        Labels = {
+            Day = true,
+            CompanyMoney = true,
+            HumanFlesh = true,
+            Fish = true,
+            Rice = true,
+            Vegetables = true,
+            WaitingInLine = false
+        }
     }
 }
 
-local chloroformToggleCooldown = false
-task.spawn(function()
-    while task.wait(0.05) do
-        if iskeypressed(0x58) and not chloroformToggleCooldown then
-            chloroformToggleCooldown = true
-            SETTINGS.Auto.ChloroformSpys.Enabled = not SETTINGS.Auto.ChloroformSpys.Enabled
-            UI.SetValue("auto_chloroform_spys", SETTINGS.Auto.ChloroformSpys.Enabled)
-            notify("Auto Chloroform: " .. (SETTINGS.Auto.ChloroformSpys.Enabled and "ON" or "OFF"), "", 2)
-            task.wait(0.5)
-        elseif not iskeypressed(0x58) then
-            chloroformToggleCooldown = false
+-- SAFE GET
+local function safeGet(root, ...)
+    local obj = root
+    local keys = {...}
+    for i = 1, #keys do
+        if not obj then return nil end
+        obj = obj:FindFirstChild(keys[i])
+    end
+    return obj
+end
+
+-- SCHEDULER
+local Scheduler = {
+    tasks = {}
+}
+
+function Scheduler:Add(interval, fn)
+    table.insert(self.tasks, {
+        time = 0,
+        interval = interval,
+        fn = fn
+    })
+end
+
+function Scheduler:Update(dt)
+    for _, task in ipairs(self.tasks) do
+        task.time = task.time + dt
+        if task.time >= task.interval then
+            task.time = task.time - task.interval
+            safeCall(task.fn)
         end
     end
-end)
--- LIB CLASS
-local Lib = {}
-Lib.__index = Lib
+end
 
-function Lib.new(titleText, width, height, cornerRadius)
-    local self = setmetatable({}, Lib)
-    local radius = cornerRadius or 10
-    local w = width or 650
-    local h = height or 400
-    local startX = 100
-    local startY = 100
+-- CONNECTION MANAGER
+local ConnectionManager = {
+    conns = {}
+}
+
+function ConnectionManager:Add(conn)
+    if conn then
+        table.insert(self.conns, conn)
+    end
+end
+
+function ConnectionManager:Cleanup()
+    for _, c in ipairs(self.conns) do
+        safeCall(function() c:Disconnect() end)
+    end
+    table.clear(self.conns)
+end
+
+-- DRAWING WINDOW
+local Window = {
+    elements = {},
+    labels = {},
+    position = Vector2.new(100, 100),
+    size = Vector2.new(250, 130),
+    radius = 10
+}
+
+function Window:Create()
+    if not Drawing then return end
+    
     local bgColor = Color3.fromRGB(15, 15, 15)
-    self.Elements = {}
-    self.Labels = {}
-    self.Radius = radius
-    self.Size = Vector2.new(w, h)
-    self.Position = Vector2.new(startX, startY)
-    self.InitialSize = Vector2.new(w, h)
-
-    local function createCircle(pos)
-        local c = Drawing.new("Circle")
-        c.Position = pos
-        c.Radius = radius
-        c.Color = bgColor
-        c.Filled = true
-        c.Visible = false
-        c.NumSides = 64
-        c.Thickness = 0
-        table.insert(self.Elements, c)
-        return c
+    local x, y = self.position.X, self.position.Y
+    local w, h = self.size.X, self.size.Y
+    local r = self.radius
+    
+    local function addRect(pos, size)
+        local rect = Drawing.new("Square")
+        rect.Position = pos
+        rect.Size = size
+        rect.Color = bgColor
+        rect.Filled = true
+        rect.Visible = false
+        rect.Thickness = 0
+        table.insert(self.elements, rect)
+        return rect
     end
-
-    local function createRect(pos, size)
-        local r = Drawing.new("Square")
-        r.Position = pos
-        r.Size = size
-        r.Color = bgColor
-        r.Filled = true
-        r.Visible = false
-        r.Thickness = 0
-        table.insert(self.Elements, r)
-        return r
+    
+    local function addCircle(pos)
+        local circle = Drawing.new("Circle")
+        circle.Position = pos
+        circle.Radius = r
+        circle.Color = bgColor
+        circle.Filled = true
+        circle.Visible = false
+        circle.NumSides = 64
+        table.insert(self.elements, circle)
+        return circle
     end
-
-    self.TopLeft = createCircle(Vector2.new(startX + radius, startY + radius))
-    self.TopRight = createCircle(Vector2.new(startX + w - radius, startY + radius))
-    self.BottomLeft = createCircle(Vector2.new(startX + radius, startY + h - radius))
-    self.BottomRight = createCircle(Vector2.new(startX + w - radius, startY + h - radius))
-    self.VerticalFill = createRect(Vector2.new(startX + radius, startY), Vector2.new(w - 2 * radius, h))
-    self.HorizontalFill = createRect(Vector2.new(startX, startY + radius), Vector2.new(w, h - 2 * radius))
-
-    local title = Drawing.new("Text")
-    title.Text = titleText
-    title.Size = 12
-    title.Position = Vector2.new(startX + 12, startY + 15)
-    title.Color = Color3.fromRGB(255, 0, 0)
-    title.Visible = false
-    title.Center = false
-    title.Outline = true
-    self.Title = title
-    table.insert(self.Elements, title)
-
-    local mouse = Players.LocalPlayer:GetMouse()
-    local dragging = false
-    local dragOffset = Vector2.new(0, 0)
-
-    RunService.Heartbeat:Connect(function()
-    local mx, my = mouse.X, mouse.Y
-        local px, py = self.Position.X, self.Position.Y
-        local sw, sh = self.Size.X, self.Size.Y
-
-        if ismouse1pressed() then
-            if not dragging then
-                if mx >= px and mx <= px + sw and my >= py and my <= py + sh then
-                    dragging = true
-                    dragOffset = Vector2.new(mx - px, my - py)
-                end
-            end
-        else
-            dragging = false
-        end
-
-        if dragging then
-    local newPos = Vector2.new(mx - dragOffset.X, my - dragOffset.Y)
-    self.Position = newPos
-
-    local x, y = newPos.X, newPos.Y
-    local w, h = self.Size.X, self.Size.Y
-    local r = self.Radius
-
-    self.TopLeft.Position = Vector2.new(x + r, y + r)
-    self.TopRight.Position = Vector2.new(x + w - r, y + r)
-    self.BottomLeft.Position = Vector2.new(x + r, y + h - r)
-    self.BottomRight.Position = Vector2.new(x + w - r, y + h - r)
-    self.VerticalFill.Position = Vector2.new(x + r, y)
-    self.HorizontalFill.Position = Vector2.new(x, y + r)
-    self.Title.Position = Vector2.new(x + 12, y + 15)
-
-    -- only move labels if they exist
-    for i = 1, #self.Labels do
-        local entry = self.Labels[i]
-        entry.drawing.Position = newPos + entry.relPos
-    end
-end
-end)
-
-    return self
+    
+    self.topLeft = addCircle(Vector2.new(x + r, y + r))
+    self.topRight = addCircle(Vector2.new(x + w - r, y + r))
+    self.bottomLeft = addCircle(Vector2.new(x + r, y + h - r))
+    self.bottomRight = addCircle(Vector2.new(x + w - r, y + h - r))
+    self.verticalFill = addRect(Vector2.new(x + r, y), Vector2.new(w - 2 * r, h))
+    self.horizontalFill = addRect(Vector2.new(x, y + r), Vector2.new(w, h - 2 * r))
+    
+    self.title = Drawing.new("Text")
+    self.title.Text = "Sushi Gambit"
+    self.title.Size = 12
+    self.title.Position = Vector2.new(x + 12, y + 15)
+    self.title.Color = Color3.fromRGB(255, 0, 0)
+    self.title.Visible = false
+    self.title.Outline = true
+    table.insert(self.elements, self.title)
 end
 
-function Lib:Show(isVisible)
-    for _, element in ipairs(self.Elements) do element.Visible = isVisible end
-    for _, entry in ipairs(self.Labels) do entry.drawing.Visible = isVisible end
-end
-
-function Lib:Edit(newPosition, newSize)
-    local pos = newPosition or self.Position
-    local size = newSize or self.Size
-    self.Position = pos
-    self.Size = size
-    local x, y = pos.X, pos.Y
-    local w, h = size.X, size.Y
-    local r = self.Radius
-    self.TopLeft.Position = Vector2.new(x + r, y + r)
-    self.TopRight.Position = Vector2.new(x + w - r, y + r)
-    self.BottomLeft.Position = Vector2.new(x + r, y + h - r)
-    self.BottomRight.Position = Vector2.new(x + w - r, y + h - r)
-    self.VerticalFill.Position = Vector2.new(x + r, y)
-    self.VerticalFill.Size = Vector2.new(w - 2 * r, h)
-    self.HorizontalFill.Position = Vector2.new(x, y + r)
-    self.HorizontalFill.Size = Vector2.new(w, h - 2 * r)
-    self.Title.Position = Vector2.new(x + 12, y + 15)
-    for _, entry in ipairs(self.Labels) do
-        entry.drawing.Position = pos + entry.relPos
-    end
-end
-
-function Lib:Delete()
-    for _, element in ipairs(self.Elements) do element:Remove() end
-    for _, entry in ipairs(self.Labels) do entry.drawing:Remove() end
-end
-
-local LABEL_SIZE = 20
-local LABEL_X = 12
-local LABEL_START_Y = 32
-local LABEL_STEP = 18
-local LABEL_BOTTOM_PAD = 10
-
-function Lib:_refreshLabelPositions()
-    for i, entry in ipairs(self.Labels) do
-        local relPos = Vector2.new(LABEL_X, LABEL_START_Y + (i - 1) * LABEL_STEP)
-        entry.relPos = relPos
-        entry.drawing.Position = self.Position + relPos
-    end
-    local count = #self.Labels
-    local neededH = LABEL_START_Y + count * LABEL_STEP + LABEL_BOTTOM_PAD
-    local finalH = math.max(neededH, self.InitialSize.Y)
-    self:Edit(self.Position, Vector2.new(self.Size.X, finalH))
-end
-
-function Lib:AddLabel(text, color)
-    local lib = self
-    local d = Drawing.new("Text")
-    d.Text = text or ""
-    d.Size = LABEL_SIZE
-    d.Color = color or Color3.fromRGB(255, 255, 255)
-    d.Visible = true
-    d.Center = false
-    d.Outline = true
-    local entry = { drawing = d, relPos = Vector2.new(0, 0) }
-    table.insert(lib.Labels, entry)
-    lib:_refreshLabelPositions()
+function Window:AddLabel(text, color)
+    local label = Drawing.new("Text")
+    label.Text = text
+    label.Size = 14
+    label.Color = color or Color3.new(1, 1, 1)
+    label.Visible = true
+    label.Outline = true
+    label.Center = false
+    table.insert(self.labels, label)
+    
+    self:RefreshPositions()
+    
     local handle = {}
-    function handle:SetText(newText) d.Text = newText end
-    function handle:Edit(newColor) if newColor then d.Color = newColor end end
-    function handle:Delete()
-        d:Remove()
-        for i, e in ipairs(lib.Labels) do
-            if e == entry then
-                table.remove(lib.Labels, i)
+    handle.setText = function(newText) label.Text = newText end
+    handle.remove = function()
+        label:Remove()
+        for i, l in ipairs(self.labels) do
+            if l == label then
+                table.remove(self.labels, i)
                 break
             end
         end
-        lib:_refreshLabelPositions()
+        self:RefreshPositions()
     end
     return handle
 end
 
--- LABEL VARIABLES
-local dayLabel = nil
-local waitinginline = nil
-local companyMoneyLabel = nil
-local vegLabel = nil
-local fishLabel = nil
-local HumanFlesh = nil
-local Rice = nil
-
-local Windows = Lib.new("Sushi Gambit", 250, 130)
-Windows:Show(true)
-
-function get_offsets()
-    local url = "https://imtheo.lol/Offsets/OffsetsHex.json"
-    local response = game:HttpGet(url)
-    return HttpService:JSONDecode(response)
-end
-
-local ScreenGuiEnabled = get_offsets()["Offsets"]["GuiObject"]["ScreenGui_Enabled"]
-local HoldDuration = get_offsets()["Offsets"]["ProximityPrompt"]["HoldDuration"]
-local PromptEnabled = get_offsets()["Offsets"]["ProximityPrompt"]["Enabled"]
-
-local background = { 'Intern', 'SofaSurfer', 'LineCook', 'TechEnthusiast', 'Amish', 'Butcher', 'CoffeeFanatic', 'UsedCarSalesman', 'Philanthropist', 'SelfAbsorbed' }
-
-UI.AddTab("Sushi Gambit", function(tab)
-    local MainSec = tab:Section("Main", "Left", { "Auto", "Cheat", "Prompt" })
-    if MainSec.page == 0 then
-        MainSec:Toggle('auto_cooking', 'Auto Cooking', function(value) SETTINGS.Auto.Cooking.Enabled = value; notify("Auto Cooking: " .. tostring(value), "", 3) end)
-        MainSec:Toggle('auto_washing', 'Auto DishWashing', function(value) SETTINGS.Auto.Washing.Enabled = value; notify("Auto DishWashing: " .. tostring(value), "", 3) end)
-        MainSec:SliderFloat('auto_washing_delay', 'Delay (ms)', 0.1, 2.0, 0.1, '%.1f', function(value) SETTINGS.Auto.Washing.delay = value end)
-        MainSec:Toggle('auto_chloroform_spys', 'Auto Chloroform', function(value) SETTINGS.Auto.ChloroformSpys.Enabled = value; notify("Auto Chloroform Spys: " .. tostring(value), "", 3) end)
-    elseif MainSec.page == 1 then
-        MainSec:Toggle("enable_all_cheats", "Enable All Cheats", function(value)
-            SETTINGS.Cheat.Spoof.Greenbar.Enabled = value
-            SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled = value
-            SETTINGS.Cheat.Instant.CleanDish.Enabled = value
-            UI.SetValue("spoof_greenbar", value)
-            UI.SetValue("spoof_sponge_effectiveness", value)
-            UI.SetValue("instant_clean_dish", value)
-            notify("All Cheats: " .. (value and "ON" or "OFF"), "", 2)
-        end)
-        MainSec:Toggle('spoof_greenbar', 'Spoof Greenbar', function(value)
-            SETTINGS.Cheat.Spoof.Greenbar.Enabled = value
-            notify("Spoof Greenbar: " .. tostring(value), "", 3)
-        end)
-        MainSec:Toggle('instant_clean_dish', 'Fast Clean Dish', function(value)
-            SETTINGS.Cheat.Instant.CleanDish.Enabled = value
-            notify("Fast Clean Dish: " .. tostring(value), "", 3)
-        end)
-        MainSec:Toggle('spoof_sponge_effectiveness', 'Instant Sponge Effect', function(value)
-            SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled = value
-            notify("Spoof Sponge Effectiveness: " .. tostring(value), "", 3)
-        end)
-    elseif MainSec.page == 2 then
-       local alwaysComputerRunning = false
-
-MainSec:Toggle('always_computer', 'Use computer during blackout', function(value)
-    alwaysComputerRunning = value
-    if value then
-        task.spawn(function()
-            while alwaysComputerRunning do
-                local computer = game.Workspace.RestaurantArea.restaurant.Table.computer.ProximityPrompt.Address
-                if computer then
-                    memory_write("byte", computer + PromptEnabled, 1)
-                end
-                task.wait(0.1)
-            end
-        end)
+function Window:RefreshPositions()
+    for i, label in ipairs(self.labels) do
+        label.Position = self.position + Vector2.new(12, 35 + (i - 1) * 18)
     end
-end)
-        local promptc = MainSec:Combo('prompt_type', 'Prompt Type', { 'ALL', 'Computer', 'Conveyor', 'Freezer', 'Toolbin', 'SeatingStation' }, 0)
-        MainSec:Button('Set instant prompt', function()
-            local text = promptc:GetText()
-            if text == 'ALL' then
-                spawn(function() while true do
-                    local computer = game.Workspace.RestaurantArea.restaurant.Table.computer.ProximityPrompt.Address
-                    memory_write("float", computer + HoldDuration, 0)
-                    task.wait(.1)
-                end end)
-                local conveyor_keypad = game.Workspace.RestaurantArea.restaurant.mainStuff.conveyors.keypad.PromptPart.ProximityPrompt.Address
-                memory_write("float", conveyor_keypad + HoldDuration, 0)
-                local freezer = game.Workspace.RestaurantArea.restaurant.FreezerDoor.PromptHitbox.ProximityPrompt.Address
-                memory_write("float", freezer + HoldDuration, 0)
-                local toolbin = game.Workspace.Toolbin.PromptHitbox.ProximityPrompt.Address
-                memory_write("float", toolbin + HoldDuration, 0)
-                local SeatingStation = game.Workspace.RestaurantArea.restaurant["the waiter stand thingy"].Stations.SeatingStation.TriggerPart.SeatCustomersPrompt.Address
-                memory_write("float", SeatingStation + HoldDuration, 0)
-            elseif text == 'Computer' then
-                spawn(function() while true do
-                    local computer = game.Workspace.RestaurantArea.restaurant.Table.computer.ProximityPrompt.Address
-                    memory_write("float", computer + HoldDuration, 0)
-                    task.wait(.1)
-                end end)
-            elseif text == 'Conveyor' then
-                local conveyor_keypad = game.Workspace.RestaurantArea.restaurant.mainStuff.conveyors.keypad.PromptPart.ProximityPrompt.Address
-                memory_write("float", conveyor_keypad + HoldDuration, 0)
-            elseif text == 'Freezer' then
-                local freezer = game.Workspace.RestaurantArea.restaurant.FreezerDoor.PromptHitbox.ProximityPrompt.Address
-                memory_write("float", freezer + HoldDuration, 0)
-            elseif text == 'Toolbin' then
-                local toolbin = game.Workspace.Toolbin.PromptHitbox.ProximityPrompt.Address
-                memory_write("float", toolbin + HoldDuration, 0)
-            elseif text == 'SeatingStation' then
-                local SeatingStation = game.Workspace.RestaurantArea.restaurant["the waiter stand thingy"].Stations.SeatingStation.TriggerPart.SeatCustomersPrompt.Address
-                memory_write("float", SeatingStation + HoldDuration, 0)
-            end
-        end)
-    end
-
-    local PlayerTab = tab:Section("Player", "Left", { "Player", "Notify" })
-    if PlayerTab.page == 0 then
-        PlayerTab:Toggle('inf_stamina', 'Infinite Stamina', function(value)
-            notify("Infinite Stamina: " .. tostring(value), "", 3)
-            if value then
-                PlayerStats.StaminaUsageMultiplier.Value = -1
-                PlayerStats.StaminaGainMultiplier.Value = 100
-                PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
-            else
-                PlayerStats.StaminaUsageMultiplier.Value = 1
-                PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 1
-            end
-        end)
-        PlayerTab:Tip('Does not work with hatchet or knife for harvesting meat.')
-        PlayerTab:SliderInt('player_walkspeed', 'Walk Speed', 12, 20, 12, function(value) PlayerStats.WalkSpeed.Value = value end)
-        PlayerTab:Combo('background', 'Career Background', background, 0, function(idx, text) LocalPlayer.CareerBackground.EquippedCareerBackground.Value = text; notify("Career Background change to: " .. text, "", 3) end)
-        PlayerTab:Tip('No "ForTheMoney" and "ForTheExperience", bc it will make game crash.')
-    elseif PlayerTab.page == 1 then
-        PlayerTab:Toggle('notify_admin_join', 'Admin Alert', function(value) SETTINGS.Notify.AdminJoin.Enabled = value; notify("Admin Alert: " .. tostring(value), "", 3) end)
-    end
-
-    local NpcTab = tab:Section("Npc", "Left", { "Npc", "" })
-    if NpcTab.page == 0 then
-        NpcTab:Toggle('instant_seatcustomer', 'Instant Seat Customer', function(value)
-            SETTINGS.Cheat.Instant.SeatCustomer.Enabled = value
-            notify("Instant Seat Customer: " .. tostring(value), "", 3)
-        end)
-        UI.SetValue('instant_seatcustomer', SETTINGS.Cheat.Instant.SeatCustomer.Enabled)
-        
-        NpcTab:Spacing()
-        NpcTab:Toggle("enable_all_npc_esp", "Enable All NPC ESP", function(value)
-            ESP_SETTINGS.Dasher.Enabled = value
-            ESP_SETTINGS.Armed.Enabled = value
-            ESP_SETTINGS.Police.Enabled = value
-            ESP_SETTINGS.Critic.Enabled = value
-            ESP_SETTINGS.HealthInspector.Enabled = value
-            UI.SetValue("show_dasher", value)
-            UI.SetValue("show_armed", value)
-            UI.SetValue("show_police", value)
-            UI.SetValue("show_critic", value)
-            UI.SetValue("show_health_inspector", value)
-            notify("NPC ESP: " .. (value and "ON" or "OFF"), "", 2)
-        end)
-        
-        NpcTab:Toggle('show_dasher', 'Dasher', function(value)
-            ESP_SETTINGS.Dasher.Enabled = value
-            notify("Show Dasher: " .. tostring(value), "", 3)
-        end)
-        NpcTab:Toggle('show_armed', 'Armed NPC', function(value)
-            ESP_SETTINGS.Armed.Enabled = value
-            notify("Show Armed NPC: " .. tostring(value), "", 3)
-        end)
-        NpcTab:Toggle('show_police', 'Police NPC', function(value)
-            ESP_SETTINGS.Police.Enabled = value
-            notify("Show Police NPC: " .. tostring(value), "", 3)
-        end)
-        NpcTab:Toggle('show_critic', 'Critic', function(value)
-            ESP_SETTINGS.Critic.Enabled = value
-            notify("Show Critic: " .. tostring(value), "", 3)
-        end)
-        NpcTab:Toggle('show_health_inspector', 'Health Inspector', function(value)
-            ESP_SETTINGS.HealthInspector.Enabled = value
-            notify("Show Health Inspector: " .. tostring(value), "", 3)
-        end)
-        
-        NpcTab:SliderInt('npc_esp_maxdist', 'Max Distance', 10, 200, 80, function(value)
-            ESP_SETTINGS.MAX_DIST = value
-            ESP_SETTINGS.MAX_DIST_SQ = value * value
-        end)
-    end
-
-    local CookingSec = tab:Section("Cooking", "Right", { "Cooking", "" })
-    if CookingSec.page == 0 then
-        CookingSec:SliderFloat('cooking_speed', 'Cooking Speed', 1.0, 5.0, 1.0, '%.1f', function(value) PlayerStats.CookingSpeedMultiplier.Value = value end)
-        CookingSec:SliderInt('dupe_sushi_chance', 'Dupe Sushi Chance (%)', 0, 100, 0, function(value) PlayerStats.SushiDuplicationChance.Value = value end)
-        CookingSec:SliderInt('conveyor_speed', 'Conveyor Speed', 1, 10, 1, function(value) GameData.ConveyorSpeedValue.Value = value end)
-    end
-
-    local WindowSec = tab:Section("Window", "Right")
     
-    WindowSec:Toggle("show_statuswindow", "Show Window", function(value)
-        ESP_SETTINGS.Windows.Enabled = value
-        if ESP_SETTINGS.Windows.Enabled then
-            Windows:Show(true)
-        else
-            Windows:Show(false)
-        end
-    end)
+    local neededHeight = 35 + #self.labels * 18 + 10
+    self.size = Vector2.new(self.size.X, math.max(neededHeight, 130))
+    self:UpdateGeometry()
+end
+
+function Window:UpdateGeometry()
+    local x, y = self.position.X, self.position.Y
+    local w, h = self.size.X, self.size.Y
+    local r = self.radius
     
-    WindowSec:Toggle("enable_all_labels", "Enable All Labels", function(value)
-        if value then
-            if not HumanFlesh then HumanFlesh = Windows:AddLabel("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) end
-            if not fishLabel then fishLabel = Windows:AddLabel("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value)) end
-            if not Rice then Rice = Windows:AddLabel("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
-            if not vegLabel then vegLabel = Windows:AddLabel("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value)) end
-            if not companyMoneyLabel then companyMoneyLabel = Windows:AddLabel("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value)) end
-            if not dayLabel then dayLabel = Windows:AddLabel("Day: " .. tostring(GameData.CurrentDay.Value)) end
-            ESP_SETTINGS.Labels.humanfleshstock = true
-            ESP_SETTINGS.Labels.fishstock = true
-            ESP_SETTINGS.Labels.ricestock = true
-            ESP_SETTINGS.Labels.vegstock = true
-            ESP_SETTINGS.Labels.companymoney = true
-            ESP_SETTINGS.Labels.day = true
-            UI.SetValue("show_humanfleshstock", true)
-            UI.SetValue("show_fishstock", true)
-            UI.SetValue("show_ricestock", true)
-            UI.SetValue("show_vegstock", true)
-            UI.SetValue("show_company_money", true)
-            UI.SetValue("show_daycounter", true)
-        else
-            if HumanFlesh then HumanFlesh:Delete(); HumanFlesh = nil end
-            if fishLabel then fishLabel:Delete(); fishLabel = nil end
-            if Rice then Rice:Delete(); Rice = nil end
-            if vegLabel then vegLabel:Delete(); vegLabel = nil end
-            if companyMoneyLabel then companyMoneyLabel:Delete(); companyMoneyLabel = nil end
-            if dayLabel then dayLabel:Delete(); dayLabel = nil end
-            ESP_SETTINGS.Labels.humanfleshstock = false
-            ESP_SETTINGS.Labels.fishstock = false
-            ESP_SETTINGS.Labels.ricestock = false
-            ESP_SETTINGS.Labels.vegstock = false
-            ESP_SETTINGS.Labels.companymoney = false
-            ESP_SETTINGS.Labels.day = false
-            UI.SetValue("show_humanfleshstock", false)
-            UI.SetValue("show_fishstock", false)
-            UI.SetValue("show_ricestock", false)
-            UI.SetValue("show_vegstock", false)
-            UI.SetValue("show_company_money", false)
-            UI.SetValue("show_daycounter", false)
-        end
-    end)
-
-    WindowSec:Toggle("show_humanfleshstock", "Human Flesh", function(value)
-        ESP_SETTINGS.Labels.humanfleshstock = value
-        if value and ESP_SETTINGS.Windows.Enabled then
-            if not HumanFlesh then HumanFlesh = Windows:AddLabel("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) end
-        elseif HumanFlesh then HumanFlesh:Delete(); HumanFlesh = nil end
-    end)
-
-    WindowSec:Toggle("show_fishstock", "Fish", function(value)
-        ESP_SETTINGS.Labels.fishstock = value
-        if value and ESP_SETTINGS.Windows.Enabled then
-            if not fishLabel then fishLabel = Windows:AddLabel("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value)) end
-        elseif fishLabel then fishLabel:Delete(); fishLabel = nil end
-    end)
-
-    WindowSec:Toggle("show_ricestock", "Rice", function(value)
-        ESP_SETTINGS.Labels.ricestock = value
-        if value and ESP_SETTINGS.Windows.Enabled then
-            if not Rice then Rice = Windows:AddLabel("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
-        elseif Rice then Rice:Delete(); Rice = nil end
-    end)
-
-    WindowSec:Toggle("show_vegstock", "Vegetables", function(value)
-        ESP_SETTINGS.Labels.vegstock = value
-        if value and ESP_SETTINGS.Windows.Enabled then
-            if not vegLabel then vegLabel = Windows:AddLabel("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value)) end
-        elseif vegLabel then vegLabel:Delete(); vegLabel = nil end
-    end)
-
-    WindowSec:Toggle("show_company_money", "Company Money", function(value)
-        ESP_SETTINGS.Labels.companymoney = value
-        if value and ESP_SETTINGS.Windows.Enabled then
-            if not companyMoneyLabel then companyMoneyLabel = Windows:AddLabel("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value)) end
-        elseif companyMoneyLabel then companyMoneyLabel:Delete(); companyMoneyLabel = nil end
-    end)
-
-    WindowSec:Toggle("show_daycounter", "Day", function(value)
-        ESP_SETTINGS.Labels.day = value
-        if value and ESP_SETTINGS.Windows.Enabled then
-            if not dayLabel then dayLabel = Windows:AddLabel("Day: " .. tostring(GameData.CurrentDay.Value)) end
-        elseif dayLabel then dayLabel:Delete(); dayLabel = nil end
-    end)
-
-       WindowSec:Toggle("show_waitinginline", "Waiting In Line", function(value)
-    ESP_SETTINGS.Labels.waitinginline = value
-    if value and ESP_SETTINGS.Windows.Enabled then
-        if not waitinginline then waitinginline = Windows:AddLabel("WaitingInLine: 0") end
-    elseif waitinginline then waitinginline:Delete(); waitinginline = nil end
-    end)  -- closes the last Toggle (show_waitinginline)
-end)  -- closes UI.AddTab
--- Load saved settings
-SETTINGS.Auto.Cooking.Enabled = UI.GetValue("auto_cooking")
-SETTINGS.Auto.Washing.Enabled = UI.GetValue("auto_washing")
-SETTINGS.Auto.ChloroformSpys.Enabled = UI.GetValue("auto_chloroform_spys")
-SETTINGS.Cheat.Instant.SeatCustomer.Enabled = UI.GetValue("instant_seatcustomer")
-SETTINGS.Cheat.Instant.CleanDish.Enabled = UI.GetValue("instant_clean_dish")
-SETTINGS.Cheat.Spoof.Greenbar.Enabled = UI.GetValue("spoof_greenbar")
-SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled = UI.GetValue("spoof_sponge_effectiveness")
-SETTINGS.Notify.AdminJoin.Enabled = UI.GetValue("notify_admin_join")
-
-ESP_SETTINGS.Dasher.Enabled = UI.GetValue("show_dasher")
-ESP_SETTINGS.Armed.Enabled = UI.GetValue("show_armed")
-ESP_SETTINGS.Police.Enabled = UI.GetValue("show_police")
-ESP_SETTINGS.Critic.Enabled = UI.GetValue("show_critic")
-ESP_SETTINGS.HealthInspector.Enabled = UI.GetValue("show_health_inspector")
-ESP_SETTINGS.Windows.Enabled = UI.GetValue("show_statuswindow")
-ESP_SETTINGS.Labels.humanfleshstock = UI.GetValue("show_humanfleshstock")
-ESP_SETTINGS.Labels.fishstock = UI.GetValue("show_fishstock")
-ESP_SETTINGS.Labels.ricestock = UI.GetValue("show_ricestock")
-ESP_SETTINGS.Labels.vegstock = UI.GetValue("show_vegstock")
-ESP_SETTINGS.Labels.companymoney = UI.GetValue("show_company_money")
-ESP_SETTINGS.Labels.day = UI.GetValue("show_daycounter")
-ESP_SETTINGS.Labels.waitinginline = UI.GetValue("show_waitinginline")
-
-if ESP_SETTINGS.Windows.Enabled then Windows:Show(true) end
--- Force NPC ESP to apply on execute
-UI.SetValue("show_dasher", true)
-UI.SetValue("show_armed", true)
-UI.SetValue("show_police", true)
-UI.SetValue("show_critic", true)
-UI.SetValue("show_health_inspector", true)
-
--- Create labels on execute (all EXCEPT waitinginline)
-if ESP_SETTINGS.Labels.humanfleshstock and not HumanFlesh then HumanFlesh = Windows:AddLabel("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) end
-if ESP_SETTINGS.Labels.fishstock and not fishLabel then fishLabel = Windows:AddLabel("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value)) end
-if ESP_SETTINGS.Labels.ricestock and not Rice then Rice = Windows:AddLabel("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
-if ESP_SETTINGS.Labels.vegstock and not vegLabel then vegLabel = Windows:AddLabel("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value)) end
-if ESP_SETTINGS.Labels.companymoney and not companyMoneyLabel then companyMoneyLabel = Windows:AddLabel("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value)) end
-if ESP_SETTINGS.Labels.day and not dayLabel then dayLabel = Windows:AddLabel("Day: " .. tostring(GameData.CurrentDay.Value)) end
--- waitinginline is NOT created on execute (ESP_SETTINGS.Labels.waitinginline = false)
-
-local Admin = { ["UserIds"] = { 105479622, 65095440, 1425697210, 126961971, 127528152, 319065798, 2754844524, 125440222, 1783725423 } }
-Players.PlayerAdded:Connect(function(player)
-    if table.find(Admin.UserIds, player.UserId) and SETTINGS.Notify.AdminJoin.Enabled then
-        notify("Admin Joined: " .. player.Name, "ADMIN ALERT", 8)
-    end
-end)
-
-local key_map = { Q = 0x51, E = 0x45, R = 0x52, F = 0x46 }
-
--- SCHEDULER SYSTEM (replaces all timers)
-local Scheduler = {}
-Scheduler.tasks = {}
-
-function Scheduler:add(interval, fn)
-    table.insert(self.tasks, { interval = interval, time = 0, fn = fn })
+    self.topLeft.Position = Vector2.new(x + r, y + r)
+    self.topRight.Position = Vector2.new(x + w - r, y + r)
+    self.bottomLeft.Position = Vector2.new(x + r, y + h - r)
+    self.bottomRight.Position = Vector2.new(x + w - r, y + h - r)
+    self.verticalFill.Position = Vector2.new(x + r, y)
+    self.verticalFill.Size = Vector2.new(w - 2 * r, h)
+    self.horizontalFill.Position = Vector2.new(x, y + r)
+    self.horizontalFill.Size = Vector2.new(w, h - 2 * r)
+    self.title.Position = Vector2.new(x + 12, y + 15)
+    
+    self:RefreshPositions()
 end
 
-function Scheduler:update(dt)
-    for _, task in ipairs(self.tasks) do
-        task.time = task.time + dt
-        if task.time >= task.interval then
-            task.time = 0
-            task.fn()
-        end
+function Window:Show(visible)
+    State.Window.Visible = visible
+    for _, elem in ipairs(self.elements) do
+        elem.Visible = visible
     end
+    for _, label in ipairs(self.labels) do
+        label.Visible = visible
+    end
+    self.title.Visible = visible
 end
 
-local scheduler = setmetatable({}, { __index = Scheduler })
-scheduler.tasks = {}
-
--- SINGLE HEARTBEAT WITH SCHEDULER
-RunService.Heartbeat:Connect(function(dt)
-    scheduler:update(dt)
-end)
-
--- ADD TASKS (remove your cookTimer, washTimer, etc.)
-scheduler:add(0.05, function()
-    if SETTINGS.Auto.Cooking.Enabled then
-        pcall(function()
-            if PlayerGui:FindFirstChild("MakeSushiMinigame") then
-                local addr = PlayerGui.MakeSushiMinigame.Address
-                if memory_read("byte", addr + ScreenGuiEnabled) == 1 then
-                    local CuttingBarFrame = PlayerGui.MakeSushiMinigame.MainFrame:FindFirstChild("CuttingBarFrame")
-                    if CuttingBarFrame then
-                        local SliderPos = CuttingBarFrame.CutBar.Slider.AbsolutePosition
-                        local GreenBarPos = CuttingBarFrame.CutBar.GreenBar.AbsolutePosition
-                        local greenBarSize = CuttingBarFrame.CutBar.GreenBar.AbsoluteSize.X
-                        if SliderPos.X >= GreenBarPos.X and SliderPos.X <= GreenBarPos.X + greenBarSize then
-                            keypress(0x43)
-                            keyrelease(0x43)
-                        end
-                    end
-                end
-            end
-        end)
-    end
-end)
-
-scheduler:add(0.1, function()
-    if SETTINGS.Auto.Washing.Enabled then
-        pcall(function()
-            local washingGui = PlayerGui:FindFirstChild("DishWashingGui")
-            if washingGui then
-                local addr = washingGui.Address
-                if memory_read("byte", addr + ScreenGuiEnabled) == 1 then
-                    local keysHolder = washingGui.MainFrame.QueueBarFrame.Queue.KeysHolder
-                    if keysHolder then
-                        local keysToPress = {}
-                        for _, v in pairs(keysHolder:GetChildren()) do
-                            if v:IsA("Frame") and v.Name == "KeyTemplate" then
-                                local key = v:GetAttribute("Key")
-                                if key then table.insert(keysToPress, key) end
-                            end
-                        end
-                        for _, key in ipairs(keysToPress) do
-                            local vk = key_map[key]
-                            if vk then
-                                keypress(vk)
-                                keyrelease(vk)
-                                task.wait(SETTINGS.Auto.Washing.delay)
-                            end
-                        end
-                        task.wait(0.3)
-                    end
-                end
-            end
-        end)
-    end
-end)
-scheduler:add(0.05, function()
-    if SETTINGS.Auto.ChloroformSpys.Enabled then
-        pcall(function()
-            local Tool = Character:FindFirstChild("Chloroform Spray")
-            if Tool then
-                local HitTextLabel = Tool.ChloroformChallenge.ButtonToHitFrame.Container:FindFirstChild("TextLabel")
-                if HitTextLabel then
-                    local key = HitTextLabel.Text
-                    if key == "Q" then
-                        keypress(0x51)
-                        keyrelease(0x51)
-                    elseif key == "E" then
-                        keypress(0x45)
-                        keyrelease(0x45)
-                    end
-                end
-            end
-        end)
-    end
-end)
-scheduler:add(0.1, function()
-    if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
-        PlayerStats.EffectiveCookingLevel.Value = 1000
-        PlayerStats.NoIngredientUseChance.Value = 1
-    end
-    if SETTINGS.Cheat.Instant.CleanDish.Enabled then
-        PlayerStats.EffectiveCleaningLevel.Value = 9999
-    end
-    if SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled then
-        PlayerStats.SpongeEffectiveness.Value = 9999
-    end
-end)
-scheduler:add(0.1, function()
-    if ESP_SETTINGS.Windows.Enabled then
-        if ESP_SETTINGS.Labels.waitinginline and waitinginline then
-            local i = 0
-            for _, npc in next, game.Workspace.NpcDestination.SpawnedNPCs:GetChildren() do
-                if npc:IsA("Model") and npc:GetAttribute("CurrentState") == "WaitingInLine" then
-                    i = i + 1
-                end
-            end
-            waitinginline:SetText("WaitingInLine: " .. i)
-        end
-        if ESP_SETTINGS.Labels.humanfleshstock and HumanFlesh then
-            local stock = GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value
-            local maxStock = GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value
-            HumanFlesh:SetText("Human Flesh: " .. stock .. "/" .. maxStock)
-        end
-        if ESP_SETTINGS.Labels.fishstock and fishLabel then
-            local stock = GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value
-            local maxStock = GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value
-            fishLabel:SetText("Fish: " .. stock .. "/" .. maxStock)
-        end
-        if ESP_SETTINGS.Labels.ricestock and Rice then
-            local stock = GameData.Ingredients.IngredientsStorage.Rice.Stock.Value
-            local maxStock = GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value
-            Rice:SetText("Rice: " .. stock .. "/" .. maxStock)
-        end
-        if ESP_SETTINGS.Labels.vegstock and vegLabel then
-            local stock = GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value
-            local maxStock = GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value
-            vegLabel:SetText("Vegetables: " .. stock .. "/" .. maxStock)
-        end
-        if ESP_SETTINGS.Labels.companymoney and companyMoneyLabel then
-            companyMoneyLabel:SetText("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value))
-        end
-        if ESP_SETTINGS.Labels.day and dayLabel then
-            dayLabel:SetText("Day: " .. tostring(GameData.CurrentDay.Value))
-        end
-    end
-end)
 -- ESP SYSTEM
-local STATE = { ACTIVE = 1, DESTROYED = 2 }
-local Entity = {}
-Entity.__index = Entity
+local ESP = {
+    entities = {}
+}
 
-function Entity.new(instance, text, typeName)
-    local head = instance:FindFirstChild("Head")
-    text.Text = typeName
-    return setmetatable({ Instance = instance, Head = head, Text = text, Type = typeName, State = STATE.ACTIVE }, Entity)
-end
-
-function Entity:Update(pos, onScreen, enabled)
-    if self.State == STATE.DESTROYED then return end
-    if not enabled then self:Destroy(); return end
-    if not onScreen then
-        if self.Text.Visible then self.Text.Visible = false end
-        return
+function ESP:GetNPCType(npc)
+    local isPolice = npc:GetAttribute("Cop") == true
+    local isArmed = npc:GetAttribute("WeaponOfChoice") == "Knife"
+    local isCritic = npc:GetAttribute("Critic") == true
+    local isInspector = npc:GetAttribute("Behavior") == "Inspector"
+    local isDasher = npc:GetAttribute("CurrentState") == "WaitingInLine"
+    
+    if State.ESP.ShowHealthInspector and isInspector then
+        return "HealthInspector", State.ESP.Colors.HealthInspector
+    elseif State.ESP.ShowCritic and isCritic then
+        return "Critic", State.ESP.Colors.Critic
+    elseif State.ESP.ShowPolice and isPolice then
+        return "Police", State.ESP.Colors.Police
+    elseif State.ESP.ShowArmed and isArmed then
+        return "Armed", State.ESP.Colors.Armed
+    elseif State.ESP.ShowDasher and isDasher then
+        return "Dasher", State.ESP.Colors.Dasher
     end
-    self.Text.Position = pos
-    if not self.Text.Visible then self.Text.Visible = true end
+    
+    return nil, nil
 end
 
-function Entity:Destroy()
-    if self.State == STATE.DESTROYED then return end
-    self.State = STATE.DESTROYED
-    pcall(function() self.Text:Remove() end)
+function ESP:Create(npc)
+    if not npc or not Drawing then return end
+    
+    local id = tostring(npc)
+    if self.entities[id] then return end
+    
+    local head = npc:FindFirstChild("Head")
+    if not head then return end
+    
+    local npcType, color = self:GetNPCType(npc)
+    if not npcType then return end
+    
+    local label = Drawing.new("Text")
+    label.Size = 14
+    label.Outline = true
+    label.Text = npcType
+    label.Color = color
+    label.Visible = false
+    
+    self.entities[id] = {
+        npc = npc,
+        head = head,
+        label = label,
+        npcType = npcType
+    }
 end
 
-function Entity:Hide() if self.Text then self.Text.Visible = false end end
-function Entity:SetColor(color) if self.Text then self.Text.Color = color; self.Text.Outline = true end end
+function ESP:UpdateNPC(npc)
+    local id = tostring(npc)
+    local ent = self.entities[id]
+    if not ent then return end
+    
+    local npcType, color = self:GetNPCType(npc)
+    if npcType and ent.npcType ~= npcType then
+        ent.label.Text = npcType
+        ent.label.Color = color
+        ent.npcType = npcType
+    elseif not npcType then
+        self:Destroy(npc)
+    end
+end
 
-local Manager = { Entities = {}, List = {} }
-function Manager:Add(id, entity) self.Entities[id] = entity; table.insert(self.List, entity) end
-function Manager:Remove(id)
-    local ent = self.Entities[id]
+function ESP:Destroy(npc)
+    local id = tostring(npc)
+    local ent = self.entities[id]
     if ent then
-        ent:Destroy()
-        self.Entities[id] = nil
-        for i = 1, #self.List do
-            if self.List[i] == ent then
-                table.remove(self.List, i)
+        safeCall(function() ent.label:Remove() end)
+        self.entities[id] = nil
+    end
+end
+
+function ESP:Update()
+    if not State.ESP.Enabled then return end
+    
+    local cam = workspace.CurrentCamera
+    if not cam then return end
+    
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    
+    local rootPos = root.Position
+    local maxDist = State.ESP.MaxDist
+    
+    for _, ent in pairs(self.entities) do
+        if not ent.head or not ent.head:IsDescendantOf(game) then
+            ent.label.Visible = false
+        else
+            local dist = (ent.head.Position - rootPos).Magnitude
+            if dist <= maxDist then
+                local pos, onScreen = cam:WorldToViewportPoint(ent.head.Position + Vector3.new(0, 1.5, 0))
+                if onScreen then
+                    ent.label.Position = Vector2.new(pos.X, pos.Y)
+                    ent.label.Visible = true
+                else
+                    ent.label.Visible = false
+                end
+            else
+                ent.label.Visible = false
+            end
+        end
+    end
+end
+
+-- NPC MANAGER
+local NPCManager = {
+    npcs = {}
+}
+
+function NPCManager:Init(folder)
+    if not folder then return end
+    
+    local function track(npc)
+        if not npc or not npc:IsA("Model") then return end
+        self.npcs[tostring(npc)] = npc
+        ESP:Create(npc)
+        
+        local attrs = {"Cop", "Critic", "Behavior", "CurrentState", "WeaponOfChoice"}
+        for _, attr in ipairs(attrs) do
+            if npc:GetAttributeChangedSignal then
+                local conn = npc:GetAttributeChangedSignal(attr):Connect(function()
+                    ESP:UpdateNPC(npc)
+                end)
+                ConnectionManager:Add(conn)
+            end
+        end
+    end
+    
+    for _, npc in ipairs(folder:GetChildren()) do
+        track(npc)
+    end
+    
+    ConnectionManager:Add(folder.ChildAdded:Connect(track))
+    ConnectionManager:Add(folder.ChildRemoved:Connect(function(npc)
+        self.npcs[tostring(npc)] = nil
+        ESP:Destroy(npc)
+    end))
+end
+
+-- AUTO ACTIONS
+local AutoActions = {
+    cookingTask = nil,
+    washingTask = nil,
+    chloroformTask = nil
+}
+
+end
+
+function AutoActions:Start()
+self.cookingTask = Scheduler:Add(0.05, function()
+        if not State.Auto.Cooking then return end
+        
+        local minigame = safeGet(playerGui, "MakeSushiMinigame")
+        if minigame and minigame.Enabled then
+            local cuttingBar = safeGet(minigame, "MainFrame", "CuttingBarFrame")
+            if cuttingBar then
+                local slider = safeGet(cuttingBar, "CutBar", "Slider")
+                local greenBar = safeGet(cuttingBar, "CutBar", "GreenBar")
+                if slider and greenBar then
+                    local sliderPos = slider.AbsolutePosition.X
+                    local greenPos = greenBar.AbsolutePosition.X
+                    local greenWidth = greenBar.AbsoluteSize.X
+                    
+                    if sliderPos >= greenPos and sliderPos <= greenPos + greenWidth then
+                        if keypress then 
+                            keypress(0x43) 
+                            keyrelease(0x43) 
+                        end
+                    end
+                end
+            end
+        end
+    end)
+    
+    self.washingTask = Scheduler:Add(0.1, function()
+        if not State.Auto.Washing then return end
+        
+        local washingGui = safeGet(playerGui, "DishWashingGui")
+        if washingGui and washingGui.Enabled then
+            local keysHolder = safeGet(washingGui, "MainFrame", "QueueBarFrame", "Queue", "KeysHolder")
+            if keysHolder then
+                local keyMap = {Q = 0x51, E = 0x45, R = 0x52, F = 0x46}
+                for _, v in pairs(keysHolder:GetChildren()) do
+                    if v:IsA("Frame") and v.Name == "KeyTemplate" then
+                        local key = v:GetAttribute("Key")
+                        local vk = keyMap[key]
+                        if vk and keypress then
+                            keypress(vk)
+                            keyrelease(vk)
+                            task.wait(State.Auto.WashingDelay)
+                        end
+                    end
+                end
+            end
+        end
+    end)
+    
+    self.chloroformTask = Scheduler:Add(0.05, function()
+        if not State.Auto.Chloroform then return end
+        
+        local char = player.Character
+        if not char then return end
+        
+        local tool = char:FindFirstChild("Chloroform Spray")
+        if tool then
+            local hitLabel = safeGet(tool, "ChloroformChallenge", "ButtonToHitFrame", "Container", "TextLabel")
+            if hitLabel then
+                local key = hitLabel.Text
+                if key == "Q" and keypress then
+                    keypress(0x51)
+                    keyrelease(0x51)
+                elseif key == "E" and keypress then
+                    keypress(0x45)
+                    keyrelease(0x45)
+                end
+            end
+        end
+    end)
+end
+
+-- CHEATS
+local Cheats = {
+    task = nil
+}
+
+function Cheats:Start()
+    self.task = Scheduler:Add(0.1, function()
+        if State.Cheats.Greenbar then
+            playerStats.EffectiveCookingLevel.Value = 1000
+            playerStats.NoIngredientUseChance.Value = 1
+        end
+        
+        if State.Cheats.CleanDish then
+            playerStats.EffectiveCleaningLevel.Value = 9999
+        end
+        
+        if State.Cheats.SpongeEffectiveness then
+            playerStats.SpongeEffectiveness.Value = 9999
+        end
+        
+        if State.Cheats.InfiniteStamina then
+            playerStats.StaminaUsageMultiplier.Value = 0
+            playerStats.StaminaGainMultiplier.Value = 100
+        end
+    end)
+end
+
+-- ADMIN ALERTS
+local AdminAlerts = {
+    adminIds = {105479622, 65095440, 1425697210, 126961971, 127528152, 319065798, 2754844524, 125440222, 1783725423},
+    notified = {}
+}
+
+function AdminAlerts:Init()
+    local function checkAdmin(p)
+        for _, id in ipairs(self.adminIds) do
+            if p.UserId == id and State.Notify.AdminJoin and not self.notified[p.UserId] then
+                self.notified[p.UserId] = true
+                print("[ADMIN] " .. p.Name .. " joined")
                 break
             end
         end
     end
-end
-
--- EVENT-DRIVEN NPC CACHE (no polling!)
-local folder = workspace:WaitForChild("NpcDestination"):WaitForChild("SpawnedNPCs")
-if not folder then
-    warn("SpawnedNPCs folder not found - NPC ESP disabled")
-end
-local customer_list = {}
-local npc_cache = {}
-
--- Cache attributes once per NPC
-local function cacheNPCAttributes(npc)
-    local addr = npc.Address
-    if npc_cache[addr] then
-        npc_cache[addr].attrs = {
-            Cop = npc:GetAttribute("Cop"),
-            Critic = npc:GetAttribute("Critic"),
-            Behavior = npc:GetAttribute("Behavior"),
-            CurrentState = npc:GetAttribute("CurrentState"),
-            WeaponOfChoice = npc:GetAttribute("WeaponOfChoice")
-        }
-    end
-end
-
--- When NPC is added
-folder.ChildAdded:Connect(function(npc)
-    local addr = npc.Address
-    npc_cache[addr] = {
-        inst = npc,
-        head = npc:FindFirstChild("Head"),
-        attrs = {}
-    }
-    cacheNPCAttributes(npc)
-end)  -- <-- ADD THIS END
-
--- When NPC is removed
-folder.ChildRemoved:Connect(function(npc)
-    local addr = npc.Address
-    npc_cache[addr] = nil
-    Manager:Remove(addr)
-    customer_list[addr] = nil
-end)
-
-for _, npc in ipairs(folder:GetChildren()) do
-    local addr = npc.Address
-    npc_cache[addr] = {
-        inst = npc,
-        head = npc:FindFirstChild("Head"),
-        attrs = {}
-    }
-    cacheNPCAttributes(npc)
-end
-
-
--- NPC ACTION LOOP (processes seat customer and creates ESP entities)
-task.spawn(function()
-    while task.wait(0.2) do
-        if not isrbxactive() then continue end
-        
-        for addr, cached in pairs(npc_cache) do
-            local npc = cached.inst
-            local attrs = cached.attrs
-            -- Refresh attributes
-attrs.Cop = npc:GetAttribute("Cop")
-attrs.Critic = npc:GetAttribute("Critic")
-attrs.Behavior = npc:GetAttribute("Behavior")
-attrs.CurrentState = npc:GetAttribute("CurrentState")
-attrs.WeaponOfChoice = npc:GetAttribute("WeaponOfChoice")
-            -- SeatCustomer
-if SETTINGS.Cheat.Instant.SeatCustomer.Enabled and attrs.CurrentState == "WaitingInLine" and not customer_list[addr] then                local torso = npc:FindFirstChild("Torso")
-                local prompt = torso and torso:FindFirstChild("WaitProximityPrompt")
-                if prompt and prompt.Address then
-                    memory_write("float", prompt.Address + HoldDuration, 0)
-                    customer_list[addr] = true
-                end
-            end
-            
-            -- Dasher
-            if ESP_SETTINGS.Dasher.Enabled then
-                local ent = Manager.Entities[addr]
-                if customer_list[addr] then
-                    local torso = npc:FindFirstChild("Torso")
-                    local prompt = torso and torso:FindFirstChild("CatchDasherPrompt")
-                    if prompt then
-                        memory_write("float", prompt.Address + HoldDuration, 0)
-                        if not ent then
-                            customer_list[addr] = nil
-                            Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Dasher"))
-                        else
-                            ent.Instance = npc
-                        end
-                    end
-                end
-            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Dasher" then
-                Manager:Remove(addr)
-            end
-            
-            -- Police
-            if ESP_SETTINGS.Police.Enabled and attrs.Cop == true then
-                if not Manager.Entities[addr] then
-                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Police"))
-                else
-                    Manager.Entities[addr].Instance = npc
-                end
-            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Police" then
-                Manager:Remove(addr)
-            end
-            
-            -- Armed
-            if ESP_SETTINGS.Armed.Enabled and attrs.WeaponOfChoice == "Knife" then
-                if not Manager.Entities[addr] then
-                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Armed"))
-                else
-                    Manager.Entities[addr].Instance = npc
-                end
-            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Armed" then
-                Manager:Remove(addr)
-            end
-            
-            -- Critic
-            if ESP_SETTINGS.Critic.Enabled and attrs.Critic == true then
-                if not Manager.Entities[addr] then
-                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Critic"))
-                else
-                    Manager.Entities[addr].Instance = npc
-                end
-            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Critic" then
-                Manager:Remove(addr)
-            end
-            
-            -- Health Inspector
-            if ESP_SETTINGS.HealthInspector.Enabled and attrs.Behavior == "Inspector" then
-                if not Manager.Entities[addr] then
-                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Health Inspector"))
-                else
-                    Manager.Entities[addr].Instance = npc
-                end
-            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Health Inspector" then
-                Manager:Remove(addr)
-            end
-        end
-        
-        -- Reset customer list at 8:00 AM
-        if PlayerGui.clockGui.clockFrame.clockLabel.Text == "08:00" then
-            customer_list = {}
-        end
-    end
-end)
-
--- ============================================
--- ESP RENDER LOOP (runs every frame)
--- ONLY draws existing entities, no logic
--- ============================================
-RunService.Heartbeat:Connect(function()
-local root = Character and Character:FindFirstChild("HumanoidRootPart")
-if not root then return end    local entities = Manager.Entities
     
-    for id, entity in pairs(entities) do
-        local cached = npc_cache[id]
-        if not cached then
-            Manager:Remove(id)
-            continue
-        end
-        
-        local head = cached.head
-        if not head or not head:IsDescendantOf(game) then
-            entity:Hide()
-            continue
-        end
-        
-        local cfg = ESP_SETTINGS[entity.Type]
-        if not cfg or not cfg.Enabled then
-            entity:Hide()
-            continue
-        end
-        
-        if root and (head.Position - root.Position).Magnitude > ESP_SETTINGS.MAX_DIST then
-            entity:Hide()
-            continue
-        end
-        
-        -- Only update color if it changed
-        if entity.Text and entity.Text.Color ~= cfg.Color then
-            entity:SetColor(cfg.Color)
-        end
-        
-        local pos, onScreen = WorldToScreen(head.Position + Vector3.new(0, 1.5, 0))
-        entity:Update(pos, onScreen, true)
+    for _, p in ipairs(Players:GetPlayers()) do
+        checkAdmin(p)
     end
-end)
--- TATTOO ALERTS
-local notified445 = false
-local notified450 = false
-local notified455 = false
+    
+    ConnectionManager:Add(Players.PlayerAdded:Connect(checkAdmin))
+end
 
-task.spawn(function()
-    while true do
-        local success, timeText = pcall(function()
-            return PlayerGui.clockGui.clockFrame.clockLabel.Text
-        end)
-        if success and timeText then
-            if (timeText == "04:45PM" or timeText == "4:45PM") and not notified445 then
-                notify("[TATTOO ALERT] 4:45 PM - remove sun tat", "", 15)
-                notified445 = true
-            elseif (timeText == "04:50PM" or timeText == "4:50PM") and not notified450 then
-                notify("[TATTOO ALERT] 4:50 PM - remove sun tat", "", 15)
-                notified450 = true
-            elseif (timeText == "04:55PM" or timeText == "4:55PM") and not notified455 then
-                notify("[TATTOO ALERT] 4:55 PM - remove sun tat", "", 15)
-                notified455 = true
-            end
+-- WINDOW LABEL UPDATES
+local WindowLabels = {
+    dayLabel = nil,
+    moneyLabel = nil,
+    humanFleshLabel = nil,
+    fishLabel = nil,
+    riceLabel = nil,
+    vegLabel = nil,
+    waitingLabel = nil
+}
+
+function WindowLabels:Create()
+    if State.Window.Labels.Day then
+        self.dayLabel = Window:AddLabel("Day: " .. tostring(gameData.CurrentDay.Value))
+    end
+    if State.Window.Labels.CompanyMoney then
+        self.moneyLabel = Window:AddLabel("Money: $" .. string.format("%.2f", gameData.CompanyMoney.Value))
+    end
+    if State.Window.Labels.HumanFlesh then
+        local stock = gameData.Ingredients.IngredientsStorage.HumanFlesh
+        self.humanFleshLabel = Window:AddLabel("Human Flesh: " .. stock.Stock.Value .. "/" .. stock.MaxStock.Value)
+    end
+    if State.Window.Labels.Fish then
+        local stock = gameData.Ingredients.IngredientsStorage.AssortedFish
+        self.fishLabel = Window:AddLabel("Fish: " .. stock.Stock.Value .. "/" .. stock.MaxStock.Value)
+    end
+    if State.Window.Labels.Rice then
+        local stock = gameData.Ingredients.IngredientsStorage.Rice
+        self.riceLabel = Window:AddLabel("Rice: " .. stock.Stock.Value .. "/" .. stock.MaxStock.Value)
+    end
+    if State.Window.Labels.Vegetables then
+        local stock = gameData.Ingredients.IngredientsStorage.Vegetables
+        self.vegLabel = Window:AddLabel("Vegetables: " .. stock.Stock.Value .. "/" .. stock.MaxStock.Value)
+    end
+end
+
+function WindowLabels:StartUpdates()
+    Scheduler:Add(0.5, function()
+        if not State.Window.Visible then 
+            return 
+        end
+        
+        if self.dayLabel then
+            self.dayLabel.setText("Day: " .. tostring(gameData.CurrentDay.Value))
+        end
+        if self.moneyLabel then
+            self.moneyLabel.setText("Money: $" .. string.format("%.2f", gameData.CompanyMoney.Value))
+        end
+        if self.humanFleshLabel then
+            local stock = gameData.Ingredients.IngredientsStorage.HumanFlesh
+            self.humanFleshLabel.setText("Human Flesh: " .. stock.Stock.Value .. "/" .. stock.MaxStock.Value)
+        end
+        if self.fishLabel then
+            local stock = gameData.Ingredients.IngredientsStorage.AssortedFish
+            self.fishLabel.setText("Fish: " .. stock.Stock.Value .. "/" .. stock.MaxStock.Value)
+        end
+        if self.riceLabel then
+            local stock = gameData.Ingredients.IngredientsStorage.Rice
+            self.riceLabel.setText("Rice: " .. stock.Stock.Value .. "/" .. stock.MaxStock.Value)
+        end
+        if self.vegLabel then
+            local stock = gameData.Ingredients.IngredientsStorage.Vegetables
+            self.vegLabel.setText("Vegetables: " .. stock.Stock.Value .. "/" .. stock.MaxStock.Value)
+        end
+    end)
+end
+
+-- TATTOO ALERTS
+local TattooAlerts = {
+    notified445 = false,
+    notified450 = false,
+    notified455 = false
+}
+
+function TattooAlerts:Start()
+    Scheduler:Add(1, function()
+        local clock = safeGet(playerGui, "clockGui", "clockFrame", "clockLabel")
+        if not clock then 
+            return 
+        end
+        
+        local time = clock.Text
+        
+        if (time == "04:45PM" or time == "4:45PM") and not self.notified445 then
+            print("[TATTOO ALERT] 4:45 PM - remove sun tat")
+            self.notified445 = true
+        elseif (time == "04:50PM" or time == "4:50PM") and not self.notified450 then
+            print("[TATTOO ALERT] 4:50 PM - remove sun tat")
+            self.notified450 = true
+        elseif (time == "04:55PM" or time == "4:55PM") and not self.notified455 then
+            print("[TATTOO ALERT] 4:55 PM - remove sun tat")
+            self.notified455 = true
+        elseif time == "05:00PM" or time == "5:00PM" then
+            self.notified445 = false
+            self.notified450 = false
+            self.notified455 = false
+        end
+    end)
+end
+
+-- DRAG HANDLER (FIXED - removed deprecated GetMouse)
+local function SetupDrag()
+    local dragging = false
+    local dragOffset = Vector2.new(0, 0)
+    local lastMousePos = Vector2.new(0, 0)
+    
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            local mousePos = UserInputService:GetMouseLocation()
+            local px, py = Window.position.X, Window.position.Y
+            local w, h = Window.size.X, Window.size.Y
             
-            if timeText == "05:00PM" or timeText == "5:00PM" then
-                notified445 = false
-                notified450 = false
-                notified455 = false
+            if mousePos.X >= px and mousePos.X <= px + w and mousePos.Y >= py and mousePos.Y <= py + h then
+                dragging = true
+                dragOffset = Vector2.new(mousePos.X - px, mousePos.Y - py)
             end
         end
-        task.wait(1)
-    end  -- <-- THIS END closes the while loop
-end)  -- <-- THIS END closes the task.spawn
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local mousePos = UserInputService:GetMouseLocation()
+            Window.position = Vector2.new(mousePos.X - dragOffset.X, mousePos.Y - dragOffset.Y)
+            Window:UpdateGeometry()
+        end
+    end)
+end
 
-notify('Sushi Gambit loaded!', "", 3)
+-- CHLOROFORM TOGGLE
+local function SetupChloroformToggle()
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.X then
+            State.Auto.Chloroform = not State.Auto.Chloroform
+            print("Auto Chloroform:", State.Auto.Chloroform and "ON" or "OFF")
+        end
+    end)
+end
+
+-- INITIALIZATION
+local function Init()
+    if Drawing then
+        Window:Create()
+        Window:Show(State.Window.Visible)
+        SetupDrag()
+        WindowLabels:Create()
+        WindowLabels:StartUpdates()
+    end
+    
+    local folder = safeGet(workspace, "NpcDestination", "SpawnedNPCs")
+    if folder then
+        NPCManager:Init(folder)
+    end
+    
+    AutoActions:Start()
+    Cheats:Start()
+    AdminAlerts:Init()
+    TattooAlerts:Start()
+    SetupChloroformToggle()
+    
+    RunService.Heartbeat:Connect(function(dt)
+        Scheduler:Update(dt)
+        ESP:Update()
+    end)
+    
+    print("[Sushi Gambit] Fully loaded!")
+end
+
+safeCall(Init)
