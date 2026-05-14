@@ -10,6 +10,62 @@ local GameData = ReplicatedStorage:WaitForChild("GameData")
 local PlayerStats = LocalPlayer:WaitForChild("PlayerStats")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    Character = newChar
+    task.wait(1)
+    
+    if UI.GetValue("inf_stamina") then
+        PlayerStats.StaminaUsageMultiplier.Value = -1
+        PlayerStats.StaminaGainMultiplier.Value = 100
+        PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
+    end
+    
+    if SETTINGS.Cheat.Instant.CleanDish.Enabled then
+        PlayerStats.EffectiveCleaningLevel.Value = 9999
+    end
+    
+    if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
+        PlayerStats.EffectiveCookingLevel.Value = 1000
+        PlayerStats.NoIngredientUseChance.Value = 1
+    end
+    
+    if SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled then
+        PlayerStats.SpongeEffectiveness.Value = 9999
+    end
+    
+    local walkSpeed = UI.GetValue("player_walkspeed")
+    if walkSpeed and walkSpeed ~= 16 then
+        PlayerStats.WalkSpeed.Value = walkSpeed
+    end
+    
+    if SETTINGS.Cheat.Instant.SeatCustomer.Enabled then
+        task.spawn(function()
+            local computer = game.Workspace.RestaurantArea.restaurant.Table.computer
+            if computer and computer.ProximityPrompt and computer.ProximityPrompt.Address then
+                memory_write("float", computer.ProximityPrompt.Address + HoldDuration, 0)
+            end
+            local conveyor_keypad = game.Workspace.RestaurantArea.restaurant.mainStuff.conveyors.keypad.PromptPart
+            if conveyor_keypad and conveyor_keypad.ProximityPrompt and conveyor_keypad.ProximityPrompt.Address then
+                memory_write("float", conveyor_keypad.ProximityPrompt.Address + HoldDuration, 0)
+            end
+            local freezer = game.Workspace.RestaurantArea.restaurant.FreezerDoor.PromptHitbox
+            if freezer and freezer.ProximityPrompt and freezer.ProximityPrompt.Address then
+                memory_write("float", freezer.ProximityPrompt.Address + HoldDuration, 0)
+            end
+            local toolbin = game.Workspace.Toolbin.PromptHitbox
+            if toolbin and toolbin.ProximityPrompt and toolbin.ProximityPrompt.Address then
+                memory_write("float", toolbin.ProximityPrompt.Address + HoldDuration, 0)
+            end
+            local seating = game.Workspace.RestaurantArea.restaurant["the waiter stand thingy"].Stations.SeatingStation.TriggerPart.SeatCustomersPrompt
+            if seating and seating.Address then
+                memory_write("float", seating.Address + HoldDuration, 0)
+            end
+        end)
+    end
+    
+    notify("Character respawned - settings reapplied", "", 3)
+end)
+
 local SETTINGS = {
     Auto = {
         Cooking = { Enabled = false, delay = 0 },
@@ -248,9 +304,15 @@ UI.AddTab("Sushi Gambit", function(tab)
         MainSec:SliderFloat('auto_washing_delay', 'Delay (ms)', 0.1, 2.0, 0.1, '%.1f', function(value) SETTINGS.Auto.Washing.delay = value end)
         MainSec:Toggle('auto_chloroform_spys', 'Auto Chloroform Spys', function(value) SETTINGS.Auto.ChloroformSpys.Enabled = value; notify("Auto Chloroform Spys: " .. tostring(value), "", 3) end)
     elseif MainSec.page == 1 then
-        MainSec:Toggle('spoof_greenbar', 'Spoof Greenbar', function(value) SETTINGS.Cheat.Spoof.Greenbar.Enabled = value; notify("Spoof Greenbar: " .. tostring(value), "", 3) end)
-        MainSec:Toggle('instant_clean_dish', 'Fast Clean Dish', function(value) SETTINGS.Cheat.Instant.CleanDish.Enabled = value; notify("Fast Clean Dish: " .. tostring(value), "", 3) end)
-        MainSec:Toggle('spoof_sponge_effectiveness', 'Instant Sponge Effect', function(value) SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled = value; notify("Spoof Sponge Effectiveness: " .. tostring(value), "", 3) end)
+        MainSec:Toggle('cheats_enabled', 'Enable Cheats', function(value)
+            SETTINGS.Cheat.Spoof.Greenbar.Enabled = value
+            SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled = value
+            SETTINGS.Cheat.Instant.CleanDish.Enabled = value
+            UI.SetValue("spoof_greenbar", value)
+            UI.SetValue("spoof_sponge_effectiveness", value)
+            UI.SetValue("instant_clean_dish", value)
+            notify("Cheats: " .. (value and "ON" or "OFF"), "", 2)
+        end)
     elseif MainSec.page == 2 then
         MainSec:Toggle('always_computer', 'Use computer during blackout', function(value)
             spawn(function() while true do
@@ -321,58 +383,33 @@ UI.AddTab("Sushi Gambit", function(tab)
 
     local NpcTab = tab:Section("Npc", "Left", { "Npc", "" })
     if NpcTab.page == 0 then
-        NpcTab:Toggle('instant_seatcustomer', 'Instant Seat Customer', function(value) SETTINGS.Cheat.Instant.SeatCustomer.Enabled = value; notify("Instant Seat Customer: " .. tostring(value), "", 3) end)
+        NpcTab:Toggle('instant_seatcustomer', 'Instant Seat Customer', function(value)
+            SETTINGS.Cheat.Instant.SeatCustomer.Enabled = value
+            notify("Instant Seat Customer: " .. tostring(value), "", 3)
+        end)
         UI.SetValue('instant_seatcustomer', SETTINGS.Cheat.Instant.SeatCustomer.Enabled)
+        
         NpcTab:Spacing()
         NpcTab:Text("Visuals")
         NpcTab:Spacing()
-        NpcTab:Toggle('show_dasher', 'Dasher', function(value)
-            if not SETTINGS.Cheat.Instant.SeatCustomer.Enabled then
-                UI.SetValue('instant_seatcustomer', true)
-                SETTINGS.Cheat.Instant.SeatCustomer.Enabled = value
-            end
+        
+        NpcTab:Toggle('npc_esp_enabled', 'Enabled', function(value)
             ESP_SETTINGS.Dasher.Enabled = value
-            notify("Show Dasher: " .. tostring(value), "", 3)
+            ESP_SETTINGS.Armed.Enabled = value
+            ESP_SETTINGS.Police.Enabled = value
+            ESP_SETTINGS.Critic.Enabled = value
+            ESP_SETTINGS.HealthInspector.Enabled = value
+            UI.SetValue("show_dasher", value)
+            UI.SetValue("show_armed", value)
+            UI.SetValue("show_police", value)
+            UI.SetValue("show_critic", value)
+            UI.SetValue("show_health_inspector", value)
+            notify("NPC ESP: " .. (value and "ON" or "OFF"), "", 2)
         end)
-        NpcTab:ColorPicker("dasher_color", 1, 0, 0, 1, function(color, alpha) ESP_SETTINGS.Dasher.Color = Color3.new(color.R, color.G, color.B) end)
-        NpcTab:Tip('Turn on Instant Seat Customer to make it work!')
-        NpcTab:Toggle('show_armed', 'Armed npc', function(value) ESP_SETTINGS.Armed.Enabled = value; notify("Show Armed NPC: " .. tostring(value), "", 3) end)
-        NpcTab:ColorPicker("armed_color", 1, 0, 0, 1, function(color, alpha) ESP_SETTINGS.Armed.Color = Color3.new(color.R, color.G, color.B) end)
-        NpcTab:Toggle('show_police', 'Police npc', function(value) ESP_SETTINGS.Police.Enabled = value; notify("Show Police NPC: " .. tostring(value), "", 3) end)
-        NpcTab:ColorPicker("police_color", 0, 0, 1, 1, function(color, alpha) ESP_SETTINGS.Police.Color = Color3.new(color.R, color.G, color.B) end)
-        NpcTab:Toggle('show_critic', 'Critic', function(value) ESP_SETTINGS.Critic.Enabled = value; notify("Show Critic: " .. tostring(value), "", 3) end)
-        NpcTab:ColorPicker("critic_color", 255, 252, 0, 1, function(color, alpha) ESP_SETTINGS.Critic.Color = Color3.new(color.R, color.G, color.B) end)
-        NpcTab:Toggle('show_health_inspector', 'Health Inspector', function(value) ESP_SETTINGS.HealthInspector.Enabled = value; notify("Show Health Inspector: " .. tostring(value), "", 3) end)
-        NpcTab:ColorPicker("health_inspector_color", 1, 0, 0, 1, function(color, alpha) ESP_SETTINGS.HealthInspector.Color = Color3.new(color.R, color.G, color.B) end)
-        NpcTab:SliderInt('npc_esp_maxdist', 'Max Distance', 10, 200, 80, function(value) ESP_SETTINGS.MAX_DIST = value; ESP_SETTINGS.MAX_DIST_SQ = value * value end)
-        NpcTab:Spacing()
-        NpcTab:Text("Quick Actions")
-        NpcTab:Spacing()
-        NpcTab:Button("Enable All ESP", function()
-            ESP_SETTINGS.Dasher.Enabled = true
-            ESP_SETTINGS.Armed.Enabled = true
-            ESP_SETTINGS.Police.Enabled = true
-            ESP_SETTINGS.Critic.Enabled = true
-            ESP_SETTINGS.HealthInspector.Enabled = true
-            UI.SetValue("show_dasher", true)
-            UI.SetValue("show_armed", true)
-            UI.SetValue("show_police", true)
-            UI.SetValue("show_critic", true)
-            UI.SetValue("show_health_inspector", true)
-            notify("All ESP enabled", "", 2)
-        end)
-        NpcTab:Button("Disable All ESP", function()
-            ESP_SETTINGS.Dasher.Enabled = false
-            ESP_SETTINGS.Armed.Enabled = false
-            ESP_SETTINGS.Police.Enabled = false
-            ESP_SETTINGS.Critic.Enabled = false
-            ESP_SETTINGS.HealthInspector.Enabled = false
-            UI.SetValue("show_dasher", false)
-            UI.SetValue("show_armed", false)
-            UI.SetValue("show_police", false)
-            UI.SetValue("show_critic", false)
-            UI.SetValue("show_health_inspector", false)
-            notify("All ESP disabled", "", 2)
+        
+        NpcTab:SliderInt('npc_esp_maxdist', 'Max Distance', 10, 200, 80, function(value)
+            ESP_SETTINGS.MAX_DIST = value
+            ESP_SETTINGS.MAX_DIST_SQ = value * value
         end)
     elseif NpcTab.page == 1 then end
 
