@@ -1207,5 +1207,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         notify("Auto Chloroform: " .. status, "Keybind X", 2)
     end
 end)
+task.wait(2)
 
 notify('Sushi Gambit loaded!', "", 3)
