@@ -397,7 +397,12 @@ local AutoActions = {
 
 
 function AutoActions:Start()
-self.cookingTask = Scheduler:Add(0.05, function()
+    if not keypress then
+        warn("keypress function not available - auto actions will not work")
+        return
+    end
+    
+    self.cookingTask = Scheduler:Add(0.05, function()
         if not State.Auto.Cooking then return end
         
         local minigame = safeGet(playerGui, "MakeSushiMinigame")
@@ -412,15 +417,59 @@ self.cookingTask = Scheduler:Add(0.05, function()
                     local greenWidth = greenBar.AbsoluteSize.X
                     
                     if sliderPos >= greenPos and sliderPos <= greenPos + greenWidth then
-                        if keypress then 
-                            keypress(0x43) 
-                            keyrelease(0x43) 
+                        keypress(0x43)
+                        keyrelease(0x43)
+                    end
+                end
+            end
+        end
+    end)
+    
+    self.washingTask = Scheduler:Add(0.1, function()
+        if not State.Auto.Washing then return end
+        
+        local washingGui = safeGet(playerGui, "DishWashingGui")
+        if washingGui and washingGui.Enabled then
+            local keysHolder = safeGet(washingGui, "MainFrame", "QueueBarFrame", "Queue", "KeysHolder")
+            if keysHolder then
+                local keyMap = {Q = 0x51, E = 0x45, R = 0x52, F = 0x46}
+                for _, v in pairs(keysHolder:GetChildren()) do
+                    if v:IsA("Frame") and v.Name == "KeyTemplate" then
+                        local key = v:GetAttribute("Key")
+                        local vk = keyMap[key]
+                        if vk then
+                            keypress(vk)
+                            keyrelease(vk)
+                            task.wait(State.Auto.WashingDelay)
                         end
                     end
                 end
             end
         end
     end)
+    
+    self.chloroformTask = Scheduler:Add(0.05, function()
+        if not State.Auto.Chloroform then return end
+        
+        local char = player.Character
+        if not char then return end
+        
+        local tool = char:FindFirstChild("Chloroform Spray")
+        if tool then
+            local hitLabel = safeGet(tool, "ChloroformChallenge", "ButtonToHitFrame", "Container", "TextLabel")
+            if hitLabel then
+                local key = hitLabel.Text
+                if key == "Q" then
+                    keypress(0x51)
+                    keyrelease(0x51)
+                elseif key == "E" then
+                    keypress(0x45)
+                    keyrelease(0x45)
+                end
+            end
+        end
+    end)
+end
     
     self.washingTask = Scheduler:Add(0.1, function()
         if not State.Auto.Washing then return end
@@ -623,6 +672,7 @@ function TattooAlerts:Start()
 end
 
 -- DRAG HANDLER (FIXED - removed deprecated GetMouse)
+-- DRAG HANDLER
 local function SetupDrag()
     local dragging = false
     local dragOffset = Vector2.new(0, 0)
@@ -630,8 +680,7 @@ local function SetupDrag()
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
         if not input or not input.UserInputType then return end
-        
-if input and input.UserInputType and input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
             local mousePos = UserInputService:GetMouseLocation()
             if not mousePos then return end
             
@@ -647,14 +696,14 @@ if input and input.UserInputType and input.UserInputType == Enum.UserInputType.M
     
     UserInputService.InputEnded:Connect(function(input)
         if not input or not input.UserInputType then return end
-if input and input.UserInputType and input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = false
         end
     end)
     
     UserInputService.InputChanged:Connect(function(input)
         if not input or not input.UserInputType then return end
-if dragging and input and input.UserInputType and input.UserInputType == Enum.UserInputType.MouseMovement then
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local mousePos = UserInputService:GetMouseLocation()
             if mousePos then
                 Window.position = Vector2.new(mousePos.X - dragOffset.X, mousePos.Y - dragOffset.Y)
@@ -663,7 +712,6 @@ if dragging and input and input.UserInputType and input.UserInputType == Enum.Us
         end
     end)
 end
-
 -- CHLOROFORM TOGGLE
 local function SetupChloroformToggle()
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -690,8 +738,8 @@ local function Init()
         NPCManager:Init(folder)
     end
     
-    AutoActions:Start()
-    Cheats:Start()
+    AutoActions:Start()  -- <-- This calls AutoActions:Start()
+    Cheats:Start()       -- <-- These stay OUTSIDE AutoActions:Start()
     AdminAlerts:Init()
     TattooAlerts:Start()
     SetupChloroformToggle()
