@@ -4,19 +4,8 @@ local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
-local Character = nil
+local Character = LocalPlayer.Character
 
-if LocalPlayer.Character then
-    Character = LocalPlayer.Character
-else
-    Character = LocalPlayer.CharacterAdded:Wait()
-end
--- Matcha uses Players.LocalPlayer.CharacterAdded
-if Players.LocalPlayer.CharacterAdded then
-    Players.LocalPlayer.CharacterAdded:Connect(function(char)
-        Character = char
-    end)
-end
 local GameData = ReplicatedStorage:WaitForChild("GameData")
 local PlayerStats = LocalPlayer:WaitForChild("PlayerStats")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
