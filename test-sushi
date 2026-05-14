@@ -1,4 +1,4 @@
-local Players = game:GetService("Players")
+    local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
@@ -63,8 +63,8 @@ local SETTINGS = {
 }
 
 local ESP_SETTINGS = {
-    MAX_DIST = 80,
-    MAX_DIST_SQ = 80 * 80,
+    MAX_DIST = 200,
+    MAX_DIST_SQ = 200 * 200,
     Dasher = {
         Enabled = false,
         Color = Color3.new(1, 0, 0)
@@ -97,6 +97,7 @@ local ESP_SETTINGS = {
         fishstock = false,
         humanfleshstock = false,
         ricestock = false,
+        spoilage = false,
     }
 }
 
@@ -307,8 +308,9 @@ local vegLabel = nil
 local fishLabel = nil
 local HumanFlesh = nil
 local Rice = nil
+local spoilageLabel = nil
 
-local Windows = Lib.new("Sushi Gambit", 250, 130)
+local Windows = Lib.new("Sushi Gambit", 260, 130)
 Windows:Show(false)
 
 function get_offsets()
@@ -515,18 +517,14 @@ end)
         NpcTab:Spacing()
         NpcTab:Text("Visuals")
 
-NpcTab:Button('Enable All', function()
-    local state = not ESP_SETTINGS.Dasher.Enabled
-    UI.SetValue("show_dasher", state)
-    UI.SetValue("show_armed", state)
-    UI.SetValue("show_police", state)
-    UI.SetValue("show_critic", state)
-    UI.SetValue("show_health_inspector", state)
-    ESP_SETTINGS.Dasher.Enabled = state
-    ESP_SETTINGS.Armed.Enabled = state
-    ESP_SETTINGS.Police.Enabled = state
-    ESP_SETTINGS.Critic.Enabled = state
-    ESP_SETTINGS.HealthInspector.Enabled = state
+MainSec:Button('Enable All', function()
+    local state = not SETTINGS.Cheat.Spoof.Greenbar.Enabled
+    UI.SetValue("spoof_greenbar", state)
+    UI.SetValue("instant_clean_dish", state)
+    UI.SetValue("spoof_sponge_effectiveness", state)
+    SETTINGS.Cheat.Spoof.Greenbar.Enabled = state
+    SETTINGS.Cheat.Instant.CleanDish.Enabled = state
+    SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled = state
 end)
 
         NpcTab:Spacing()
@@ -582,7 +580,7 @@ end)
             ESP_SETTINGS.HealthInspector.Color = Color3.new(color.R, color.G, color.B)
         end)
 
-        NpcTab:SliderInt('npc_esp_maxdist', 'Max Distance', 10, 200, 80, function(value)
+NpcTab:SliderInt('npc_esp_maxdist', 'Max Distance', 10, 200, 200, function(value)
             ESP_SETTINGS.MAX_DIST = value
             ESP_SETTINGS.MAX_DIST_SQ = value * value
         end)
@@ -615,24 +613,6 @@ end)
         else
             Windows:Show(false)
         end
-    end)
-
-    WindowSec:Button('Enable All', function()
-        local state = not ESP_SETTINGS.Labels.day
-        UI.SetValue("show_daycounter", state)
-        UI.SetValue("show_waitinginline", state)
-        UI.SetValue("show_company_money", state)
-        UI.SetValue("show_vegstock", state)
-        UI.SetValue("show_fishstock", state)
-        UI.SetValue("show_humanfleshstock", state)
-        UI.SetValue("show_ricestock", state)
-        ESP_SETTINGS.Labels.day = state
-        ESP_SETTINGS.Labels.waitinginline = state
-        ESP_SETTINGS.Labels.companymoney = state
-        ESP_SETTINGS.Labels.vegstock = state
-        ESP_SETTINGS.Labels.fishstock = state
-        ESP_SETTINGS.Labels.humanfleshstock = state
-        ESP_SETTINGS.Labels.ricestock = state
     end)
 
     WindowSec:Toggle("show_daycounter", "Day Counter", function(value)
@@ -751,22 +731,20 @@ ESP_SETTINGS.Critic.Enabled = true
 ESP_SETTINGS.HealthInspector.Enabled = true
 ESP_SETTINGS.Windows.Enabled = true
 ESP_SETTINGS.Labels.day = true
-ESP_SETTINGS.Labels.waitinginline = true
 ESP_SETTINGS.Labels.companymoney = true
 ESP_SETTINGS.Labels.vegstock = true
 ESP_SETTINGS.Labels.fishstock = true
 ESP_SETTINGS.Labels.humanfleshstock = true
 ESP_SETTINGS.Labels.ricestock = true
 
-SETTINGS.Auto.Washing.Enabled = UI.GetValue("auto_washing")
-SETTINGS.Auto.ChloroformSpys.Enabled = UI.GetValue("auto_chloroform_spys")
+SETTINGS.Auto.Washing.Enabled = false
+SETTINGS.Auto.ChloroformSpys.Enabled = false
 
+SETTINGS.Cheat.Instant.SeatCustomer.Enabled = true
+SETTINGS.Cheat.Instant.CleanDish.Enabled = true
 
-SETTINGS.Cheat.Instant.SeatCustomer.Enabled = UI.GetValue("instant_seatcustomer")
-SETTINGS.Cheat.Instant.CleanDish.Enabled = UI.GetValue("instant_clean_dish")
-
-SETTINGS.Cheat.Spoof.Greenbar.Enabled = UI.GetValue("spoof_greenbar")
-SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled = UI.GetValue("spoof_sponge_effectiveness")
+SETTINGS.Cheat.Spoof.Greenbar.Enabled = true
+SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled = true
 
 SETTINGS.Notify.DineAndDash.Enabled = UI.GetValue("notify_dineanddash")
 SETTINGS.Notify.AdminJoin.Enabled = true
@@ -795,13 +773,14 @@ PlayerStats.StaminaUsageMultiplier.Value = -1
 PlayerStats.StaminaGainMultiplier.Value = 100
 PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
 
+if ESP_SETTINGS.Labels.humanfleshstock then HumanFlesh = Windows:AddLabel("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) end
+if ESP_SETTINGS.Labels.fishstock then fishLabel = Windows:AddLabel("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value)) end
+if ESP_SETTINGS.Labels.ricestock then Rice = Windows:AddLabel("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
+if ESP_SETTINGS.Labels.vegstock then vegLabel = Windows:AddLabel("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value)) end
+if ESP_SETTINGS.Labels.spoilage then spoilageLabel = Windows:AddLabel("Spoilage Rate: " .. string.format("%.2f", GameData.GameStats.Stats.SpoilageRate.Value)) end
+if ESP_SETTINGS.Labels.companymoney then companyMoneyLabel = Windows:AddLabel("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value)) end
 if ESP_SETTINGS.Labels.day then dayLabel = Windows:AddLabel("Day: " .. tostring(GameData.CurrentDay.Value)) end
 if ESP_SETTINGS.Labels.waitinginline then waitinginline = Windows:AddLabel("WaitingInLine: 0") end
-if ESP_SETTINGS.Labels.companymoney then companyMoneyLabel = Windows:AddLabel("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value)) end
-if ESP_SETTINGS.Labels.vegstock then vegLabel = Windows:AddLabel("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value)) end
-if ESP_SETTINGS.Labels.fishstock then fishLabel = Windows:AddLabel("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value)) end
-if ESP_SETTINGS.Labels.humanfleshstock then HumanFlesh = Windows:AddLabel("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) end
-if ESP_SETTINGS.Labels.ricestock then Rice = Windows:AddLabel("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
 
 local Admin = {
     ["UserIds"] = { 105479622, 65095440, 1425697210, 126961971, 127528152, 319065798, 2754844524, 125440222, 1783725423 }
@@ -928,6 +907,7 @@ if not _labelStarted then
             if ESP_SETTINGS.Labels.fishstock and fishLabel then fishLabel:SetText("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value)) end
             if ESP_SETTINGS.Labels.humanfleshstock and HumanFlesh then HumanFlesh:SetText("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) end
             if ESP_SETTINGS.Labels.ricestock and Rice then Rice:SetText("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
+            if ESP_SETTINGS.Labels.spoilage and spoilageLabel then spoilageLabel:SetText("Spoilage Rate: " .. string.format("%.2f", GameData.GameStats.Stats.SpoilageRate.Value)) end
             task.wait(.1)
         end
     end)
@@ -1135,7 +1115,7 @@ task.spawn(function()
                 else
                     Manager.Entities[addr].Instance = npc
                 end
-            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Health Inspector" then
+elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "HealthInspector" then
                 Manager:Remove(addr)
             end
         end
