@@ -254,8 +254,8 @@ UI.AddTab("Sushi Gambit", function(tab)
         MainSec:Toggle('auto_cooking', 'Auto Cooking', function(value) SETTINGS.Auto.Cooking.Enabled = value; notify("Auto Cooking: " .. tostring(value), "", 3) end)
         MainSec:Toggle('auto_washing', 'Auto DishWashing', function(value) SETTINGS.Auto.Washing.Enabled = value; notify("Auto DishWashing: " .. tostring(value), "", 3) end)
         MainSec:SliderFloat('auto_washing_delay', 'Delay (ms)', 0.1, 2.0, 0.1, '%.1f', function(value) SETTINGS.Auto.Washing.delay = value end)
-        MainSec:Toggle('auto_chloroform_spys', 'Auto Chloroform Spys', function(value) SETTINGS.Auto.ChloroformSpys.Enabled = value; notify("Auto Chloroform Spys: " .. tostring(value), "", 3) end)
-    elseif MainSec.page == 1 then
+        MainSec:Toggle('auto_chloroform_spys', 'Auto Chloroform', function(value) SETTINGS.Auto.ChloroformSpys.Enabled = value; end)
+        elseif MainSec.page == 1 then
         MainSec:Toggle("enable_all_cheats", "Enable All Cheats", function(value)
             SETTINGS.Cheat.Spoof.Greenbar.Enabled = value
             SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled = value
