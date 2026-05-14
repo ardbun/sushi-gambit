@@ -40,15 +40,20 @@ local ESP_SETTINGS = {
     }
 }
 
-local UserInputService = game:GetService("UserInputService")
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.X then
-        SETTINGS.Auto.ChloroformSpys.Enabled = not SETTINGS.Auto.ChloroformSpys.Enabled
-        notify("Auto Chloroform: " .. (SETTINGS.Auto.ChloroformSpys.Enabled and "ON" or "OFF"), "", 2)
+local chloroformToggleCooldown = false
+task.spawn(function()
+    while true do
+        if iskeypressed(0x58) and not chloroformToggleCooldown then
+            chloroformToggleCooldown = true
+            SETTINGS.Auto.ChloroformSpys.Enabled = not SETTINGS.Auto.ChloroformSpys.Enabled
+            notify("Auto Chloroform: " .. (SETTINGS.Auto.ChloroformSpys.Enabled and "ON" or "OFF"), "", 2)
+            task.wait(0.5) -- debounce so it doesn't trigger multiple times
+        elseif not iskeypressed(0x58) then
+            chloroformToggleCooldown = false
+        end
+        task.wait()
     end
 end)
-
 local Lib = {}
 Lib.__index = Lib
 
