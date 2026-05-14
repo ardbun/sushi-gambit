@@ -464,7 +464,73 @@ UI.AddTab("Sushi Gambit", function(tab)
             dayLabel = nil
         end
     end)
+    WindowSec:Spacing()
+    WindowSec:Text("Quick Actions")
+    WindowSec:Spacing()
 
+    WindowSec:Button("Enable All Labels", function()
+        ESP_SETTINGS.Labels.day = true
+        ESP_SETTINGS.Labels.companymoney = true
+        ESP_SETTINGS.Labels.vegstock = true
+        ESP_SETTINGS.Labels.fishstock = true
+        ESP_SETTINGS.Labels.humanfleshstock = true
+        ESP_SETTINGS.Labels.ricestock = true
+        ESP_SETTINGS.Labels.spoilage = true
+        UI.SetValue("show_daycounter", true)
+        UI.SetValue("show_company_money", true)
+        UI.SetValue("show_vegstock", true)
+        UI.SetValue("show_fishstock", true)
+        UI.SetValue("show_humanfleshstock", true)
+        UI.SetValue("show_ricestock", true)
+
+        if not dayLabel then dayLabel = Windows:AddLabel("Day: " .. tostring(GameData.CurrentDay.Value)) end
+        if not companyMoneyLabel then companyMoneyLabel = Windows:AddLabel("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value)) end
+        if not vegLabel then vegLabel = Windows:AddLabel("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value)) end
+        if not fishLabel then fishLabel = Windows:AddLabel("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value)) end
+        if not HumanFlesh then HumanFlesh = Windows:AddLabel("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) end
+        if not Rice then Rice = Windows:AddLabel("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
+        if not spoilageLabel then
+            local rate = game:GetService("ReplicatedStorage"):FindFirstChild("GameData")
+            if rate then
+                rate = rate:FindFirstChild("GameStats")
+                if rate then
+                    rate = rate:FindFirstChild("Stats")
+                    if rate then
+                        local spoilage = rate:FindFirstChild("SpoilageRate")
+                        if spoilage then
+                            spoilageLabel = Windows:AddLabel("Spoilage: " .. tostring(spoilage.Value))
+                        end
+                    end
+                end
+            end
+        end
+        notify("All labels enabled", "", 2)
+    end)
+
+    WindowSec:Button("Disable All Labels", function()
+        ESP_SETTINGS.Labels.day = false
+        ESP_SETTINGS.Labels.companymoney = false
+        ESP_SETTINGS.Labels.vegstock = false
+        ESP_SETTINGS.Labels.fishstock = false
+        ESP_SETTINGS.Labels.humanfleshstock = false
+        ESP_SETTINGS.Labels.ricestock = false
+        ESP_SETTINGS.Labels.spoilage = false
+        UI.SetValue("show_daycounter", false)
+        UI.SetValue("show_company_money", false)
+        UI.SetValue("show_vegstock", false)
+        UI.SetValue("show_fishstock", false)
+        UI.SetValue("show_humanfleshstock", false)
+        UI.SetValue("show_ricestock", false)
+
+        if dayLabel then dayLabel:Delete(); dayLabel = nil end
+        if companyMoneyLabel then companyMoneyLabel:Delete(); companyMoneyLabel = nil end
+        if vegLabel then vegLabel:Delete(); vegLabel = nil end
+        if fishLabel then fishLabel:Delete(); fishLabel = nil end
+        if HumanFlesh then HumanFlesh:Delete(); HumanFlesh = nil end
+        if Rice then Rice:Delete(); Rice = nil end
+        if spoilageLabel then spoilageLabel:Delete(); spoilageLabel = nil end
+        notify("All labels disabled", "", 2)
+    end)
     local InfoSec = tab:Section("Info", "Right")
     InfoSec:Text("Version: 1.1.0\nDiscord: patreon\nchangelog:\n[+] DishWashing Delay\n[~] Fixed DishWashing not working\n")
 end)
