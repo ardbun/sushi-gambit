@@ -920,6 +920,7 @@ end)
 -- ============================================
 RunService.Heartbeat:Connect(function()
     local root = Character and Character:FindFirstChild("HumanoidRootPart")
+    local entities = Manager.Entities
     
     for id, entity in pairs(entities) do
         local cached = npc_cache[id]
