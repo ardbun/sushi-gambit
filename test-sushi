@@ -1208,7 +1208,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         -- Show notification
         local status = SETTINGS.Auto.ChloroformSpys.Enabled and "ON" or "OFF"
         notify("Auto Chloroform: " .. status, "Keybind X", 2)
-        print("[KEYBIND] X pressed - Auto Chloroform toggled to: " .. status)
     end
 end)
 
