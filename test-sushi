@@ -267,6 +267,7 @@ local background = { 'Intern', 'SofaSurfer', 'LineCook', 'TechEnthusiast', 'Amis
 UI.AddTab("Sushi Gambit", function(tab)
     local MainSec = tab:Section("Main", "Left", { "Auto", "Cheat", "Prompt" })
 
+end)
     if MainSec.page == 0 then
         MainSec:Toggle('auto_cooking', 'Auto Cooking', function(value) SETTINGS.Auto.Cooking.Enabled = value; notify("Auto Cooking: " .. tostring(value), "", 3) end)
         MainSec:Toggle('auto_washing', 'Auto DishWashing', function(value) SETTINGS.Auto.Washing.Enabled = value; notify("Auto DishWashing: " .. tostring(value), "", 3) end)
@@ -811,7 +812,6 @@ folder.ChildRemoved:Connect(function(npc)
     customer_list[addr] = nil
 end)
 
--- Cache existing NPCs on script load
 for _, npc in ipairs(folder:GetChildren()) do
     local addr = npc.Address
     npc_cache[addr] = {
@@ -820,7 +820,7 @@ for _, npc in ipairs(folder:GetChildren()) do
         attrs = {}
     }
     cacheNPCAttributes(npc)
-end  -- <-- REMOVE THE ) 
+end
 
 
 -- NPC ACTION LOOP (processes seat customer and creates ESP entities)
