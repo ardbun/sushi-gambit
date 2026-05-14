@@ -4,6 +4,14 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
+-- Add this right after line where UserInputService is defined (around line 8)
+print("=== USERINPUT DEBUG ===")
+print("UserInputService exists:", UserInputService ~= nil)
+print("InputBegan exists:", UserInputService and UserInputService.InputBegan ~= nil)
+print("InputEnded exists:", UserInputService and UserInputService.InputEnded ~= nil)
+print("InputChanged exists:", UserInputService and UserInputService.InputChanged ~= nil)
+print("=========================")
+
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local gameData = ReplicatedStorage:WaitForChild("GameData")
@@ -639,46 +647,64 @@ function TattooAlerts:Start()
     end)
 end
 
--- DRAG HANDLER (FIXED - removed deprecated GetMouse)
--- DRAG HANDLER
+-- DRAG HANDLER (SAFE VERSION - prevents nil errors)
 local function SetupDrag()
+    -- Check if UserInputService and required events exist
+    if not UserInputService then
+        warn("UserInputService not available - drag disabled")
+        return
+    end
+    
     local dragging = false
     local dragOffset = Vector2.new(0, 0)
     
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-        if not input or not input.UserInputType then return end
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            local mousePos = UserInputService:GetMouseLocation()
-            if not mousePos then return end
-            
-            local px, py = Window.position.X, Window.position.Y
-            local w, h = Window.size.X, Window.size.Y
-            
-            if mousePos.X >= px and mousePos.X <= px + w and mousePos.Y >= py and mousePos.Y <= py + h then
-                dragging = true
-                dragOffset = Vector2.new(mousePos.X - px, mousePos.Y - py)
+    -- Safe InputBegan
+    if UserInputService.InputBegan then
+        UserInputService.InputBegan:Connect(function(input, gameProcessed)
+            if gameProcessed then return end
+            if not input or not input.UserInputType then return end
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                local mousePos = UserInputService:GetMouseLocation()
+                if not mousePos then return end
+                
+                local px, py = Window.position.X, Window.position.Y
+                local w, h = Window.size.X, Window.size.Y
+                
+                if mousePos.X >= px and mousePos.X <= px + w and mousePos.Y >= py and mousePos.Y <= py + h then
+                    dragging = true
+                    dragOffset = Vector2.new(mousePos.X - px, mousePos.Y - py)
+                end
             end
-        end
-    end)
+        end)
+    else
+        warn("InputBegan not available - drag start disabled")
+    end
     
-    UserInputService.InputEnded:Connect(function(input)
-        if not input or not input.UserInputType then return end
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if not input or not input.UserInputType then return end
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local mousePos = UserInputService:GetMouseLocation()
-            if mousePos then
-                Window.position = Vector2.new(mousePos.X - dragOffset.X, mousePos.Y - dragOffset.Y)
-                Window:UpdateGeometry()
+    -- Safe InputEnded
+    if UserInputService.InputEnded then
+        UserInputService.InputEnded:Connect(function(input)
+            if not input or not input.UserInputType then return end
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = false
             end
-        end
-    end)
+        end)
+    end
+    
+    -- Safe InputChanged (this was causing the crash)
+    if UserInputService.InputChanged then
+        UserInputService.InputChanged:Connect(function(input)
+            if not input or not input.UserInputType then return end
+            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                local mousePos = UserInputService:GetMouseLocation()
+                if mousePos then
+                    Window.position = Vector2.new(mousePos.X - dragOffset.X, mousePos.Y - dragOffset.Y)
+                    Window:UpdateGeometry()
+                end
+            end
+        end)
+    else
+        warn("InputChanged not available - drag movement disabled")
+    end
 end
 -- CHLOROFORM TOGGLE
 local function SetupChloroformToggle()
