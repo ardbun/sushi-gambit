@@ -1,3 +1,4 @@
+task.wait(1)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
@@ -15,9 +16,15 @@ repeat
     task.wait()
 until Character
 
-LocalPlayer.CharacterAdded:Connect(function(c)
-    Character = c
-end)
+local ok = false
+repeat
+    ok = pcall(function()
+        LocalPlayer.CharacterAdded:Connect(function(c)
+            Character = c
+        end)
+    end)
+    task.wait()
+until ok
 
 local GameData = ReplicatedStorage:WaitForChild("GameData")
 local PlayerStats = LocalPlayer:WaitForChild("PlayerStats")
