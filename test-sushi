@@ -362,7 +362,7 @@ local background = {
 UI.AddTab("Sushi Gambit", function(tab)
     local MainSec = tab:Section("Main", "Left", { "Auto", "Cheat", "Prompt" } )
 
-    if MainSec.page == 0 then
+   if MainSec.page == 0 then
         MainSec:Toggle('auto_cooking', 'Auto Cooking', function(value)
             notify("Auto Cooking: " .. tostring(value), "", 3)
             SETTINGS.Auto.Cooking.Enabled = value
@@ -380,7 +380,18 @@ UI.AddTab("Sushi Gambit", function(tab)
             notify("Auto Chloroform Spys: " .. tostring(value), "", 3)
             SETTINGS.Auto.ChloroformSpys.Enabled = value
         end)
+
     elseif MainSec.page == 1 then
+        MainSec:Button('Enable All', function()
+            local state = not SETTINGS.Cheat.Spoof.Greenbar.Enabled
+            UI.SetValue("spoof_greenbar", state)
+            UI.SetValue("instant_clean_dish", state)
+            UI.SetValue("spoof_sponge_effectiveness", state)
+            SETTINGS.Cheat.Spoof.Greenbar.Enabled = state
+            SETTINGS.Cheat.Instant.CleanDish.Enabled = state
+            SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled = state
+        end)
+
         MainSec:Toggle('spoof_greenbar', 'Spoof Greenbar', function(value)
             notify("Spoof Greenbar: " .. tostring(value), "", 3)
             SETTINGS.Cheat.Spoof.Greenbar.Enabled = value
@@ -503,6 +514,21 @@ end)
 
         NpcTab:Spacing()
         NpcTab:Text("Visuals")
+
+NpcTab:Button('Enable All', function()
+    local state = not ESP_SETTINGS.Dasher.Enabled
+    UI.SetValue("show_dasher", state)
+    UI.SetValue("show_armed", state)
+    UI.SetValue("show_police", state)
+    UI.SetValue("show_critic", state)
+    UI.SetValue("show_health_inspector", state)
+    ESP_SETTINGS.Dasher.Enabled = state
+    ESP_SETTINGS.Armed.Enabled = state
+    ESP_SETTINGS.Police.Enabled = state
+    ESP_SETTINGS.Critic.Enabled = state
+    ESP_SETTINGS.HealthInspector.Enabled = state
+end)
+
         NpcTab:Spacing()
 
         NpcTab:Toggle('show_dasher', 'Dasher', function(value)
@@ -582,13 +608,31 @@ end)
 
     local WindowSec = tab:Section("Window", "Right")
 
-    WindowSec:Toggle("show_statuswindow", "Enabled", function(value)
+   WindowSec:Toggle("show_statuswindow", "Enabled", function(value)
         ESP_SETTINGS.Windows.Enabled = value
         if ESP_SETTINGS.Windows.Enabled then
             Windows:Show(true)
         else
             Windows:Show(false)
         end
+    end)
+
+    WindowSec:Button('Enable All', function()
+        local state = not ESP_SETTINGS.Labels.day
+        UI.SetValue("show_daycounter", state)
+        UI.SetValue("show_waitinginline", state)
+        UI.SetValue("show_company_money", state)
+        UI.SetValue("show_vegstock", state)
+        UI.SetValue("show_fishstock", state)
+        UI.SetValue("show_humanfleshstock", state)
+        UI.SetValue("show_ricestock", state)
+        ESP_SETTINGS.Labels.day = state
+        ESP_SETTINGS.Labels.waitinginline = state
+        ESP_SETTINGS.Labels.companymoney = state
+        ESP_SETTINGS.Labels.vegstock = state
+        ESP_SETTINGS.Labels.fishstock = state
+        ESP_SETTINGS.Labels.humanfleshstock = state
+        ESP_SETTINGS.Labels.ricestock = state
     end)
 
     WindowSec:Toggle("show_daycounter", "Day Counter", function(value)
@@ -671,6 +715,45 @@ end)
 end)
 
 SETTINGS.Auto.Cooking.Enabled = UI.GetValue("auto_cooking")
+
+-- Force enable all cheats/esp/window labels on execute
+UI.SetValue("spoof_greenbar", true)
+UI.SetValue("instant_clean_dish", true)
+UI.SetValue("spoof_sponge_effectiveness", true)
+UI.SetValue("instant_seatcustomer", true)
+
+UI.SetValue("show_dasher", true)
+UI.SetValue("show_armed", true)
+UI.SetValue("show_police", true)
+UI.SetValue("show_critic", true)
+UI.SetValue("show_health_inspector", true)
+
+UI.SetValue("show_statuswindow", true)
+UI.SetValue("show_daycounter", true)
+UI.SetValue("show_waitinginline", true)
+UI.SetValue("show_company_money", true)
+UI.SetValue("show_vegstock", true)
+UI.SetValue("show_fishstock", true)
+UI.SetValue("show_humanfleshstock", true)
+UI.SetValue("show_ricestock", true)
+
+SETTINGS.Cheat.Spoof.Greenbar.Enabled = true
+SETTINGS.Cheat.Instant.CleanDish.Enabled = true
+SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled = true
+SETTINGS.Cheat.Instant.SeatCustomer.Enabled = true
+ESP_SETTINGS.Dasher.Enabled = true
+ESP_SETTINGS.Armed.Enabled = true
+ESP_SETTINGS.Police.Enabled = true
+ESP_SETTINGS.Critic.Enabled = true
+ESP_SETTINGS.HealthInspector.Enabled = true
+ESP_SETTINGS.Windows.Enabled = true
+ESP_SETTINGS.Labels.day = true
+ESP_SETTINGS.Labels.waitinginline = true
+ESP_SETTINGS.Labels.companymoney = true
+ESP_SETTINGS.Labels.vegstock = true
+ESP_SETTINGS.Labels.fishstock = true
+ESP_SETTINGS.Labels.humanfleshstock = true
+ESP_SETTINGS.Labels.ricestock = true
 
 SETTINGS.Auto.Washing.Enabled = UI.GetValue("auto_washing")
 SETTINGS.Auto.ChloroformSpys.Enabled = UI.GetValue("auto_chloroform_spys")
