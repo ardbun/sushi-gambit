@@ -47,13 +47,14 @@ task.spawn(function()
             chloroformToggleCooldown = true
             SETTINGS.Auto.ChloroformSpys.Enabled = not SETTINGS.Auto.ChloroformSpys.Enabled
             notify("Auto Chloroform: " .. (SETTINGS.Auto.ChloroformSpys.Enabled and "ON" or "OFF"), "", 2)
-            task.wait(0.5) -- debounce so it doesn't trigger multiple times
+            task.wait(0.5)
         elseif not iskeypressed(0x58) then
             chloroformToggleCooldown = false
         end
         task.wait()
     end
 end)
+
 local Lib = {}
 Lib.__index = Lib
 
@@ -123,9 +124,10 @@ function Lib.new(titleText, width, height, cornerRadius)
         local mx, my = mouse.X, mouse.Y
         local px, py = self.Position.X, self.Position.Y
         local sw, sh = self.Size.X, self.Size.Y
-        if ismouse1pressed() then
+        
+        if mouse1press() then
             if not dragging then
-                if mx >= px and mx <= px + sw and my >= py and my <= py + sh then
+                if mx >= px and mx <= px + sw and my >= py and my <= py + 30 then
                     dragging = true
                     dragOffset = Vector2.new(mx - px, my - py)
                 end
@@ -133,10 +135,12 @@ function Lib.new(titleText, width, height, cornerRadius)
         else
             dragging = false
         end
+        
         if dragging then
             self:Edit(Vector2.new(mx - dragOffset.X, my - dragOffset.Y))
         end
     end)
+    
     return self
 end
 
@@ -221,7 +225,6 @@ end
 local dayLabel = nil
 local waitinginline = nil
 local companyMoneyLabel = nil
-local electricityBillLabel = nil
 local vegLabel = nil
 local fishLabel = nil
 local HumanFlesh = nil
@@ -241,7 +244,6 @@ local ScreenGuiEnabled = get_offsets()["Offsets"]["GuiObject"]["ScreenGui_Enable
 local HoldDuration = get_offsets()["Offsets"]["ProximityPrompt"]["HoldDuration"]
 local PromptEnabled = get_offsets()["Offsets"]["ProximityPrompt"]["Enabled"]
 
-local Hat = { "", "BunnyEars", "BunnyTail", "TallyTopper", "OBCHardHat", "Pager", "ChefHat", "RobloxVisor", "Pencil", "HeadLeaves" }
 local background = { 'Intern', 'SofaSurfer', 'LineCook', 'TechEnthusiast', 'Amish', 'Butcher', 'CoffeeFanatic', 'UsedCarSalesman', 'Philanthropist', 'SelfAbsorbed' }
 
 UI.AddTab("Sushi Gambit", function(tab)
@@ -327,7 +329,7 @@ UI.AddTab("Sushi Gambit", function(tab)
         PlayerTab:Combo('background', 'Career Background', background, 0, function(idx, text) LocalPlayer.CareerBackground.EquippedCareerBackground.Value = text; notify("Career Background change to: " .. text, "", 3) end)
         PlayerTab:Tip('No "ForTheMoney" and "ForTheExperience", bc it will make game crash.')
     elseif PlayerTab.page == 1 then
-        PlayerTab:Toggle('notify_admin_join', 'Admin Alert', function(value) SETTINGS.NotifyAdminJoin = value; notify("Admin Alert: " .. tostring(value), "", 3) end)
+        PlayerTab:Toggle('notify_admin_join', 'Admin Alert', function(value) SETTINGS.Notify.AdminJoin.Enabled = value; notify("Admin Alert: " .. tostring(value), "", 3) end)
     end
 
     local NpcTab = tab:Section("Npc", "Left", { "Npc", "" })
@@ -360,7 +362,7 @@ UI.AddTab("Sushi Gambit", function(tab)
             ESP_SETTINGS.MAX_DIST = value
             ESP_SETTINGS.MAX_DIST_SQ = value * value
         end)
-    elseif NpcTab.page == 1 then end
+    end
 
     local CookingSec = tab:Section("Cooking", "Right", { "Cooking", "" })
     if CookingSec.page == 0 then
@@ -369,7 +371,7 @@ UI.AddTab("Sushi Gambit", function(tab)
         CookingSec:SliderInt('conveyor_speed', 'Conveyor Speed', 1, 10, 1, function(value) GameData.ConveyorSpeedValue.Value = value end)
     end
 
-        local WindowSec = tab:Section("Window", "Right")
+    local WindowSec = tab:Section("Window", "Right")
     WindowSec:Toggle("show_statuswindow", "Enabled", function(value)
         ESP_SETTINGS.Windows.Enabled = value
         if ESP_SETTINGS.Windows.Enabled then
@@ -397,6 +399,56 @@ UI.AddTab("Sushi Gambit", function(tab)
             if spoilageLabel then spoilageLabel:Delete(); spoilageLabel = nil end
             if dayLabel then dayLabel:Delete(); dayLabel = nil end
         end
+    end)
+
+    -- Individual label toggles (THESE WERE IN THE ORIGINAL WORKING SCRIPT)
+    WindowSec:Toggle("show_daycounter", "Show Day", function(value)
+        ESP_SETTINGS.Labels.day = value
+        if value and ESP_SETTINGS.Windows.Enabled then
+            if not dayLabel then dayLabel = Windows:AddLabel("Day: " .. tostring(GameData.CurrentDay.Value)) end
+        elseif dayLabel then dayLabel:Delete(); dayLabel = nil end
+    end)
+
+    WindowSec:Toggle("show_waitinginline", "Show Waiting In Line", function(value)
+        ESP_SETTINGS.Labels.waitinginline = value
+        if value and ESP_SETTINGS.Windows.Enabled then
+            if not waitinginline then waitinginline = Windows:AddLabel("WaitingInLine: 0") end
+        elseif waitinginline then waitinginline:Delete(); waitinginline = nil end
+    end)
+
+    WindowSec:Toggle("show_company_money", "Show Company Money", function(value)
+        ESP_SETTINGS.Labels.companymoney = value
+        if value and ESP_SETTINGS.Windows.Enabled then
+            if not companyMoneyLabel then companyMoneyLabel = Windows:AddLabel("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value)) end
+        elseif companyMoneyLabel then companyMoneyLabel:Delete(); companyMoneyLabel = nil end
+    end)
+
+    WindowSec:Toggle("show_vegstock", "Show Vegetables", function(value)
+        ESP_SETTINGS.Labels.vegstock = value
+        if value and ESP_SETTINGS.Windows.Enabled then
+            if not vegLabel then vegLabel = Windows:AddLabel("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value)) end
+        elseif vegLabel then vegLabel:Delete(); vegLabel = nil end
+    end)
+
+    WindowSec:Toggle("show_fishstock", "Show Fish", function(value)
+        ESP_SETTINGS.Labels.fishstock = value
+        if value and ESP_SETTINGS.Windows.Enabled then
+            if not fishLabel then fishLabel = Windows:AddLabel("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value)) end
+        elseif fishLabel then fishLabel:Delete(); fishLabel = nil end
+    end)
+
+    WindowSec:Toggle("show_humanfleshstock", "Show Human Flesh", function(value)
+        ESP_SETTINGS.Labels.humanfleshstock = value
+        if value and ESP_SETTINGS.Windows.Enabled then
+            if not HumanFlesh then HumanFlesh = Windows:AddLabel("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) end
+        elseif HumanFlesh then HumanFlesh:Delete(); HumanFlesh = nil end
+    end)
+
+    WindowSec:Toggle("show_ricestock", "Show Rice", function(value)
+        ESP_SETTINGS.Labels.ricestock = value
+        if value and ESP_SETTINGS.Windows.Enabled then
+            if not Rice then Rice = Windows:AddLabel("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
+        elseif Rice then Rice:Delete(); Rice = nil end
     end)
 
     local InfoSec = tab:Section("Info", "Right")
@@ -437,54 +489,52 @@ end)
 
 local key_map = { Q = 0x51, E = 0x45, R = 0x52, F = 0x46 }
 
+-- UPDATE LOOP - UPDATES CONSTANTLY (NO IsDragging check)
 task.spawn(function()
     while true do
-        if ESP_SETTINGS.Labels.waitinginline then
-            local i = 0
-            for _, npc in next, game.Workspace.NpcDestination.SpawnedNPCs:GetChildren() do
-                if npc:IsA("Model") and npc:GetAttribute("CurrentState") == "WaitingInLine" then
-                    i = i + 1
+        if ESP_SETTINGS.Windows.Enabled then
+            if ESP_SETTINGS.Labels.waitinginline and waitinginline then
+                local i = 0
+                for _, npc in next, game.Workspace.NpcDestination.SpawnedNPCs:GetChildren() do
+                    if npc:IsA("Model") and npc:GetAttribute("CurrentState") == "WaitingInLine" then
+                        i = i + 1
+                    end
                 end
+                waitinginline:SetText("WaitingInLine: " .. i)
             end
-            waitinginline:SetText("WaitingInLine: " .. i)
-        end
-        if ESP_SETTINGS.Labels.day and dayLabel then
-            dayLabel:SetText("Day: " .. tostring(GameData.CurrentDay.Value))
-        end
-        if ESP_SETTINGS.Labels.companymoney and companyMoneyLabel then
-            companyMoneyLabel:SetText("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value))
-        end
-        if ESP_SETTINGS.Labels.vegstock and vegLabel then
-            vegLabel:SetText("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value))
-        end
-        if ESP_SETTINGS.Labels.fishstock and fishLabel then
-            fishLabel:SetText("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value))
-        end
-        if ESP_SETTINGS.Labels.humanfleshstock and HumanFlesh then
-            HumanFlesh:SetText("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value))
-        end
-        if ESP_SETTINGS.Labels.ricestock and Rice then
-            Rice:SetText("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value))
-        end
-        if ESP_SETTINGS.Labels.spoilage and spoilageLabel then
-            local rate = game:GetService("ReplicatedStorage"):FindFirstChild("GameData")
-            if rate then
-                rate = rate:FindFirstChild("GameStats")
-                if rate then
-                    rate = rate:FindFirstChild("Stats")
-                    if rate then
-                        local spoilage = rate:FindFirstChild("SpoilageRate")
-                        if spoilage then
-                            spoilageLabel:SetText("Spoilage: " .. tostring(spoilage.Value))
-                        end
+            if ESP_SETTINGS.Labels.day and dayLabel then
+                dayLabel:SetText("Day: " .. tostring(GameData.CurrentDay.Value))
+            end
+            if ESP_SETTINGS.Labels.companymoney and companyMoneyLabel then
+                companyMoneyLabel:SetText("Company Money: " .. string.format("%.2f", GameData.CompanyMoney.Value))
+            end
+            if ESP_SETTINGS.Labels.vegstock and vegLabel then
+                vegLabel:SetText("Vegetables: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value))
+            end
+            if ESP_SETTINGS.Labels.fishstock and fishLabel then
+                fishLabel:SetText("Fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value))
+            end
+            if ESP_SETTINGS.Labels.humanfleshstock and HumanFlesh then
+                HumanFlesh:SetText("Human Flesh: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value))
+            end
+            if ESP_SETTINGS.Labels.ricestock and Rice then
+                Rice:SetText("Rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value))
+            end
+            if ESP_SETTINGS.Labels.spoilage and spoilageLabel then
+                local rate = game:GetService("ReplicatedStorage"):FindFirstChild("GameData")
+                if rate and rate:FindFirstChild("GameStats") and rate.GameStats:FindFirstChild("Stats") then
+                    local spoilage = rate.GameStats.Stats:FindFirstChild("SpoilageRate")
+                    if spoilage then
+                        spoilageLabel:SetText("Spoilage: " .. tostring(spoilage.Value))
                     end
                 end
             end
         end
-        task.wait(.1)
+        task.wait(0.05)
     end
 end)
 
+-- AUTO FEATURES LOOP (keep yours)
 task.spawn(function()
     local lastTimes = { cooking = 0, washing = 0, chloroform = 0, stats = 0 }
     while true do
@@ -573,10 +623,11 @@ task.spawn(function()
                 end
             end)
         end
-        task.wait()
+        task.wait(0.05)
     end
 end)
 
+-- ESP SYSTEM (keep your existing ESP code here)
 local STATE = { ACTIVE = 1, DESTROYED = 2 }
 local Entity = {}
 Entity.__index = Entity
