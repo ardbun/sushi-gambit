@@ -505,6 +505,13 @@ local AdminAlerts = {
 }
 
 function AdminAlerts:Init()
+    -- DEBUG - remove after testing
+    print("=== ADMIN ALERTS DEBUG ===")
+    print("Players:", Players)
+    print("PlayerAdded:", Players and Players.PlayerAdded)
+    print("typeof PlayerAdded:", Players and Players.PlayerAdded and typeof(Players.PlayerAdded))
+    print("==========================")
+    
     local function checkAdmin(p)
         for _, id in ipairs(self.adminIds) do
             if p.UserId == id and State.Notify.AdminJoin and not self.notified[p.UserId] then
@@ -519,9 +526,19 @@ function AdminAlerts:Init()
         checkAdmin(p)
     end
     
-    ConnectionManager:Add(Players.PlayerAdded:Connect(checkAdmin))
-end
-
+    local function safeConnect(event, fn)
+        if not event or typeof(event) ~= "RBXScriptSignal" then
+            warn("Invalid event connection attempt")
+            return nil
+        end
+        return event:Connect(fn)
+    end
+    
+    local conn = safeConnect(Players.PlayerAdded, checkAdmin)
+    if conn then
+        ConnectionManager:Add(conn)
+    end
+end  -- <-- THIS END was missing
 -- WINDOW LABEL UPDATES
 local WindowLabels = {
     dayLabel = nil,
