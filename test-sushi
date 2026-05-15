@@ -710,20 +710,6 @@ SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled = true
 SETTINGS.Notify.DineAndDash.Enabled = UI.GetValue("notify_dineanddash")
 SETTINGS.Notify.AdminJoin.Enabled = true
 
-ESP_SETTINGS.Dasher.Enabled = UI.GetValue("show_dasher")
-ESP_SETTINGS.Armed.Enabled = UI.GetValue("show_armed")
-ESP_SETTINGS.Police.Enabled = UI.GetValue("show_police")
-ESP_SETTINGS.Critic.Enabled = UI.GetValue("show_critic")
-ESP_SETTINGS.HealthInspector.Enabled = UI.GetValue("show_health_inspector")
-
-ESP_SETTINGS.Windows.Enabled = UI.GetValue("show_statuswindow")
-ESP_SETTINGS.Labels.day = UI.GetValue("show_daycounter")
-ESP_SETTINGS.Labels.companymoney = UI.GetValue("show_company_money")
-ESP_SETTINGS.Labels.vegstock = UI.GetValue("show_vegstock")
-ESP_SETTINGS.Labels.fishstock = UI.GetValue("show_fishstock")
-ESP_SETTINGS.Labels.humanfleshstock = UI.GetValue("show_humanfleshstock")
-ESP_SETTINGS.Labels.ricestock = UI.GetValue("show_ricestock")
-
 if ESP_SETTINGS.Windows.Enabled then
     Windows:Show(true)
 end
