@@ -500,16 +500,6 @@ end)
         NpcTab:Spacing()
         NpcTab:Text("Visuals")
 
-MainSec:Button('Enable All', function()
-    local state = not SETTINGS.Cheat.Spoof.Greenbar.Enabled
-    UI.SetValue("spoof_greenbar", state)
-    UI.SetValue("instant_clean_dish", state)
-    UI.SetValue("spoof_sponge_effectiveness", state)
-    SETTINGS.Cheat.Spoof.Greenbar.Enabled = state
-    SETTINGS.Cheat.Instant.CleanDish.Enabled = state
-    SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled = state
-end)
-
         NpcTab:Spacing()
 
         NpcTab:Toggle('show_dasher', 'Dasher', function(value)
