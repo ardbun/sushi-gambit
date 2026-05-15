@@ -16,10 +16,10 @@ local SETTINGS = {
         ChloroformSpys = {Enabled = false, delay = 0}
     },
     Cheat = {
-        Spoof = {Greenbar = {Enabled = false}, SpongeEffectiveness = {Enabled = false}},
-        Instant = {CleanDish = {Enabled = false}, SeatCustomer = {Enabled = true}}
+        Spoof = {Greenbar = {Enabled = true}, SpongeEffectiveness = {Enabled = true}},
+        Instant = {CleanDish = {Enabled = true}, SeatCustomer = {Enabled = true}}
     },
-    Notify = {DineAndDash = {Enabled = false}, AdminJoin = {Enabled = true}}
+    Notify = {AdminJoin = {Enabled = true}}
 }
 
 local ESP_SETTINGS = {
@@ -213,16 +213,16 @@ end
 createLabels()
 
 UI.AddTab("Sushi Gambit", function(tab)
-    local MainSec = tab:Section("Main", "Left", { "Auto", "Cheat", "Prompt" })
+    local MainSec = tab:Section("Main", "Left", { "auto", "fast cheats", "instant interact" })
 
     if MainSec.page == 0 then
-        MainSec:Toggle('auto_cooking', 'Auto Cooking', function(value)
-            notify("Auto Cooking: " .. tostring(value), "", 3)
+        MainSec:Toggle('auto_cooking', 'auto cook', function(value)
+            notify("auto cooking: " .. tostring(value), "", 3)
             SETTINGS.Auto.Cooking.Enabled = value
         end)
 
-        MainSec:Toggle('auto_washing', 'Auto DishWashing', function(value)
-            notify("Auto DishWashing: " .. tostring(value), "", 3)
+        MainSec:Toggle('auto_washing', 'auto wash', function(value)
+            notify("auto dishwashing: " .. tostring(value), "", 3)
             SETTINGS.Auto.Washing.Enabled = value
         end)
         
@@ -230,23 +230,23 @@ UI.AddTab("Sushi Gambit", function(tab)
             SETTINGS.Auto.Washing.delay = value
         end)
 
-        MainSec:Toggle('auto_chloroform_spys', 'Auto Chloroform Spys', function(value)
+        MainSec:Toggle('auto_chloroform_spys', 'auto kill', function(value)
             notify("Auto Chloroform Spys: " .. tostring(value), "", 3)
             SETTINGS.Auto.ChloroformSpys.Enabled = value
         end)
 
     elseif MainSec.page == 1 then
-        MainSec:Toggle('spoof_greenbar', 'Spoof Greenbar', function(value)
+        MainSec:Toggle('spoof_greenbar', 'fastest cook i know', function(value)
             notify("Spoof Greenbar: " .. tostring(value), "", 3)
             SETTINGS.Cheat.Spoof.Greenbar.Enabled = value
         end)
 
-        MainSec:Toggle('instant_clean_dish', 'Fast Clean Dish', function(value)
+        MainSec:Toggle('instant_clean_dish', 'fastest cleaner i know', function(value)
             notify("Fast Clean Dish: " .. tostring(value), "", 3)
             SETTINGS.Cheat.Instant.CleanDish.Enabled = value
         end)
 
-        MainSec:Toggle('spoof_sponge_effectiveness', 'Instant Sponge Effect', function(value)
+        MainSec:Toggle('spoof_sponge_effectiveness', 'one tapping them dishes', function(value)
             notify("Spoof Sponge Effectiveness: " .. tostring(value), "", 3)
             SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled = value
         end)
@@ -289,37 +289,34 @@ UI.AddTab("Sushi Gambit", function(tab)
         end)
     end
 
-    local PlayerTab = tab:Section("Player", "Left", { "Player", "Notify" })
+   local PlayerTab = tab:Section("Player", "Left")
     
-    if PlayerTab.page == 0 then
-        PlayerTab:Toggle('inf_stamina', 'Infinite Stamina', function(value)
-            notify("Infinite Stamina: " .. tostring(value), "", 3)
-            if value then
-                PlayerStats.StaminaUsageMultiplier.Value = -1
-                PlayerStats.StaminaGainMultiplier.Value = 100
-                PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
-            else
-                PlayerStats.StaminaUsageMultiplier.Value = 1
-                PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 1
-            end
-        end)
-        
-        PlayerTab:SliderInt('player_walkspeed', 'Walk Speed', 12, 20, 12, function(value)
-            PlayerStats.WalkSpeed.Value = value
-        end)
-        
-    elseif PlayerTab.page == 1 then
-        PlayerTab:Toggle('notify_admin_join', 'Admin Alert', function(value)
-            notify("Admin Alert: " .. tostring(value), "", 3)
-            SETTINGS.Notify.AdminJoin.Enabled = value
-        end)
-    end
+    PlayerTab:Toggle('inf_stamina', 'inf stamina', function(value)
+        notify("inf stam: " .. tostring(value), "", 3)
+        if value then
+            PlayerStats.StaminaUsageMultiplier.Value = -1
+            PlayerStats.StaminaGainMultiplier.Value = 100
+            PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
+        else
+            PlayerStats.StaminaUsageMultiplier.Value = 1
+            PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 1
+        end
+    end)
+    
+    PlayerTab:SliderInt('player_walkspeed', 'Walk Speed', 12, 20, 12, function(value)
+        PlayerStats.WalkSpeed.Value = value
+    end)
+    
+    PlayerTab:Toggle('notify_admin_join', 'admin alert', function(value)
+        notify("admin alert: " .. tostring(value), "", 3)
+        SETTINGS.Notify.AdminJoin.Enabled = value
+    end)
 
     local NpcTab = tab:Section("Npc", "Left", { "Npc", "" })
     
     if NpcTab.page == 0 then
-        NpcTab:Toggle('instant_seatcustomer', 'Instant Seat Customer', function(value)
-            notify("Instant Seat Customer: " .. tostring(value), "", 3)
+        NpcTab:Toggle('instant_seatcustomer', 'fast seating', function(value)
+            notify("instant seat customer: " .. tostring(value), "", 3)
             SETTINGS.Cheat.Instant.SeatCustomer.Enabled = value
         end)
 
@@ -327,28 +324,28 @@ UI.AddTab("Sushi Gambit", function(tab)
         NpcTab:Text("Visuals")
         NpcTab:Spacing()
 
-        NpcTab:Toggle('show_dasher', 'Dasher', function(value)
-            notify("Show Dasher: " .. tostring(value), "", 3)
+        NpcTab:Toggle('show_dasher', 'dasher npcs', function(value)
+            notify("esp dasher: " .. tostring(value), "", 3)
             ESP_SETTINGS.Dasher.Enabled = value
         end)
 
-        NpcTab:Toggle('show_armed', 'Armed NPC', function(value)
-            notify("Show Armed NPC: " .. tostring(value), "", 3)
+        NpcTab:Toggle('show_armed', 'armed npcs', function(value)
+            notify("esp armed: " .. tostring(value), "", 3)
             ESP_SETTINGS.Armed.Enabled = value
         end)
 
-        NpcTab:Toggle('show_police', 'Police NPC', function(value)
-            notify("Show Police NPC: " .. tostring(value), "", 3)
+        NpcTab:Toggle('show_police', 'police npcs', function(value)
+            notify("esp police: " .. tostring(value), "", 3)
             ESP_SETTINGS.Police.Enabled = value
         end)
 
-        NpcTab:Toggle('show_critic', 'Critic', function(value)
-            notify("Show Critic: " .. tostring(value), "", 3)
+        NpcTab:Toggle('show_critic', 'critic', function(value)
+            notify("esp critic: " .. tostring(value), "", 3)
             ESP_SETTINGS.Critic.Enabled = value
         end)
 
-        NpcTab:Toggle('show_health_inspector', 'Health Inspector', function(value)
-            notify("Show Health Inspector: " .. tostring(value), "", 3)
+        NpcTab:Toggle('show_health_inspector', 'inspector', function(value)
+            notify("esp evil inspector: " .. tostring(value), "", 3)
             ESP_SETTINGS.HealthInspector.Enabled = value
         end)
 
@@ -361,6 +358,20 @@ UI.AddTab("Sushi Gambit", function(tab)
 
 end)
 
+task.wait(2)
+local computer = game.Workspace.RestaurantArea.restaurant.Table.computer.ProximityPrompt.Address
+memory_write("float", computer + HoldDuration, 0)
+local conveyor_keypad = game.Workspace.RestaurantArea.restaurant.mainStuff.conveyors.keypad.PromptPart.ProximityPrompt.Address
+memory_write("float", conveyor_keypad + HoldDuration, 0)
+local freezer = game.Workspace.RestaurantArea.restaurant.FreezerDoor.PromptHitbox.ProximityPrompt.Address
+memory_write("float", freezer + HoldDuration, 0)
+local toolbin = game.Workspace.Toolbin.PromptHitbox.ProximityPrompt.Address
+memory_write("float", toolbin + HoldDuration, 0)
+local SeatingStation = game.Workspace.RestaurantArea.restaurant["the waiter stand thingy"].Stations.SeatingStation.TriggerPart.SeatCustomersPrompt.Address
+memory_write("float", SeatingStation + HoldDuration, 0)
+notify("Instant prompts enabled", "", 2)
+
+local STATE = {ACTIVE = 1, DESTROYED = 2}
 local STATE = {ACTIVE = 1, DESTROYED = 2}
 
 local Entity = {}
@@ -588,7 +599,43 @@ PlayerStats.StaminaUsageMultiplier.Value = -1
 PlayerStats.StaminaGainMultiplier.Value = 100
 PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
 
-notify('Sushi Gambit v2 (Optimized) loaded!', "", 4)
+task.spawn(function()
+    local warned = {}
+    local clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
+    
+    if not clockLabel then
+        return
+    end
+    
+    local lastTime = clockLabel.Text
+    
+    while true do
+        local currentTime = clockLabel.Text
+        
+        local targetTimes = {
+            "04:40PM",
+            "04:45PM",
+            "04:50PM", 
+            "04:55PM"
+        }
+        
+        for _, target in ipairs(targetTimes) do
+            if currentTime == target and not warned[target] then
+                warned[target] = true
+                notify("remove sun tat", "reminder", 5)
+            end
+        end
+        
+        if currentTime == "05:00AM" and lastTime ~= "05:00AM" then
+            warned = {}
+        end
+        
+        lastTime = currentTime
+        task.wait(0.5)
+    end
+end)
+
+notify('sushi COOKED', "", 4)
 
 if getgenv then
     getgenv().SushiGambitCleanup = function()
