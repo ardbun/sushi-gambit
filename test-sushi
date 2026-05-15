@@ -187,10 +187,13 @@ end
 local Windows = Lib.new("Sushi Gambit", 220, 160)
 Windows:Show(true)
 
-local offsets = HttpService:JSONDecode(game:HttpGet("https://imtheo.lol/Offsets/OffsetsHex.json"))
-local ScreenGuiEnabled = offsets.Offsets.GuiObject.ScreenGui_Enabled
-local HoldDuration = offsets.Offsets.ProximityPrompt.HoldDuration
-local PromptEnabled = offsets.Offsets.ProximityPrompt.Enabled
+local ok, raw = pcall(function()
+    return HttpService:JSONDecode(game:HttpGet("https://imtheo.lol/Offsets/OffsetsHex.json"))
+end)
+if not ok then warn("Offset fetch failed, using fallbacks") raw = {Offsets={GuiObject={ScreenGui_Enabled="0x4cc"},ProximityPrompt={HoldDuration="0x138",Enabled="0x14e"}}} end
+local ScreenGuiEnabled = tonumber(raw.Offsets.GuiObject.ScreenGui_Enabled, 16)
+local HoldDuration = tonumber(raw.Offsets.ProximityPrompt.HoldDuration, 16)
+local PromptEnabled = tonumber(raw.Offsets.ProximityPrompt.Enabled, 16)
 
 local function safePath(root, ...)
     local cur = root
@@ -282,38 +285,73 @@ local SeatingStation = game.Workspace.RestaurantArea.restaurant["the waiter stan
 memory_write("float", SeatingStation + HoldDuration, 0)
 notify("Instant prompts enabled", "", 2)
 
-local STATE = {ACTIVE = 1, DESTROYED = 2}
-local STATE = {ACTIVE = 1, DESTROYED = 2}
+local STATE = {
+    ACTIVE = 1,
+    DESTROYED = 2
+}
 
 local Entity = {}
 Entity.__index = Entity
 
-function Entity.new(instance, textObj, typeName)
+function Entity.new(instance, text, typeName)
+    local head = instance:FindFirstChild("Head")
+    text.Text = typeName
     return setmetatable({
         Instance = instance,
-        Text = textObj,
+        Head = head,
+        Text = text,
         Type = typeName,
         State = STATE.ACTIVE
     }, Entity)
 end
 
-function Entity:Update(pos, onScreen)
+function Entity:Update(pos, onScreen, enabled)
     if self.State == STATE.DESTROYED then return end
-    self.Text.Visible = onScreen
-    if onScreen then self.Text.Position = pos end
+    if not enabled then
+        self:Destroy()
+        return
+    end
+    if not onScreen then
+        if self.Text.Visible then
+            self.Text.Visible = false
+        end
+        return
+    end
+    self.Text.Position = pos
+    if not self.Text.Visible then
+        self.Text.Visible = true
+    end
 end
 
 function Entity:Destroy()
     if self.State == STATE.DESTROYED then return end
     self.State = STATE.DESTROYED
-    pcall(function() self.Text:Remove() end)
+    pcall(function()
+        self.Text:Remove()
+    end)
 end
 
-local Manager = {Entities = {}, List = {}}
+function Entity:Hide()
+    if self.Text then
+        self.Text.Visible = false
+    end
+end
 
-function Manager:Add(id, ent)
-    self.Entities[id] = ent
-    table.insert(self.List, ent)
+function Entity:SetColor(color)
+    if self.Text then
+        self.Text.Color = color
+        self.Text.Outline = true
+    end
+end
+
+local Manager = {
+    Entities = {},
+    List = {}
+}
+
+function Manager:Add(id, entity)
+    self.Entities[id] = entity
+    table.insert(self.List, entity)
 end
 
 function Manager:Remove(id)
@@ -321,111 +359,146 @@ function Manager:Remove(id)
     if ent then
         ent:Destroy()
         self.Entities[id] = nil
-        for i, v in ipairs(self.List) do
-            if v == ent then table.remove(self.List, i) break end
+        for i = 1, #self.List do
+            if self.List[i] == ent then
+                table.remove(self.List, i)
+                break
+            end
         end
     end
 end
 
-local npcCache = {}
-local customer_list = {}
 local folder = game.Workspace.NpcDestination.SpawnedNPCs
+local customer_list = {}
 
-local heartbeatConn
-local lastLabelUpdate = 0
-local lastNPCScan = 0
-
-heartbeatConn = RunService.Heartbeat:Connect(function(dt)
-    local now = tick()
-
-if now - lastLabelUpdate > 0.2 then
-    lastLabelUpdate = now
-    if dayLabel then dayLabel:SetText("day: "..GameData.CurrentDay.Value) end
-    if companyMoneyLabel then companyMoneyLabel:SetText("money: "..string.format("%.2f", GameData.CompanyMoney.Value)) end
-    if vegLabel then vegLabel:SetText("veggies: "..GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value.."/"..GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value) end
-    if fishLabel then fishLabel:SetText("fish: "..GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value.."/"..GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value) end
-    if humanFleshLabel then humanFleshLabel:SetText("meat: "..GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value.."/"..GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value) end
-    if riceLabel then riceLabel:SetText("rice: "..GameData.Ingredients.IngredientsStorage.Rice.Stock.Value.."/"..GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value) end
-end
-
-    if now - lastNPCScan > 0.4 then
-        lastNPCScan = now
+local npc_cache = {}
+task.spawn(function()
+    while true do
         local seen = {}
-
         for _, npc in ipairs(folder:GetChildren()) do
             local addr = npc.Address
             seen[addr] = true
-
-            if not npcCache[addr] then
-                npcCache[addr] = {
-                    inst = npc,
-                    head = npc:FindFirstChild("Head"),
-                    humanoid = npc:FindFirstChild("Humanoid")
-                }
+            if not npc_cache[addr] then
+                npc_cache[addr] = { inst = npc, head = npc:FindFirstChild("Head")}
             end
         end
-
-        for addr in pairs(npcCache) do
-            if not seen[addr] or not npcCache[addr].inst:IsDescendantOf(game) then
-                customer_list[addr] = nil
-                Manager:Remove(addr)
-                npcCache[addr] = nil
+        for addr in pairs(npc_cache) do
+            if not seen[addr] then
+                npc_cache[addr] = nil
             end
         end
+        task.wait(0.5)
     end
+end)
 
-    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    for addr, cached in pairs(npcCache) do
-        local npc = cached.inst
-        if not npc then continue end
+task.spawn(function()
+    while true do
+        if not isrbxactive() then task.wait(0.2) continue end
+        for addr, cached in pairs(npc_cache) do
+            local npc = cached.inst
 
-        if SETTINGS.Cheat.Instant.SeatCustomer.Enabled and npc:GetAttribute("CurrentState") == "WaitingInLine" and not customer_list[addr] then
-            local prompt = safePath(npc, "Torso", "WaitProximityPrompt")
-            if prompt then
-                memory_write("float", prompt.Address + HoldDuration, 0)
-                customer_list[addr] = true
-            end
-        end
-
-        local ent = Manager.Entities[addr]
-        local cfg = ESP_SETTINGS[ent and ent.Type or ""]
-
-        if ent and (not cfg or not cfg.Enabled) then
-            Manager:Remove(addr)
-        elseif cfg and cfg.Enabled then
-            if not ent then
-                local t = Drawing.new("Text")
-                t.Outline = true
-                t.Size = 18
-                ent = Entity.new(npc, t, "Unknown")
-                Manager:Add(addr, ent)
-            end
-
-            ent.Instance = npc
-            local head = cached.head
-            if head and head.Parent and (not cached.humanoid or cached.humanoid.Health > 0) then
-                if root and (head.Position - root.Position).Magnitude > ESP_SETTINGS.MAX_DIST then
-                    ent:Update(nil, false)
-                else
-                    local pos, onScreen = WorldToScreen(head.Position + Vector3.new(0, 1.5, 0))
-                    ent.Text.Color = cfg.Color
-                    ent:Update(pos, onScreen)
+            -- Dasher
+            if ESP_SETTINGS.Dasher.Enabled then
+                local ent = Manager.Entities[addr]
+                if customer_list[addr] then
+                    local torso = npc:FindFirstChild("Torso")
+                    local prompt = torso and torso:FindFirstChild("CatchDasherPrompt")
+                    if prompt then
+                        memory_write("float", prompt.Address + HoldDuration, 0)
+                        if not ent then
+                            customer_list[addr] = nil
+                            Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Dasher"))
+                        else
+                            ent.Instance = npc
+                        end
+                    end
                 end
-            else
-                ent:Update(nil, false)
+            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Dasher" then
+                Manager:Remove(addr)
+            end
+
+            -- Police
+            if ESP_SETTINGS.Police.Enabled and npc:GetAttribute("Cop") == true then
+                if not Manager.Entities[addr] then
+                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Police"))
+                else
+                    Manager.Entities[addr].Instance = npc
+                end
+            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Police" then
+                Manager:Remove(addr)
+            end
+
+            -- Armed
+            if ESP_SETTINGS.Armed.Enabled and npc:GetAttribute("WeaponOfChoice") == "Knife" then
+                if not Manager.Entities[addr] then
+                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Armed"))
+                else
+                    Manager.Entities[addr].Instance = npc
+                end
+            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Armed" then
+                Manager:Remove(addr)
+            end
+
+            -- Critic
+            if ESP_SETTINGS.Critic.Enabled and npc:GetAttribute("Critic") == true then
+                if not Manager.Entities[addr] then
+                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Critic"))
+                else
+                    Manager.Entities[addr].Instance = npc
+                end
+            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Critic" then
+                Manager:Remove(addr)
+            end
+
+            -- Health Inspector
+            if ESP_SETTINGS.HealthInspector.Enabled and npc:GetAttribute("Behavior") == "Inspector" then
+                if not Manager.Entities[addr] then
+                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Health Inspector"))
+                else
+                    Manager.Entities[addr].Instance = npc
+                end
+            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Health Inspector" then
+                Manager:Remove(addr)
             end
         end
-    end
 
-    if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
-        PlayerStats.EffectiveCookingLevel.Value = 1000
-        PlayerStats.NoIngredientUseChance.Value = 1
+        local clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
+        if clockLabel and clockLabel.Text == "08:00" then
+            customer_list = {}
+        end
+        task.wait(0.2)
     end
-    if SETTINGS.Cheat.Instant.CleanDish.Enabled then
-        PlayerStats.EffectiveCleaningLevel.Value = 9999
-    end
-    if SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled then
-        PlayerStats.SpongeEffectiveness.Value = 9999
+end)
+
+local heartbeatConn = RunService.Heartbeat:Connect(function()
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    for id, entity in pairs(Manager.Entities) do
+        local cached = npc_cache[id]
+        if not cached then
+            Manager:Remove(id)
+            continue
+        end
+        local head = cached.head
+        if not head or not head.Parent then
+            entity:Hide()
+            continue
+        end
+        local cfg = ESP_SETTINGS[entity.Type]
+        if not cfg then
+            Manager:Remove(id)
+            continue
+        end
+        if not cfg.Enabled then
+            entity:Hide()
+            continue
+        end
+        if root and (head.Position - root.Position).Magnitude > ESP_SETTINGS.MAX_DIST then
+            entity:Hide()
+            continue
+        end
+        entity:SetColor(cfg.Color)
+        local pos, onScreen = WorldToScreen(head.Position + Vector3.new(0, 1.5, 0))
+        entity:Update(pos, onScreen, true)
     end
 end)
 
