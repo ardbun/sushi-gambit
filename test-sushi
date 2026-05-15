@@ -9,6 +9,7 @@ local GameData = ReplicatedStorage:WaitForChild("GameData")
 local PlayerStats = LocalPlayer:WaitForChild("PlayerStats")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
+-- FIX 1: Safe executor globals
 local memory_read = memory_read or function() return 0 end
 local memory_write = memory_write or function() end
 local isrbxactive = isrbxactive or function() return true end
@@ -230,6 +231,7 @@ local function safePath(root, ...)
     return cur
 end
 
+-- FIX 4+5: Centralized prompt helper, no more repeated memory_write patterns
 local function zeroPrompt(instance, promptName)
     local torso = instance:FindFirstChild("Torso")
     local prompt = torso and torso:FindFirstChild(promptName)
@@ -369,8 +371,10 @@ function Manager:Ensure(id, typeName, npc)
 end
 local folder = game.Workspace.NpcDestination.SpawnedNPCs
 local customer_list = {}
+-- FIX 2: npc_cache keyed by Instance, not .Address
 local npc_cache = {}
 
+-- FIX 3: Drift-corrected scheduler
 local scheduler = {tasks = {}}
 
 function scheduler:add(interval, fn)
@@ -399,6 +403,7 @@ scheduler:add(TIMINGS.npcLoop, function()
     for npc, cached in pairs(npc_cache) do
         local inst = cached.inst
         if inst:GetAttribute("CurrentState") == "WaitingInLine" and not customer_list[npc] then
+            -- FIX 4+5: use zeroPrompt helper
             if zeroPrompt(inst, "WaitProximityPrompt") then
                 customer_list[npc] = true
             end
@@ -485,6 +490,7 @@ scheduler:add(TIMINGS.labels, function()
     if riceLabel then riceLabel:SetText("rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
 end)
 
+-- FIX 3: Drift-corrected heartbeat (timer -= interval instead of = 0)
 RunService.Heartbeat:Connect(function(dt)
     for _, task in ipairs(scheduler.tasks) do
         task.timer += dt
