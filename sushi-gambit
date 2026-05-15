@@ -9,7 +9,6 @@ local GameData = ReplicatedStorage:WaitForChild("GameData")
 local PlayerStats = LocalPlayer:WaitForChild("PlayerStats")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- FIX 1: Safe executor globals
 local memory_read = memory_read or function() return 0 end
 local memory_write = memory_write or function() end
 local isrbxactive = isrbxactive or function() return true end
@@ -231,7 +230,6 @@ local function safePath(root, ...)
     return cur
 end
 
--- FIX 4+5: Centralized prompt helper, no more repeated memory_write patterns
 local function zeroPrompt(instance, promptName)
     local torso = instance:FindFirstChild("Torso")
     local prompt = torso and torso:FindFirstChild(promptName)
@@ -346,89 +344,15 @@ function Entity:SetColor(color)
     end
 end
 
-local NPC_TYPES = {
-    {key = "Police",          attr = "Cop",            val = true,        label = "Police"},
-    {key = "Armed",           attr = "WeaponOfChoice", val = "Knife",     label = "Armed"},
-    {key = "Critic",          attr = "Critic",         val = true,        label = "Critic"},
-    {key = "HealthInspector", attr = "Behavior",       val = "Inspector", label = "Health Inspector"},
-}
-
-local Manager = {Entities = {}}
-
-function Manager:Add(id, entity) self.Entities[id] = entity end
-
-function Manager:Remove(id)
-    local ent = self.Entities[id]
-    if ent then ent:Destroy() self.Entities[id] = nil end
-end
-
-function Manager:Ensure(id, typeName, npc)
-    if not self.Entities[id] then
-        Manager:Add(id, Entity.new(npc, Drawing.new("Text"), typeName))
-    else
-        self.Entities[id].Instance = npc
-    end
-end
 local folder = game.Workspace.NpcDestination.SpawnedNPCs
 local customer_list = {}
--- FIX 2: npc_cache keyed by Instance, not .Address
 local npc_cache = {}
 
--- FIX 3: Drift-corrected scheduler
 local scheduler = {tasks = {}}
 
 function scheduler:add(interval, fn)
     table.insert(self.tasks, {interval = interval, timer = 0, fn = fn})
 end
-
-scheduler:add(TIMINGS.npcCache, function()
-    local seen = {}
-    for _, npc in ipairs(folder:GetChildren()) do
-        seen[npc] = true
-        if not npc_cache[npc] then
-            npc_cache[npc] = {inst = npc, head = npc:FindFirstChild("Head")}
-        end
-    end
-    for npc in pairs(npc_cache) do
-        if not seen[npc] then
-            npc_cache[npc] = nil
-            customer_list[npc] = nil
-            Manager:Remove(npc)
-        end
-    end
-end)
-
-scheduler:add(TIMINGS.npcLoop, function()
-    if not isrbxactive() then return end
-    for npc, cached in pairs(npc_cache) do
-        local inst = cached.inst
-        if inst:GetAttribute("CurrentState") == "WaitingInLine" and not customer_list[npc] then
-            -- FIX 4+5: use zeroPrompt helper
-            if zeroPrompt(inst, "WaitProximityPrompt") then
-                customer_list[npc] = true
-            end
-        end
-        if ESP_SETTINGS.Dasher.Enabled then
-            if customer_list[npc] then
-                if zeroPrompt(inst, "CatchDasherPrompt") then
-                    customer_list[npc] = nil
-                    Manager:Ensure(npc, "Dasher", inst)
-                end
-            end
-        elseif Manager.Entities[npc] and Manager.Entities[npc].Type == "Dasher" then
-            Manager:Remove(npc)
-        end
-        for _, t in ipairs(NPC_TYPES) do
-            if ESP_SETTINGS[t.key].Enabled and inst:GetAttribute(t.attr) == t.val then
-                Manager:Ensure(npc, t.label, inst)
-            elseif Manager.Entities[npc] and Manager.Entities[npc].Type == t.label then
-                Manager:Remove(npc)
-            end
-        end
-    end
-    local clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
-    if clockLabel and clockLabel.Text == "05:00" then customer_list = {} end
-end)
 
 scheduler:add(TIMINGS.cooking, function()
     if not SETTINGS.Auto.Cooking.Enabled then return end
@@ -490,7 +414,6 @@ scheduler:add(TIMINGS.labels, function()
     if riceLabel then riceLabel:SetText("rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
 end)
 
--- FIX 3: Drift-corrected heartbeat (timer -= interval instead of = 0)
 RunService.Heartbeat:Connect(function(dt)
     for _, task in ipairs(scheduler.tasks) do
         task.timer += dt
