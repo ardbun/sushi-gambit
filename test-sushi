@@ -430,7 +430,7 @@ scheduler:add(TIMINGS.npcLoop, function()
         end
     end
     local clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
-    if clockLabel and clockLabel.Text == "08:00" then customer_list = {} end
+    if clockLabel and clockLabel.Text == "05:00" then customer_list = {} end
 end)
 
 scheduler:add(TIMINGS.cooking, function()
