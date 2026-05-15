@@ -37,6 +37,15 @@ local ESP_SETTINGS = {
     }
 }
 
+local TIMINGS = {
+    npcCache   = 0.5,
+    npcLoop    = 0.2,
+    cooking    = 0.05,
+    washing    = 0.08,
+    chloroform = 0.012,
+    labels     = 0.1,
+}
+
 local Lib = {} 
 Lib.__index = Lib
 
@@ -232,7 +241,7 @@ task.spawn(function()
         if fishLabel then fishLabel:SetText("fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value)) end
         if humanFleshLabel then humanFleshLabel:SetText("meat: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) end
         if riceLabel then riceLabel:SetText("rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
-        task.wait(0.1)
+        task.wait(TIMINGS.labels)
     end
 end)
 
@@ -362,6 +371,14 @@ function Manager:Remove(id)
     end
 end
 
+function Manager:Ensure(id, typeName, npc)
+    if not self.Entities[id] then
+        Manager:Add(id, Entity.new(npc, Drawing.new("Text"), typeName))
+    else
+        self.Entities[id].Instance = npc
+    end
+end
+
 local folder = game.Workspace.NpcDestination.SpawnedNPCs
 local customer_list = {}
 
@@ -380,10 +397,10 @@ task.spawn(function()
     if not seen[addr] then
         npc_cache[addr] = nil
         customer_list[addr] = nil
-        Manager:Remove(addr)  -- cleans up ESP label too
+        Manager:Remove(addr)
     end
 end
-        task.wait(0.5)
+        task.wait(TIMINGS.npcCache)
     end
 end)
 
@@ -409,12 +426,8 @@ task.spawn(function()
                     local prompt = torso and torso:FindFirstChild("CatchDasherPrompt")
                     if prompt then
                         memory_write("float", prompt.Address + HoldDuration, 0)
-                        if not ent then
-                            customer_list[addr] = nil
-                            Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Dasher"))
-                        else
-                            ent.Instance = npc
-                        end
+                      customer_list[addr] = nil
+                        Manager:Ensure(addr, "Dasher", npc)
                     end
                 end
             elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Dasher" then
@@ -423,11 +436,7 @@ task.spawn(function()
 
 for _, t in ipairs(NPC_TYPES) do
                 if ESP_SETTINGS[t.key].Enabled and npc:GetAttribute(t.attr) == t.val then
-                    if not Manager.Entities[addr] then
-                        Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), t.label))
-                    else
-                        Manager.Entities[addr].Instance = npc
-                    end
+                  Manager:Ensure(addr, t.label, npc)
                 elseif Manager.Entities[addr] and Manager.Entities[addr].Type == t.label then
                     Manager:Remove(addr)
                 end
@@ -438,7 +447,7 @@ for _, t in ipairs(NPC_TYPES) do
         if clockLabel and clockLabel.Text == "08:00" then
             customer_list = {}
         end
-        task.wait(0.2)
+        task.wait(TIMINGS.npcLoop)
     end
 end)
 
@@ -492,7 +501,7 @@ task.spawn(function()
                 end
             end
         end
-        task.wait(0.05)
+        task.wait(TIMINGS.cooking)
     end
 end)
 
@@ -515,7 +524,7 @@ task.spawn(function()
                 end
             end
         end
-        task.wait(0.08)
+        task.wait(TIMINGS.washing)
     end
 end)
 
@@ -531,7 +540,7 @@ task.spawn(function()
                 end
             end
         end
-        task.wait(0.012)
+        task.wait(TIMINGS.chloroform)
     end
 end)
 
