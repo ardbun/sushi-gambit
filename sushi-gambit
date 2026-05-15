@@ -296,58 +296,6 @@ local SeatingStation = game.Workspace.RestaurantArea.restaurant["the waiter stan
 memory_write("float", SeatingStation + HoldDuration, 0)
 notify("Instant prompts enabled", "", 2)
 
-local STATE = {
-    ACTIVE = 1,
-    DESTROYED = 2
-}
-
-local Entity = {}
-Entity.__index = Entity
-
-function Entity.new(instance, text, typeName)
-    local head = instance:FindFirstChild("Head")
-    text.Text = typeName
-    return setmetatable({
-        Instance = instance,
-        Head = head,
-        Text = text,
-        Type = typeName,
-        State = STATE.ACTIVE
-    }, Entity)
-end
-
-function Entity:Update(pos, onScreen, enabled)
-    if self.State == STATE.DESTROYED then return end
-    if not enabled then self:Destroy() return end
-    if not onScreen then
-        if self.Text.Visible then self.Text.Visible = false end
-        return
-    end
-    self.Text.Position = pos
-    if not self.Text.Visible then self.Text.Visible = true end
-end
-
-function Entity:Destroy()
-    if self.State == STATE.DESTROYED then return end
-    self.State = STATE.DESTROYED
-    pcall(function() self.Text:Remove() end)
-end
-
-function Entity:Hide()
-    if self.Text then self.Text.Visible = false end
-end
-
-function Entity:SetColor(color)
-    if self.Text then
-        self.Text.Color = color
-        self.Text.Outline = true
-    end
-end
-
-local folder = game.Workspace.NpcDestination.SpawnedNPCs
-local customer_list = {}
-local npc_cache = {}
-
 local scheduler = {tasks = {}}
 
 function scheduler:add(interval, fn)
@@ -471,6 +419,5 @@ notify('sushi COOKED', "", 4)
 if getgenv then
     getgenv().SushiGambitCleanup = function()
         Windows:Delete()
-        for _, v in pairs(Manager.Entities) do v:Destroy() end
     end
 end
