@@ -233,17 +233,6 @@ local function createLabels()
 end
 task.wait(2)
 createLabels()
-task.spawn(function()
-    while true do
-        if dayLabel then dayLabel:SetText("day: " .. tostring(GameData.CurrentDay.Value)) end
-        if companyMoneyLabel then companyMoneyLabel:SetText("money: " .. string.format("%.2f", GameData.CompanyMoney.Value)) end
-        if vegLabel then vegLabel:SetText("veggies: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value)) end
-        if fishLabel then fishLabel:SetText("fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value)) end
-        if humanFleshLabel then humanFleshLabel:SetText("meat: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) end
-        if riceLabel then riceLabel:SetText("rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
-        task.wait(TIMINGS.labels)
-    end
-end)
 
 UI.AddTab("Sushi Gambit", function(tab)
     local MainSec = tab:Section("Main", "Left", { "auto" })
@@ -378,169 +367,128 @@ function Manager:Ensure(id, typeName, npc)
         self.Entities[id].Instance = npc
     end
 end
-
 local folder = game.Workspace.NpcDestination.SpawnedNPCs
 local customer_list = {}
-
 local npc_cache = {}
-task.spawn(function()
-    while true do
-        local seen = {}
-        for _, npc in ipairs(folder:GetChildren()) do
-            local addr = npc.Address
-            seen[addr] = true
-            if not npc_cache[addr] then
-                npc_cache[addr] = { inst = npc, head = npc:FindFirstChild("Head")}
-            end
-        end
-        for addr in pairs(npc_cache) do
-    if not seen[addr] then
-        npc_cache[addr] = nil
-        customer_list[addr] = nil
-        Manager:Remove(addr)
-    end
+local scheduler = {
+    tasks = {}
+}
+
+function scheduler:add(interval, fn)
+    table.insert(self.tasks, {interval = interval, timer = 0, fn = fn})
 end
-        task.wait(TIMINGS.npcCache)
+
+scheduler:add(TIMINGS.npcCache, function()
+    local seen = {}
+    for _, npc in ipairs(folder:GetChildren()) do
+        local addr = npc.Address
+        seen[addr] = true
+        if not npc_cache[addr] then
+            npc_cache[addr] = {inst = npc, head = npc:FindFirstChild("Head")}
+        end
+    end
+    for addr in pairs(npc_cache) do
+        if not seen[addr] then
+            npc_cache[addr] = nil
+            customer_list[addr] = nil
+            Manager:Remove(addr)
+        end
     end
 end)
 
-task.spawn(function()
-    while true do
-        if not isrbxactive() then task.wait(0.2) continue end
-        for addr, cached in pairs(npc_cache) do
-            local npc = cached.inst
-
-            if npc:GetAttribute("CurrentState") == "WaitingInLine" and not customer_list[addr] then
+scheduler:add(TIMINGS.npcLoop, function()
+    if not isrbxactive() then return end
+    for addr, cached in pairs(npc_cache) do
+        local npc = cached.inst
+        if npc:GetAttribute("CurrentState") == "WaitingInLine" and not customer_list[addr] then
+            local torso = npc:FindFirstChild("Torso")
+            local prompt = torso and torso:FindFirstChild("WaitProximityPrompt")
+            if prompt and prompt.Address then
+                memory_write("float", prompt.Address + HoldDuration, 0)
+                customer_list[addr] = true
+            end
+        end
+        if ESP_SETTINGS.Dasher.Enabled then
+            if customer_list[addr] then
                 local torso = npc:FindFirstChild("Torso")
-                local prompt = torso and torso:FindFirstChild("WaitProximityPrompt")
-                if prompt and prompt.Address then
+                local prompt = torso and torso:FindFirstChild("CatchDasherPrompt")
+                if prompt then
                     memory_write("float", prompt.Address + HoldDuration, 0)
-                    customer_list[addr] = true
+                    customer_list[addr] = nil
+                    Manager:Ensure(addr, "Dasher", npc)
                 end
             end
-
-            if ESP_SETTINGS.Dasher.Enabled then
-                local ent = Manager.Entities[addr]
-                if customer_list[addr] then
-                    local torso = npc:FindFirstChild("Torso")
-                    local prompt = torso and torso:FindFirstChild("CatchDasherPrompt")
-                    if prompt then
-                        memory_write("float", prompt.Address + HoldDuration, 0)
-                      customer_list[addr] = nil
-                        Manager:Ensure(addr, "Dasher", npc)
-                    end
-                end
-            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Dasher" then
+        elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Dasher" then
+            Manager:Remove(addr)
+        end
+        for _, t in ipairs(NPC_TYPES) do
+            if ESP_SETTINGS[t.key].Enabled and npc:GetAttribute(t.attr) == t.val then
+                Manager:Ensure(addr, t.label, npc)
+            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == t.label then
                 Manager:Remove(addr)
             end
-
-for _, t in ipairs(NPC_TYPES) do
-                if ESP_SETTINGS[t.key].Enabled and npc:GetAttribute(t.attr) == t.val then
-                  Manager:Ensure(addr, t.label, npc)
-                elseif Manager.Entities[addr] and Manager.Entities[addr].Type == t.label then
-                    Manager:Remove(addr)
-                end
-            end
-        end -- closes: for addr, cached in pairs(npc_cache) do
-
-        local clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
-        if clockLabel and clockLabel.Text == "08:00" then
-            customer_list = {}
         end
-        task.wait(TIMINGS.npcLoop)
+    end
+    local clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
+    if clockLabel and clockLabel.Text == "08:00" then customer_list = {} end
+end)
+
+scheduler:add(TIMINGS.cooking, function()
+    if not SETTINGS.Auto.Cooking.Enabled then return end
+    local gui = PlayerGui:FindFirstChild("MakeSushiMinigame")
+    if not gui then return end
+    if memory_read("byte", gui.Address + ScreenGuiEnabled) == 1 then
+        local bar = gui.MainFrame:FindFirstChild("CuttingBarFrame")
+        if bar then
+            local slider = bar.CutBar.Slider.AbsolutePosition
+            local green = bar.CutBar.GreenBar.AbsolutePosition
+            if slider.X >= green.X and slider.X <= green.X + bar.CutBar.GreenBar.AbsoluteSize.X then
+                keypress(0x43) keyrelease(0x43)
+            end
+        end
     end
 end)
 
-local heartbeatConn = RunService.Heartbeat:Connect(function()
-    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    for id, entity in pairs(Manager.Entities) do
-        local cached = npc_cache[id]
-        if not cached then
-            Manager:Remove(id)
-            continue
+scheduler:add(TIMINGS.washing, function()
+    if not SETTINGS.Auto.Washing.Enabled then return end
+    local gui = PlayerGui:FindFirstChild("DishWashingGui")
+    if not gui or memory_read("byte", gui.Address + ScreenGuiEnabled) ~= 1 then return end
+    local sink = game.Workspace.Kitchen:FindFirstChild("TheSink")
+    if not sink or sink.DirtyDishAmount.Value == 0 then return end
+    for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
+        if v.Name == "KeyTemplate" then
+            local key = ({Q=0x51, E=0x45, R=0x52, F=0x46})[v:GetAttribute("Key")]
+            if key then keypress(key) keyrelease(key) end
         end
-        local head = cached.head
-        if not head or not head.Parent then
-            entity:Hide()
-            continue
-        end
-        local cfg = ESP_SETTINGS[entity.Type]
-        if not cfg then
-            Manager:Remove(id)
-            continue
-        end
-        if not cfg.Enabled then
-            entity:Hide()
-            continue
-        end
-        if root and (head.Position - root.Position).Magnitude > ESP_SETTINGS.MAX_DIST then
-            entity:Hide()
-            continue
-        end
-        entity:SetColor(cfg.Color)
-        local pos, onScreen = WorldToScreen(head.Position + Vector3.new(0, 1.5, 0))
-        entity:Update(pos, onScreen, true)
     end
 end)
 
-task.spawn(function()
-    while true do
-        if SETTINGS.Auto.Cooking.Enabled then
-            local gui = PlayerGui:FindFirstChild("MakeSushiMinigame")
-            if gui then
-                local addr = gui.Address
-                if memory_read("byte", addr + ScreenGuiEnabled) == 1 then
-                    local bar = gui.MainFrame:FindFirstChild("CuttingBarFrame")
-                    if bar then
-                        local slider = bar.CutBar.Slider.AbsolutePosition
-                        local green = bar.CutBar.GreenBar.AbsolutePosition
-                        if slider.X >= green.X and slider.X <= green.X + bar.CutBar.GreenBar.AbsoluteSize.X then
-                            keypress(0x43) keyrelease(0x43)
-                        end
-                    end
-                end
-            end
-        end
-        task.wait(TIMINGS.cooking)
-    end
+scheduler:add(TIMINGS.chloroform, function()
+    if not SETTINGS.Auto.ChloroformSpys.Enabled then return end
+    local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Chloroform Spray")
+    if not tool then return end
+    local label = tool:FindFirstChild("ChloroformChallenge", true) and tool.ChloroformChallenge.ButtonToHitFrame.Container:FindFirstChild("TextLabel")
+    if not label then return end
+    local k = label.Text == "Q" and 0x51 or label.Text == "E" and 0x45
+    if k then keypress(k) keyrelease(k) end
 end)
 
-task.spawn(function()
-    while true do
-        if SETTINGS.Auto.Washing.Enabled then
-            local gui = PlayerGui:FindFirstChild("DishWashingGui")
-            if gui and memory_read("byte", gui.Address + ScreenGuiEnabled) == 1 then
-                local sink = game.Workspace.Kitchen:FindFirstChild("TheSink")
-                if sink and sink.DirtyDishAmount.Value > 0 then
-                    for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
-                        if v.Name == "KeyTemplate" then
-                            local key = ({Q=0x51, E=0x45, R=0x52, F=0x46})[v:GetAttribute("Key")]
-                            if key then
-                                keypress(key) keyrelease(key)
-                                task.wait(SETTINGS.Auto.Washing.delay)
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        task.wait(TIMINGS.washing)
-    end
+scheduler:add(TIMINGS.labels, function()
+    if dayLabel then dayLabel:SetText("day: " .. tostring(GameData.CurrentDay.Value)) end
+    if companyMoneyLabel then companyMoneyLabel:SetText("money: " .. string.format("%.2f", GameData.CompanyMoney.Value)) end
+    if vegLabel then vegLabel:SetText("veggies: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value)) end
+    if fishLabel then fishLabel:SetText("fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value)) end
+    if humanFleshLabel then humanFleshLabel:SetText("meat: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) end
+    if riceLabel then riceLabel:SetText("rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
 end)
 
-task.spawn(function()
-    while true do
-        if SETTINGS.Auto.ChloroformSpys.Enabled then
-            local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Chloroform Spray")
-            if tool then
-                local label = tool:FindFirstChild("ChloroformChallenge", true) and tool.ChloroformChallenge.ButtonToHitFrame.Container:FindFirstChild("TextLabel")
-                if label then
-                    local k = label.Text == "Q" and 0x51 or label.Text == "E" and 0x45
-                    if k then keypress(k) keyrelease(k) end
-                end
-            end
+RunService.Heartbeat:Connect(function(dt)
+    for _, task in ipairs(scheduler.tasks) do
+        task.timer += dt
+        if task.timer >= task.interval then
+            task.timer = 0
+            task.fn()
         end
-        task.wait(TIMINGS.chloroform)
     end
 end)
 
@@ -604,7 +552,6 @@ notify('sushi COOKED', "", 4)
 
 if getgenv then
     getgenv().SushiGambitCleanup = function()
-        if heartbeatConn then heartbeatConn:Disconnect() end
         Windows:Delete()
         for _, v in pairs(Manager.Entities) do v:Destroy() end
     end
