@@ -9,6 +9,14 @@ local GameData = ReplicatedStorage:WaitForChild("GameData")
 local PlayerStats = LocalPlayer:WaitForChild("PlayerStats")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
+-- FIX 1: Safe executor globals
+local memory_read = memory_read or function() return 0 end
+local memory_write = memory_write or function() end
+local isrbxactive = isrbxactive or function() return true end
+local ismouse1pressed = ismouse1pressed or function() return false end
+local keypress = keypress or function() end
+local keyrelease = keyrelease or function() end
+
 local SETTINGS = {
     Auto = {
         Cooking = {Enabled = false, delay = 0},
@@ -46,7 +54,7 @@ local TIMINGS = {
     labels     = 0.1,
 }
 
-local Lib = {} 
+local Lib = {}
 Lib.__index = Lib
 
 function Lib.new(titleText, width, height, cornerRadius)
@@ -176,7 +184,7 @@ function Lib:AddLabel(text, color)
 
     local entry = {drawing = d, relPos = Vector2.new(12, 0)}
     table.insert(self.Labels, entry)
-    
+
     for i, e in ipairs(self.Labels) do
         e.relPos = Vector2.new(12, LABEL_START_Y + (i-1)*LABEL_STEP)
         e.drawing.Position = self.Position + e.relPos
@@ -200,6 +208,7 @@ local ok, raw = pcall(function()
     return HttpService:JSONDecode(game:HttpGet("https://imtheo.lol/Offsets/OffsetsHex.json"))
 end)
 if not ok then warn("Offset fetch failed, using fallbacks") raw = {Offsets={GuiObject={ScreenGui_Enabled="0x4cc"},ProximityPrompt={HoldDuration="0x138",Enabled="0x14e"}}} end
+
 local function getOffset(tbl, ...)
     local cur = tbl
     for _, k in ipairs({...}) do
@@ -220,6 +229,17 @@ local function safePath(root, ...)
         cur = cur:FindFirstChild(k)
     end
     return cur
+end
+
+-- FIX 4+5: Centralized prompt helper, no more repeated memory_write patterns
+local function zeroPrompt(instance, promptName)
+    local torso = instance:FindFirstChild("Torso")
+    local prompt = torso and torso:FindFirstChild(promptName)
+    if prompt and prompt.Address then
+        memory_write("float", prompt.Address + HoldDuration, 0)
+        return true
+    end
+    return false
 end
 
 local dayLabel, companyMoneyLabel, vegLabel, fishLabel, humanFleshLabel, riceLabel
@@ -247,7 +267,7 @@ UI.AddTab("Sushi Gambit", function(tab)
             notify("auto dishwashing: " .. tostring(value), "", 3)
             SETTINGS.Auto.Washing.Enabled = value
         end)
-        
+
         MainSec:SliderFloat('auto_washing_delay', 'Delay (ms)', 0.1, 2.0, 0.1, '%.1f', function(value)
             SETTINGS.Auto.Washing.delay = value
         end)
@@ -259,7 +279,7 @@ UI.AddTab("Sushi Gambit", function(tab)
     end
 
     local PlayerTab = tab:Section("Player", "Left")
-    
+
     PlayerTab:SliderInt('player_walkspeed', 'Walk Speed', 12, 20, 12, function(value)
         PlayerStats.WalkSpeed.Value = value
     end)
@@ -300,34 +320,23 @@ end
 
 function Entity:Update(pos, onScreen, enabled)
     if self.State == STATE.DESTROYED then return end
-    if not enabled then
-        self:Destroy()
-        return
-    end
+    if not enabled then self:Destroy() return end
     if not onScreen then
-        if self.Text.Visible then
-            self.Text.Visible = false
-        end
+        if self.Text.Visible then self.Text.Visible = false end
         return
     end
     self.Text.Position = pos
-    if not self.Text.Visible then
-        self.Text.Visible = true
-    end
+    if not self.Text.Visible then self.Text.Visible = true end
 end
 
 function Entity:Destroy()
     if self.State == STATE.DESTROYED then return end
     self.State = STATE.DESTROYED
-    pcall(function()
-        self.Text:Remove()
-    end)
+    pcall(function() self.Text:Remove() end)
 end
 
 function Entity:Hide()
-    if self.Text then
-        self.Text.Visible = false
-    end
+    if self.Text then self.Text.Visible = false end
 end
 
 function Entity:SetColor(color)
@@ -344,20 +353,13 @@ local NPC_TYPES = {
     {key = "HealthInspector", attr = "Behavior",       val = "Inspector", label = "Health Inspector"},
 }
 
-local Manager = {
-    Entities = {}
-}
+local Manager = {Entities = {}}
 
-function Manager:Add(id, entity)
-    self.Entities[id] = entity
-end
+function Manager:Add(id, entity) self.Entities[id] = entity end
 
 function Manager:Remove(id)
     local ent = self.Entities[id]
-    if ent then
-        ent:Destroy()
-        self.Entities[id] = nil
-    end
+    if ent then ent:Destroy() self.Entities[id] = nil end
 end
 
 function Manager:Ensure(id, typeName, npc)
@@ -369,10 +371,11 @@ function Manager:Ensure(id, typeName, npc)
 end
 local folder = game.Workspace.NpcDestination.SpawnedNPCs
 local customer_list = {}
+-- FIX 2: npc_cache keyed by Instance, not .Address
 local npc_cache = {}
-local scheduler = {
-    tasks = {}
-}
+
+-- FIX 3: Drift-corrected scheduler
+local scheduler = {tasks = {}}
 
 function scheduler:add(interval, fn)
     table.insert(self.tasks, {interval = interval, timer = 0, fn = fn})
@@ -381,51 +384,45 @@ end
 scheduler:add(TIMINGS.npcCache, function()
     local seen = {}
     for _, npc in ipairs(folder:GetChildren()) do
-        local addr = npc.Address
-        seen[addr] = true
-        if not npc_cache[addr] then
-            npc_cache[addr] = {inst = npc, head = npc:FindFirstChild("Head")}
+        seen[npc] = true
+        if not npc_cache[npc] then
+            npc_cache[npc] = {inst = npc, head = npc:FindFirstChild("Head")}
         end
     end
-    for addr in pairs(npc_cache) do
-        if not seen[addr] then
-            npc_cache[addr] = nil
-            customer_list[addr] = nil
-            Manager:Remove(addr)
+    for npc in pairs(npc_cache) do
+        if not seen[npc] then
+            npc_cache[npc] = nil
+            customer_list[npc] = nil
+            Manager:Remove(npc)
         end
     end
 end)
 
 scheduler:add(TIMINGS.npcLoop, function()
     if not isrbxactive() then return end
-    for addr, cached in pairs(npc_cache) do
-        local npc = cached.inst
-        if npc:GetAttribute("CurrentState") == "WaitingInLine" and not customer_list[addr] then
-            local torso = npc:FindFirstChild("Torso")
-            local prompt = torso and torso:FindFirstChild("WaitProximityPrompt")
-            if prompt and prompt.Address then
-                memory_write("float", prompt.Address + HoldDuration, 0)
-                customer_list[addr] = true
+    for npc, cached in pairs(npc_cache) do
+        local inst = cached.inst
+        if inst:GetAttribute("CurrentState") == "WaitingInLine" and not customer_list[npc] then
+            -- FIX 4+5: use zeroPrompt helper
+            if zeroPrompt(inst, "WaitProximityPrompt") then
+                customer_list[npc] = true
             end
         end
         if ESP_SETTINGS.Dasher.Enabled then
-            if customer_list[addr] then
-                local torso = npc:FindFirstChild("Torso")
-                local prompt = torso and torso:FindFirstChild("CatchDasherPrompt")
-                if prompt then
-                    memory_write("float", prompt.Address + HoldDuration, 0)
-                    customer_list[addr] = nil
-                    Manager:Ensure(addr, "Dasher", npc)
+            if customer_list[npc] then
+                if zeroPrompt(inst, "CatchDasherPrompt") then
+                    customer_list[npc] = nil
+                    Manager:Ensure(npc, "Dasher", inst)
                 end
             end
-        elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Dasher" then
-            Manager:Remove(addr)
+        elseif Manager.Entities[npc] and Manager.Entities[npc].Type == "Dasher" then
+            Manager:Remove(npc)
         end
         for _, t in ipairs(NPC_TYPES) do
-            if ESP_SETTINGS[t.key].Enabled and npc:GetAttribute(t.attr) == t.val then
-                Manager:Ensure(addr, t.label, npc)
-            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == t.label then
-                Manager:Remove(addr)
+            if ESP_SETTINGS[t.key].Enabled and inst:GetAttribute(t.attr) == t.val then
+                Manager:Ensure(npc, t.label, inst)
+            elseif Manager.Entities[npc] and Manager.Entities[npc].Type == t.label then
+                Manager:Remove(npc)
             end
         end
     end
@@ -472,7 +469,18 @@ scheduler:add(TIMINGS.chloroform, function()
     local k = label.Text == "Q" and 0x51 or label.Text == "E" and 0x45
     if k then keypress(k) keyrelease(k) end
 end)
-
+scheduler:add(0.1, function()
+    if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
+        PlayerStats.EffectiveCookingLevel.Value = 1000
+        PlayerStats.NoIngredientUseChance.Value = 1
+    end
+    if SETTINGS.Cheat.Instant.CleanDish.Enabled then
+        PlayerStats.EffectiveCleaningLevel.Value = 9999
+    end
+    if SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled then
+        PlayerStats.SpongeEffectiveness.Value = 9999
+    end
+end)
 scheduler:add(TIMINGS.labels, function()
     if dayLabel then dayLabel:SetText("day: " .. tostring(GameData.CurrentDay.Value)) end
     if companyMoneyLabel then companyMoneyLabel:SetText("money: " .. string.format("%.2f", GameData.CompanyMoney.Value)) end
@@ -482,11 +490,12 @@ scheduler:add(TIMINGS.labels, function()
     if riceLabel then riceLabel:SetText("rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
 end)
 
+-- FIX 3: Drift-corrected heartbeat (timer -= interval instead of = 0)
 RunService.Heartbeat:Connect(function(dt)
     for _, task in ipairs(scheduler.tasks) do
         task.timer += dt
         if task.timer >= task.interval then
-            task.timer = 0
+            task.timer -= task.interval
             task.fn()
         end
     end
@@ -515,34 +524,20 @@ PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
 task.spawn(function()
     local warned = {}
     local clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
-    
-    if not clockLabel then
-        return
-    end
-    
+    if not clockLabel then return end
     local lastTime = clockLabel.Text
-    
     while true do
         local currentTime = clockLabel.Text
-        
-        local targetTimes = {
-            "04:40PM",
-            "04:45PM",
-            "04:50PM", 
-            "04:55PM"
-        }
-        
+        local targetTimes = {"04:40PM", "04:45PM", "04:50PM", "04:55PM"}
         for _, target in ipairs(targetTimes) do
             if currentTime == target and not warned[target] then
                 warned[target] = true
                 notify("remove sun tat", "reminder", 5)
             end
         end
-        
         if currentTime == "05:00AM" and lastTime ~= "05:00AM" then
             warned = {}
         end
-        
         lastTime = currentTime
         task.wait(0.5)
     end
