@@ -213,7 +213,7 @@ end
 createLabels()
 
 UI.AddTab("Sushi Gambit", function(tab)
-    local MainSec = tab:Section("Main", "Left", { "auto", "fast cheats", "instant interact" })
+    local MainSec = tab:Section("Main", "Left", { "auto" })
 
     if MainSec.page == 0 then
         MainSec:Toggle('auto_cooking', 'auto cook', function(value)
@@ -234,128 +234,39 @@ UI.AddTab("Sushi Gambit", function(tab)
             notify("Auto Chloroform Spys: " .. tostring(value), "", 3)
             SETTINGS.Auto.ChloroformSpys.Enabled = value
         end)
-
-    elseif MainSec.page == 1 then
-        MainSec:Toggle('spoof_greenbar', 'fastest cook i know', function(value)
-            notify("Spoof Greenbar: " .. tostring(value), "", 3)
-            SETTINGS.Cheat.Spoof.Greenbar.Enabled = value
-        end)
-
-        MainSec:Toggle('instant_clean_dish', 'fastest cleaner i know', function(value)
-            notify("Fast Clean Dish: " .. tostring(value), "", 3)
-            SETTINGS.Cheat.Instant.CleanDish.Enabled = value
-        end)
-
-        MainSec:Toggle('spoof_sponge_effectiveness', 'one tapping them dishes', function(value)
-            notify("Spoof Sponge Effectiveness: " .. tostring(value), "", 3)
-            SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled = value
-        end)
-
-    elseif MainSec.page == 2 then
-        local promptc = MainSec:Combo('prompt_type', 'Prompt Type', { 'ALL', 'Computer', 'Conveyor', 'Freezer', 'Toolbin', 'SeatingStation' }, 0, function(idx, text)
-            notify("Click button to set instant prompt: " .. text, "", 3)
-        end)
-
-        MainSec:Button('Set instant prompt', function()
-            local text = promptc:GetText()
-            if text == 'ALL' then
-                local computer = game.Workspace.RestaurantArea.restaurant.Table.computer.ProximityPrompt.Address
-                memory_write("float", computer + HoldDuration, 0)
-                local conveyor_keypad = game.Workspace.RestaurantArea.restaurant.mainStuff.conveyors.keypad.PromptPart.ProximityPrompt.Address
-                memory_write("float", conveyor_keypad + HoldDuration, 0)
-                local freezer = game.Workspace.RestaurantArea.restaurant.FreezerDoor.PromptHitbox.ProximityPrompt.Address
-                memory_write("float", freezer + HoldDuration, 0)
-                local toolbin = game.Workspace.Toolbin.PromptHitbox.ProximityPrompt.Address
-                memory_write("float", toolbin + HoldDuration, 0)
-                local SeatingStation = game.Workspace.RestaurantArea.restaurant["the waiter stand thingy"].Stations.SeatingStation.TriggerPart.SeatCustomersPrompt.Address
-                memory_write("float", SeatingStation + HoldDuration, 0)
-                notify("All prompts set to instant", "INSTANT PROMPT", 2)
-            elseif text == 'Computer' then
-                memory_write("float", game.Workspace.RestaurantArea.restaurant.Table.computer.ProximityPrompt.Address + HoldDuration, 0)
-                notify("Computer prompt set to instant", "INSTANT PROMPT", 2)
-            elseif text == 'Conveyor' then
-                memory_write("float", game.Workspace.RestaurantArea.restaurant.mainStuff.conveyors.keypad.PromptPart.ProximityPrompt.Address + HoldDuration, 0)
-                notify("Conveyor prompt set to instant", "INSTANT PROMPT", 2)
-            elseif text == 'Freezer' then
-                memory_write("float", game.Workspace.RestaurantArea.restaurant.FreezerDoor.PromptHitbox.ProximityPrompt.Address + HoldDuration, 0)
-                notify("Freezer prompt set to instant", "INSTANT PROMPT", 2)
-            elseif text == 'Toolbin' then
-                memory_write("float", game.Workspace.Toolbin.PromptHitbox.ProximityPrompt.Address + HoldDuration, 0)
-                notify("Toolbin prompt set to instant", "INSTANT PROMPT", 2)
-            elseif text == 'SeatingStation' then
-                memory_write("float", game.Workspace.RestaurantArea.restaurant["the waiter stand thingy"].Stations.SeatingStation.TriggerPart.SeatCustomersPrompt.Address + HoldDuration, 0)
-                notify("SeatingStation prompt set to instant", "INSTANT PROMPT", 2)
-            end
-        end)
     end
 
-   local PlayerTab = tab:Section("Player", "Left")
+    local NpcTab = tab:Section("NPC ESP", "Left")
     
-    PlayerTab:Toggle('inf_stamina', 'inf stamina', function(value)
-        notify("inf stam: " .. tostring(value), "", 3)
-        if value then
-            PlayerStats.StaminaUsageMultiplier.Value = -1
-            PlayerStats.StaminaGainMultiplier.Value = 100
-            PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
-        else
-            PlayerStats.StaminaUsageMultiplier.Value = 1
-            PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 1
-        end
-    end)
-    
-    PlayerTab:SliderInt('player_walkspeed', 'Walk Speed', 12, 20, 12, function(value)
-        PlayerStats.WalkSpeed.Value = value
-    end)
-    
-    PlayerTab:Toggle('notify_admin_join', 'admin alert', function(value)
-        notify("admin alert: " .. tostring(value), "", 3)
-        SETTINGS.Notify.AdminJoin.Enabled = value
+    NpcTab:Toggle('show_dasher', 'dasher npcs', function(value)
+        notify("esp dasher: " .. tostring(value), "", 3)
+        ESP_SETTINGS.Dasher.Enabled = value
     end)
 
-    local NpcTab = tab:Section("Npc", "Left", { "Npc", "" })
-    
-    if NpcTab.page == 0 then
-        NpcTab:Toggle('instant_seatcustomer', 'fast seating', function(value)
-            notify("instant seat customer: " .. tostring(value), "", 3)
-            SETTINGS.Cheat.Instant.SeatCustomer.Enabled = value
-        end)
+    NpcTab:Toggle('show_armed', 'armed npcs', function(value)
+        notify("esp armed: " .. tostring(value), "", 3)
+        ESP_SETTINGS.Armed.Enabled = value
+    end)
 
-        NpcTab:Spacing()
-        NpcTab:Text("Visuals")
-        NpcTab:Spacing()
+    NpcTab:Toggle('show_police', 'police npcs', function(value)
+        notify("esp police: " .. tostring(value), "", 3)
+        ESP_SETTINGS.Police.Enabled = value
+    end)
 
-        NpcTab:Toggle('show_dasher', 'dasher npcs', function(value)
-            notify("esp dasher: " .. tostring(value), "", 3)
-            ESP_SETTINGS.Dasher.Enabled = value
-        end)
+    NpcTab:Toggle('show_critic', 'critic', function(value)
+        notify("esp critic: " .. tostring(value), "", 3)
+        ESP_SETTINGS.Critic.Enabled = value
+    end)
 
-        NpcTab:Toggle('show_armed', 'armed npcs', function(value)
-            notify("esp armed: " .. tostring(value), "", 3)
-            ESP_SETTINGS.Armed.Enabled = value
-        end)
+    NpcTab:Toggle('show_health_inspector', 'inspector', function(value)
+        notify("esp evil inspector: " .. tostring(value), "", 3)
+        ESP_SETTINGS.HealthInspector.Enabled = value
+    end)
 
-        NpcTab:Toggle('show_police', 'police npcs', function(value)
-            notify("esp police: " .. tostring(value), "", 3)
-            ESP_SETTINGS.Police.Enabled = value
-        end)
-
-        NpcTab:Toggle('show_critic', 'critic', function(value)
-            notify("esp critic: " .. tostring(value), "", 3)
-            ESP_SETTINGS.Critic.Enabled = value
-        end)
-
-        NpcTab:Toggle('show_health_inspector', 'inspector', function(value)
-            notify("esp evil inspector: " .. tostring(value), "", 3)
-            ESP_SETTINGS.HealthInspector.Enabled = value
-        end)
-
-        NpcTab:SliderInt('npc_esp_maxdist', 'Max Distance', 10, 200, 200, function(value)
-            ESP_SETTINGS.MAX_DIST = value
-            ESP_SETTINGS.MAX_DIST_SQ = value * value
-        end)
-    end
-
-
+    NpcTab:SliderInt('npc_esp_maxdist', 'Max Distance', 10, 200, 200, function(value)
+        ESP_SETTINGS.MAX_DIST = value
+        ESP_SETTINGS.MAX_DIST_SQ = value * value
+      end)
 end)
 
 task.wait(2)
