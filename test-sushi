@@ -213,7 +213,19 @@ local function createLabels()
     if ESP_SETTINGS.Labels.companymoney then companyMoneyLabel = Windows:AddLabel("money: 0.00") end
     if ESP_SETTINGS.Labels.day then dayLabel = Windows:AddLabel("day: 0") end
 end
+task.wait(2)
 createLabels()
+task.spawn(function()
+    while true do
+        if dayLabel then dayLabel:SetText("day: " .. tostring(GameData.CurrentDay.Value)) end
+        if companyMoneyLabel then companyMoneyLabel:SetText("money: " .. string.format("%.2f", GameData.CompanyMoney.Value)) end
+        if vegLabel then vegLabel:SetText("veggies: " .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Vegetables.MaxStock.Value)) end
+        if fishLabel then fishLabel:SetText("fish: " .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.AssortedFish.MaxStock.Value)) end
+        if humanFleshLabel then humanFleshLabel:SetText("meat: " .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.HumanFlesh.MaxStock.Value)) end
+        if riceLabel then riceLabel:SetText("rice: " .. tostring(GameData.Ingredients.IngredientsStorage.Rice.Stock.Value) .. "/" .. tostring(GameData.Ingredients.IngredientsStorage.Rice.MaxStock.Value)) end
+        task.wait(0.1)
+    end
+end)
 
 UI.AddTab("Sushi Gambit", function(tab)
     local MainSec = tab:Section("Main", "Left", { "auto" })
@@ -239,37 +251,11 @@ UI.AddTab("Sushi Gambit", function(tab)
         end)
     end
 
-    local NpcTab = tab:Section("NPC ESP", "Left")
+    local PlayerTab = tab:Section("Player", "Left")
     
-    NpcTab:Toggle('show_dasher', 'dasher npcs', function(value)
-        notify("esp dasher: " .. tostring(value), "", 3)
-        ESP_SETTINGS.Dasher.Enabled = value
+    PlayerTab:SliderInt('player_walkspeed', 'Walk Speed', 12, 20, 12, function(value)
+        PlayerStats.WalkSpeed.Value = value
     end)
-
-    NpcTab:Toggle('show_armed', 'armed npcs', function(value)
-        notify("esp armed: " .. tostring(value), "", 3)
-        ESP_SETTINGS.Armed.Enabled = value
-    end)
-
-    NpcTab:Toggle('show_police', 'police npcs', function(value)
-        notify("esp police: " .. tostring(value), "", 3)
-        ESP_SETTINGS.Police.Enabled = value
-    end)
-
-    NpcTab:Toggle('show_critic', 'critic', function(value)
-        notify("esp critic: " .. tostring(value), "", 3)
-        ESP_SETTINGS.Critic.Enabled = value
-    end)
-
-    NpcTab:Toggle('show_health_inspector', 'inspector', function(value)
-        notify("esp evil inspector: " .. tostring(value), "", 3)
-        ESP_SETTINGS.HealthInspector.Enabled = value
-    end)
-
-    NpcTab:SliderInt('npc_esp_maxdist', 'Max Distance', 10, 200, 200, function(value)
-        ESP_SETTINGS.MAX_DIST = value
-        ESP_SETTINGS.MAX_DIST_SQ = value * value
-      end)
 end)
 
 task.wait(2)
@@ -345,13 +331,11 @@ function Entity:SetColor(color)
 end
 
 local Manager = {
-    Entities = {},
-    List = {}
+    Entities = {}
 }
 
 function Manager:Add(id, entity)
     self.Entities[id] = entity
-    table.insert(self.List, entity)
 end
 
 function Manager:Remove(id)
@@ -359,12 +343,6 @@ function Manager:Remove(id)
     if ent then
         ent:Destroy()
         self.Entities[id] = nil
-        for i = 1, #self.List do
-            if self.List[i] == ent then
-                table.remove(self.List, i)
-                break
-            end
-        end
     end
 end
 
@@ -397,7 +375,15 @@ task.spawn(function()
         for addr, cached in pairs(npc_cache) do
             local npc = cached.inst
 
-            -- Dasher
+            if npc:GetAttribute("CurrentState") == "WaitingInLine" and not customer_list[addr] then
+                local torso = npc:FindFirstChild("Torso")
+                local prompt = torso and torso:FindFirstChild("WaitProximityPrompt")
+                if prompt and prompt.Address then
+                    memory_write("float", prompt.Address + HoldDuration, 0)
+                    customer_list[addr] = true
+                end
+            end
+
             if ESP_SETTINGS.Dasher.Enabled then
                 local ent = Manager.Entities[addr]
                 if customer_list[addr] then
@@ -417,7 +403,6 @@ task.spawn(function()
                 Manager:Remove(addr)
             end
 
-            -- Police
             if ESP_SETTINGS.Police.Enabled and npc:GetAttribute("Cop") == true then
                 if not Manager.Entities[addr] then
                     Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Police"))
@@ -428,7 +413,6 @@ task.spawn(function()
                 Manager:Remove(addr)
             end
 
-            -- Armed
             if ESP_SETTINGS.Armed.Enabled and npc:GetAttribute("WeaponOfChoice") == "Knife" then
                 if not Manager.Entities[addr] then
                     Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Armed"))
@@ -439,7 +423,6 @@ task.spawn(function()
                 Manager:Remove(addr)
             end
 
-            -- Critic
             if ESP_SETTINGS.Critic.Enabled and npc:GetAttribute("Critic") == true then
                 if not Manager.Entities[addr] then
                     Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Critic"))
@@ -450,7 +433,6 @@ task.spawn(function()
                 Manager:Remove(addr)
             end
 
-            -- Health Inspector
             if ESP_SETTINGS.HealthInspector.Enabled and npc:GetAttribute("Behavior") == "Inspector" then
                 if not Manager.Entities[addr] then
                     Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Health Inspector"))
