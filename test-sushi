@@ -381,15 +381,6 @@ UI.AddTab("Sushi Gambit", function(tab)
         end)
 
     elseif MainSec.page == 1 then
-        MainSec:Button('Enable All', function()
-            local state = not SETTINGS.Cheat.Spoof.Greenbar.Enabled
-            UI.SetValue("spoof_greenbar", state)
-            UI.SetValue("instant_clean_dish", state)
-            UI.SetValue("spoof_sponge_effectiveness", state)
-            SETTINGS.Cheat.Spoof.Greenbar.Enabled = state
-            SETTINGS.Cheat.Instant.CleanDish.Enabled = state
-            SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled = state
-        end)
 
         MainSec:Toggle('spoof_greenbar', 'Spoof Greenbar', function(value)
             notify("Spoof Greenbar: " .. tostring(value), "", 3)
@@ -1139,17 +1130,12 @@ end)
 
 task.spawn(function()
     local warned = {}
+    local lastTime = ""
+
+while true do
     local clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
-    
-    if not clockLabel then
-        print("[TATTOO] Clock not found")
-        return
-    end
-    
-    local lastTime = clockLabel.Text
-    
-    while true do
-        local currentTime = clockLabel.Text
+    if not clockLabel then task.wait(1) continue end
+    local currentTime = clockLabel.Text
         
         -- Check for target times (use EXACT format from your test)
         local targetTimes = {
