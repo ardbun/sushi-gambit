@@ -955,8 +955,8 @@ task.spawn(function()
             seen[addr] = true
 
             if not npc_cache[addr] then
-                npc_cache[addr] = { inst = npc, head = npc:FindFirstChild("Head")}
-            end
+    npc_cache[addr] = { inst = npc, head = npc:FindFirstChild("Head"), humanoid = npc:FindFirstChild("Humanoid")}
+end
         end
 
        for addr in pairs(npc_cache) do
@@ -1062,11 +1062,14 @@ if clockLabel and clockLabel.Text == "08:00" then
     customer_list = {}
 end
 
-        task.wait(0.2)
+        task.wait(0.3)
     end
 end)
 
-RunService.Heartbeat:Connect(function()
+local _heartbeatTick = 0
+RunService.Stepped:Connect(function()
+    _heartbeatTick += 1
+    if _heartbeatTick % 3 ~= 0 then return end
     local root = Character and Character:FindFirstChild("HumanoidRootPart")
     for id, entity in pairs(Manager.Entities) do
         local cached = npc_cache[id]
@@ -1076,10 +1079,15 @@ RunService.Heartbeat:Connect(function()
         end
 
         local head = cached.head
-        if not head or not head.Parent then
-            entity:Hide()
-            continue
-        end
+local humanoid = cached.humanoid
+if not head or not head.Parent then
+    entity:Hide()
+    continue
+end
+if humanoid and humanoid.Health <= 0 then
+    entity:Hide()
+    continue
+end
 
         local cfg = ESP_SETTINGS[entity.Type]
         if not cfg then
