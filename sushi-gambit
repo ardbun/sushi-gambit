@@ -201,7 +201,7 @@ function Lib:AddLabel(text, color)
     return handle
 end
 
-local Windows = Lib.new("Sushi Gambit", 220, 160)
+local Windows = Lib.new("Sushi Gambit", 220, 180)
 Windows:Show(true)
 
 local ok, raw = pcall(function()
