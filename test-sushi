@@ -191,9 +191,18 @@ local ok, raw = pcall(function()
     return HttpService:JSONDecode(game:HttpGet("https://imtheo.lol/Offsets/OffsetsHex.json"))
 end)
 if not ok then warn("Offset fetch failed, using fallbacks") raw = {Offsets={GuiObject={ScreenGui_Enabled="0x4cc"},ProximityPrompt={HoldDuration="0x138",Enabled="0x14e"}}} end
-local ScreenGuiEnabled = tonumber(raw.Offsets.GuiObject.ScreenGui_Enabled, 16)
-local HoldDuration = tonumber(raw.Offsets.ProximityPrompt.HoldDuration, 16)
-local PromptEnabled = tonumber(raw.Offsets.ProximityPrompt.Enabled, 16)
+local function getOffset(tbl, ...)
+    local cur = tbl
+    for _, k in ipairs({...}) do
+        if type(cur) ~= "table" or cur[k] == nil then return nil end
+        cur = cur[k]
+    end
+    return tonumber(cur, 16)
+end
+
+local ScreenGuiEnabled = getOffset(raw, "Offsets", "GuiObject", "ScreenGui_Enabled") or 0x4cc
+local HoldDuration = getOffset(raw, "Offsets", "ProximityPrompt", "HoldDuration") or 0x138
+local PromptEnabled = getOffset(raw, "Offsets", "ProximityPrompt", "Enabled") or 0x14e
 
 local function safePath(root, ...)
     local cur = root
@@ -330,6 +339,13 @@ function Entity:SetColor(color)
     end
 end
 
+local NPC_TYPES = {
+    {key = "Police",          attr = "Cop",            val = true,        label = "Police"},
+    {key = "Armed",           attr = "WeaponOfChoice", val = "Knife",     label = "Armed"},
+    {key = "Critic",          attr = "Critic",         val = true,        label = "Critic"},
+    {key = "HealthInspector", attr = "Behavior",       val = "Inspector", label = "Health Inspector"},
+}
+
 local Manager = {
     Entities = {}
 }
@@ -361,10 +377,12 @@ task.spawn(function()
             end
         end
         for addr in pairs(npc_cache) do
-            if not seen[addr] then
-                npc_cache[addr] = nil
-            end
-        end
+    if not seen[addr] then
+        npc_cache[addr] = nil
+        customer_list[addr] = nil
+        Manager:Remove(addr)  -- cleans up ESP label too
+    end
+end
         task.wait(0.5)
     end
 end)
@@ -403,46 +421,18 @@ task.spawn(function()
                 Manager:Remove(addr)
             end
 
-            if ESP_SETTINGS.Police.Enabled and npc:GetAttribute("Cop") == true then
-                if not Manager.Entities[addr] then
-                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Police"))
-                else
-                    Manager.Entities[addr].Instance = npc
+for _, t in ipairs(NPC_TYPES) do
+                if ESP_SETTINGS[t.key].Enabled and npc:GetAttribute(t.attr) == t.val then
+                    if not Manager.Entities[addr] then
+                        Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), t.label))
+                    else
+                        Manager.Entities[addr].Instance = npc
+                    end
+                elseif Manager.Entities[addr] and Manager.Entities[addr].Type == t.label then
+                    Manager:Remove(addr)
                 end
-            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Police" then
-                Manager:Remove(addr)
             end
-
-            if ESP_SETTINGS.Armed.Enabled and npc:GetAttribute("WeaponOfChoice") == "Knife" then
-                if not Manager.Entities[addr] then
-                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Armed"))
-                else
-                    Manager.Entities[addr].Instance = npc
-                end
-            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Armed" then
-                Manager:Remove(addr)
-            end
-
-            if ESP_SETTINGS.Critic.Enabled and npc:GetAttribute("Critic") == true then
-                if not Manager.Entities[addr] then
-                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Critic"))
-                else
-                    Manager.Entities[addr].Instance = npc
-                end
-            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Critic" then
-                Manager:Remove(addr)
-            end
-
-            if ESP_SETTINGS.HealthInspector.Enabled and npc:GetAttribute("Behavior") == "Inspector" then
-                if not Manager.Entities[addr] then
-                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Health Inspector"))
-                else
-                    Manager.Entities[addr].Instance = npc
-                end
-            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Health Inspector" then
-                Manager:Remove(addr)
-            end
-        end
+        end -- closes: for addr, cached in pairs(npc_cache) do
 
         local clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
         if clockLabel and clockLabel.Text == "08:00" then
