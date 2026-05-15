@@ -394,23 +394,26 @@ PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
 
 task.spawn(function()
     local warned = {}
-    local clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
-    if not clockLabel then return end
-    local lastTime = clockLabel.Text
+    local lastTime = ""
     while true do
-        local currentTime = clockLabel.Text
-        local targetTimes = {"04:40PM", "04:45PM", "04:50PM", "04:55PM"}
-        for _, target in ipairs(targetTimes) do
-            if currentTime == target and not warned[target] then
-                warned[target] = true
-                notify("remove sun tat", "reminder", 5)
+        local clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
+        if clockLabel then
+            local currentTime = clockLabel.Text
+            if currentTime ~= lastTime then
+                lastTime = currentTime
+                local targetTimes = {"04:40PM", "04:45PM", "04:50PM", "04:55PM"}
+                for _, target in ipairs(targetTimes) do
+                    if currentTime == target and not warned[target] then
+                        warned[target] = true
+                        notify("remove sun tat", "reminder", 5)
+                    end
+                end
+                if currentTime == "05:05AM" then
+                    warned = {}
+                end
             end
         end
-        if currentTime == "05:00AM" and lastTime ~= "05:00AM" then
-            warned = {}
-        end
-        lastTime = currentTime
-        task.wait(0.5)
+        task.wait(0.1)
     end
 end)
 
