@@ -372,6 +372,8 @@ scheduler:add(TIMINGS.npcLoop, function()
         end
     end
 end)
+local Stats = LocalPlayer:WaitForChild("Stats")
+
 scheduler:add(0.1, function()
     if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
         PlayerStats.EffectiveCookingLevel.Value = 1000
@@ -383,6 +385,7 @@ scheduler:add(0.1, function()
     if SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled then
         PlayerStats.SpongeEffectiveness.Value = 9999
     end
+    Stats.Stamina.Value = 100
 end)
 scheduler:add(TIMINGS.labels, function()
     if dayLabel then dayLabel:SetText("day: " .. tostring(GameData.CurrentDay.Value)) end
@@ -442,8 +445,6 @@ local clockFrame = clockGui:WaitForChild("clockFrame", 30)
 local clockLabel = clockFrame:WaitForChild("clockLabel", 30)
 local lastTime = ""
 local warned = {}
-
-print("Clock found: " .. clockLabel.Text)
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
