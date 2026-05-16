@@ -287,15 +287,15 @@ end)
 
 task.wait(2)
 local computer = game.Workspace.RestaurantArea.restaurant.Table.computer.ProximityPrompt.Address
-memory_write("float", computer + HoldDuration, 0)
+memory_write("float", computer + 312, 0)
 local conveyor_keypad = game.Workspace.RestaurantArea.restaurant.mainStuff.conveyors.keypad.PromptPart.ProximityPrompt.Address
-memory_write("float", conveyor_keypad + HoldDuration, 0)
+memory_write("float", conveyor_keypad + 312, 0)
 local freezer = game.Workspace.RestaurantArea.restaurant.FreezerDoor.PromptHitbox.ProximityPrompt.Address
-memory_write("float", freezer + HoldDuration, 0)
+memory_write("float", freezer + 312, 0)
 local toolbin = game.Workspace.Toolbin.PromptHitbox.ProximityPrompt.Address
-memory_write("float", toolbin + HoldDuration, 0)
+memory_write("float", toolbin + 312, 0)
 local SeatingStation = game.Workspace.RestaurantArea.restaurant["the waiter stand thingy"].Stations.SeatingStation.TriggerPart.SeatCustomersPrompt.Address
-memory_write("float", SeatingStation + HoldDuration, 0)
+memory_write("float", SeatingStation + 312, 0)
 notify("Instant prompts enabled", "", 2)
 
 local scheduler = {tasks = {}}
@@ -421,44 +421,6 @@ end)
 PlayerStats.StaminaUsageMultiplier.Value = -1
 PlayerStats.StaminaGainMultiplier.Value = 100
 PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
-task.spawn(function()
-    local warned = {}
-    while true do
-        local clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
-        if clockLabel then
-            local currentTime = clockLabel.Text
-            local targetTimes = {"04:40PM", "04:45PM", "04:50PM", "04:55PM"}
-            
-            for _, target in ipairs(targetTimes) do
-                if currentTime == target and not warned[target] then
-                    warned[target] = true
-                    -- Show notification
-                    local gui = Instance.new("ScreenGui")
-                    gui.Parent = PlayerGui
-                    local frame = Instance.new("Frame")
-                    frame.Size = UDim2.new(0, 200, 0, 40)
-                    frame.Position = UDim2.new(0.5, -100, 0.5, -20)
-                    frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-                    frame.BackgroundTransparency = 0.2
-                    frame.Parent = gui
-                    local label = Instance.new("TextLabel")
-                    label.Size = UDim2.new(1, 0, 1, 0)
-                    label.BackgroundTransparency = 1
-                    label.Text = "remove sun tat"
-                    label.TextColor3 = Color3.fromRGB(255, 0, 0)
-                    label.TextScaled = true
-                    label.Parent = frame
-                    task.delay(5, function() gui:Destroy() end)
-                end
-            end
-            
-            if currentTime == "05:00AM" then
-                warned = {}
-            end
-        end
-        task.wait(0.5)
-    end
-end)
 
 notify('sushi COOKED', "", 4)
 
