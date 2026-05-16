@@ -439,18 +439,18 @@ task.spawn(function()
     local clockGui = PlayerGui:WaitForChild("clockGui", 30)
     if not clockGui then print("clockGui not found") return end
     local clockFrame = clockGui:WaitForChild("clockFrame", 30)
-    if not clockFrame then print("clockFrame not found") return end
     local clockLabel = clockFrame:WaitForChild("clockLabel", 30)
-    if not clockLabel then print("clockLabel not found") return end
     print("Clock found: " .. clockLabel.Text)
     while true do
         local currentTime = clockLabel.Text
         if currentTime ~= lastTime then
             lastTime = currentTime
+            print("Time changed: " .. currentTime)
             local targetTimes = {"04:40PM", "04:45PM", "04:50PM", "04:55PM"}
             for _, target in ipairs(targetTimes) do
                 if currentTime == target and not warned[target] then
                     warned[target] = true
+                    print("FIRING NOTIF FOR: " .. target)
                     notify("remove sun tat", "reminder", 5)
                 end
             end
