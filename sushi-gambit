@@ -436,13 +436,13 @@ PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
 task.spawn(function()
     local warned = {}
     local lastTime = ""
-    local clockLabel = nil
-    print("Waiting for clock label...")
-    while not clockLabel do
-        clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
-        task.wait(1)
-    end
-    print("Clock found, monitoring...")
+    local clockGui = PlayerGui:WaitForChild("clockGui", 30)
+    if not clockGui then print("clockGui not found") return end
+    local clockFrame = clockGui:WaitForChild("clockFrame", 30)
+    if not clockFrame then print("clockFrame not found") return end
+    local clockLabel = clockFrame:WaitForChild("clockLabel", 30)
+    if not clockLabel then print("clockLabel not found") return end
+    print("Clock found: " .. clockLabel.Text)
     while true do
         local currentTime = clockLabel.Text
         if currentTime ~= lastTime then
@@ -461,6 +461,7 @@ task.spawn(function()
         task.wait(0.5)
     end
 end)
+
 notify('sushi COOKED', "", 4)
 
 if getgenv then
