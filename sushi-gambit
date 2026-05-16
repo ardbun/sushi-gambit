@@ -286,16 +286,6 @@ UI.AddTab("Sushi Gambit", function(tab)
 end)
 
 task.wait(2)
-local computer = game.Workspace.RestaurantArea.restaurant.Table.computer.ProximityPrompt.Address
-memory_write("float", computer + 312, 0)
-local conveyor_keypad = game.Workspace.RestaurantArea.restaurant.mainStuff.conveyors.keypad.PromptPart.ProximityPrompt.Address
-memory_write("float", conveyor_keypad + 312, 0)
-local freezer = game.Workspace.RestaurantArea.restaurant.FreezerDoor.PromptHitbox.ProximityPrompt.Address
-memory_write("float", freezer + 312, 0)
-local toolbin = game.Workspace.Toolbin.PromptHitbox.ProximityPrompt.Address
-memory_write("float", toolbin + 312, 0)
-local SeatingStation = game.Workspace.RestaurantArea.restaurant["the waiter stand thingy"].Stations.SeatingStation.TriggerPart.SeatCustomersPrompt.Address
-memory_write("float", SeatingStation + 312, 0)
 notify("Instant prompts enabled", "", 2)
 
 local scheduler = {tasks = {}}
@@ -303,6 +293,27 @@ local scheduler = {tasks = {}}
 function scheduler:add(interval, fn)
     table.insert(self.tasks, {interval = interval, timer = 0, fn = fn})
 end
+
+local function applyStaticPrompts()
+    pcall(function()
+        memory_write("float", game.Workspace.RestaurantArea.restaurant.Table.computer.ProximityPrompt.Address + HoldDuration, 0)
+    end)
+    pcall(function()
+        memory_write("float", game.Workspace.RestaurantArea.restaurant.mainStuff.conveyors.keypad.PromptPart.ProximityPrompt.Address + HoldDuration, 0)
+    end)
+    pcall(function()
+        memory_write("float", game.Workspace.RestaurantArea.restaurant.FreezerDoor.PromptHitbox.ProximityPrompt.Address + HoldDuration, 0)
+    end)
+    pcall(function()
+        memory_write("float", game.Workspace.Toolbin.PromptHitbox.ProximityPrompt.Address + HoldDuration, 0)
+    end)
+    pcall(function()
+        memory_write("float", game.Workspace.RestaurantArea.restaurant["the waiter stand thingy"].Stations.SeatingStation.TriggerPart.SeatCustomersPrompt.Address + HoldDuration, 0)
+    end)
+end
+
+applyStaticPrompts()
+scheduler:add(5, applyStaticPrompts)
 
 scheduler:add(TIMINGS.cooking, function()
     if not SETTINGS.Auto.Cooking.Enabled then return end
@@ -422,6 +433,34 @@ PlayerStats.StaminaUsageMultiplier.Value = -1
 PlayerStats.StaminaGainMultiplier.Value = 100
 PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
 
+task.spawn(function()
+    local warned = {}
+    local lastTime = ""
+    local clockLabel = nil
+    print("Waiting for clock label...")
+    while not clockLabel do
+        clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
+        task.wait(1)
+    end
+    print("Clock found, monitoring...")
+    while true do
+        local currentTime = clockLabel.Text
+        if currentTime ~= lastTime then
+            lastTime = currentTime
+            local targetTimes = {"04:40PM", "04:45PM", "04:50PM", "04:55PM"}
+            for _, target in ipairs(targetTimes) do
+                if currentTime == target and not warned[target] then
+                    warned[target] = true
+                    notify("remove sun tat", "reminder", 5)
+                end
+            end
+            if currentTime == "05:05AM" then
+                warned = {}
+            end
+        end
+        task.wait(0.5)
+    end
+end)
 notify('sushi COOKED', "", 4)
 
 if getgenv then
