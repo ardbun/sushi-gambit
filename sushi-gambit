@@ -433,34 +433,45 @@ PlayerStats.StaminaUsageMultiplier.Value = -1
 PlayerStats.StaminaGainMultiplier.Value = 100
 PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
 
-task.spawn(function()
-    local warned = {}
-    local lastTime = ""
-    local clockGui = PlayerGui:WaitForChild("clockGui", 30)
-    if not clockGui then print("clockGui not found") return end
-    local clockFrame = clockGui:WaitForChild("clockFrame", 30)
-    local clockLabel = clockFrame:WaitForChild("clockLabel", 30)
-    print("Clock found: " .. clockLabel.Text)
-    while true do
-        local currentTime = clockLabel.Text
-        if currentTime ~= lastTime then
-            lastTime = currentTime
-            print("Time changed: " .. currentTime)
-            local targetTimes = {"04:40PM", "04:45PM", "04:50PM", "04:55PM"}
-            for _, target in ipairs(targetTimes) do
-                if currentTime == target and not warned[target] then
-                    warned[target] = true
-                    print("FIRING NOTIF FOR: " .. target)
-                    notify("remove sun tat", "reminder", 5)
-                end
-            end
-            if currentTime == "05:05AM" then
-                warned = {}
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+local clockGui = PlayerGui:WaitForChild("clockGui", 30)
+local clockFrame = clockGui:WaitForChild("clockFrame", 30)
+local clockLabel = clockFrame:WaitForChild("clockLabel", 30)
+local lastTime = ""
+local warned = {}
+
+print("Clock found: " .. clockLabel.Text)
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+local clockGui = PlayerGui:WaitForChild("clockGui", 30)
+local clockFrame = clockGui:WaitForChild("clockFrame", 30)
+local clockLabel = clockFrame:WaitForChild("clockLabel", 30)
+local lastTime = ""
+local warned = {}
+
+while true do
+    local currentTime = clockLabel.Text
+    if currentTime ~= lastTime then
+        lastTime = currentTime
+        local targetTimes = {"04:40PM", "04:45PM", "04:50PM", "04:55PM"}
+        for _, target in ipairs(targetTimes) do
+            if currentTime == target and not warned[target] then
+                warned[target] = true
+                notify("remove sun tat", "reminder", 5)
             end
         end
-        task.wait(0.1)
+        if currentTime == "05:05AM" then
+            warned = {}
+        end
     end
-end)
+    task.wait(0.1)
+end
 
 notify('sushi COOKED', "", 4)
 
