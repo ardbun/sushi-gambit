@@ -347,7 +347,7 @@ end)
 
 task.spawn(function()
     while true do
-        task.wait(0.05)
+        task.wait(0.03)
         if not SETTINGS.Auto.ChloroformSpys.Enabled then continue end
         local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Chloroform Spray")
         if not tool then continue end
