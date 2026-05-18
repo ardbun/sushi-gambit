@@ -441,6 +441,7 @@ PlayerStats.StaminaUsageMultiplier.Value = -1
 PlayerStats.StaminaGainMultiplier.Value = 100
 PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
 
+task.wait(5)
 local clockGui = PlayerGui:WaitForChild("clockGui", 30)
 local clockFrame = clockGui:WaitForChild("clockFrame", 30)
 local clockLabel = clockFrame:WaitForChild("clockLabel", 30)
