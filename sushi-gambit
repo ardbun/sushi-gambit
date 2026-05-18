@@ -349,12 +349,9 @@ scheduler:add(TIMINGS.chloroform, function()
     if not SETTINGS.Auto.ChloroformSpys.Enabled then return end
     local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Chloroform Spray")
     if not tool then return end
-    local label = tool:FindFirstChild("ChloroformChallenge", true) 
-        and tool.ChloroformChallenge.ButtonToHitFrame.Container:FindFirstChild("TextLabel")
-    if not label then return end
-    keypress(0x51)
-    task.wait(0.02)
-    keyrelease(0x51)
+    local challenge = tool:FindFirstChild("ChloroformChallenge", true)
+    if not challenge then return end
+    keypress(0x51) keyrelease(0x51)
 end)
 scheduler:add(TIMINGS.npcLoop, function()
     if not isrbxactive() then return end
