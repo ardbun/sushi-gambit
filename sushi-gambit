@@ -50,7 +50,7 @@ local TIMINGS = {
     npcLoop    = 0.2,
     cooking    = 0.05,
     washing    = 0.08,
-    chloroform = 0.05,
+    chloroform = 0.03,
     labels     = 0.1,
 }
 
@@ -351,8 +351,11 @@ scheduler:add(TIMINGS.chloroform, function()
     if not tool then return end
     local challenge = tool:FindFirstChild("ChloroformChallenge", true)
     if not challenge then return end
-    keypress(0x51) keyrelease(0x51)
+    keypress(0x51)
+    task.wait(0.02)
+    keyrelease(0x51)
 end)
+
 scheduler:add(TIMINGS.npcLoop, function()
     if not isrbxactive() then return end
     local folder = game.Workspace.NpcDestination.SpawnedNPCs
