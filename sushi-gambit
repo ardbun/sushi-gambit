@@ -441,14 +441,16 @@ PlayerStats.StaminaUsageMultiplier.Value = -1
 PlayerStats.StaminaGainMultiplier.Value = 100
 PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
 
-task.wait(5)
-local clockGui = PlayerGui:WaitForChild("clockGui", 30)
-local clockFrame = clockGui:WaitForChild("clockFrame", 30)
-local clockLabel = clockFrame:WaitForChild("clockLabel", 30)
-local lastTime = ""
-local warned = {}
-
 task.spawn(function()
+    local warned = {}
+    local lastTime = ""
+    
+    local clockLabel = nil
+    while not clockLabel do
+        clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
+        task.wait(1)
+    end
+    
     while true do
         local currentTime = clockLabel.Text
         if currentTime ~= lastTime then
