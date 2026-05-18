@@ -50,7 +50,7 @@ local TIMINGS = {
     npcLoop    = 0.2,
     cooking    = 0.05,
     washing    = 0.08,
-    chloroform = 0.03,
+    chloroform = 0.05,
     labels     = 0.1,
 }
 
@@ -345,15 +345,18 @@ scheduler:add(TIMINGS.washing, function()
     end
 end)
 
-scheduler:add(TIMINGS.chloroform, function()
-    if not SETTINGS.Auto.ChloroformSpys.Enabled then return end
-    local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Chloroform Spray")
-    if not tool then return end
-    local challenge = tool:FindFirstChild("ChloroformChallenge", true)
-    if not challenge then return end
-    keypress(0x51)
-    task.wait(0.02)
-    keyrelease(0x51)
+task.spawn(function()
+    while true do
+        task.wait(0.05)
+        if not SETTINGS.Auto.ChloroformSpys.Enabled then continue end
+        local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Chloroform Spray")
+        if not tool then continue end
+        local challenge = tool:FindFirstChild("ChloroformChallenge", true)
+        if not challenge then continue end
+        keypress(0x51)
+        task.wait(0.02)
+        keyrelease(0x51)
+    end
 end)
 
 scheduler:add(TIMINGS.npcLoop, function()
@@ -438,43 +441,31 @@ PlayerStats.StaminaUsageMultiplier.Value = -1
 PlayerStats.StaminaGainMultiplier.Value = 100
 PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-
 local clockGui = PlayerGui:WaitForChild("clockGui", 30)
 local clockFrame = clockGui:WaitForChild("clockFrame", 30)
 local clockLabel = clockFrame:WaitForChild("clockLabel", 30)
 local lastTime = ""
 local warned = {}
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-
-local clockGui = PlayerGui:WaitForChild("clockGui", 30)
-local clockFrame = clockGui:WaitForChild("clockFrame", 30)
-local clockLabel = clockFrame:WaitForChild("clockLabel", 30)
-local lastTime = ""
-local warned = {}
-
-while true do
-    local currentTime = clockLabel.Text
-    if currentTime ~= lastTime then
-        lastTime = currentTime
-        local targetTimes = {"04:40PM", "04:45PM", "04:50PM", "04:55PM"}
-        for _, target in ipairs(targetTimes) do
-            if currentTime == target and not warned[target] then
-                warned[target] = true
-                notify("remove sun tat", "reminder", 5)
+task.spawn(function()
+    while true do
+        local currentTime = clockLabel.Text
+        if currentTime ~= lastTime then
+            lastTime = currentTime
+            local targetTimes = {"04:40PM", "04:45PM", "04:50PM", "04:55PM"}
+            for _, target in ipairs(targetTimes) do
+                if currentTime == target and not warned[target] then
+                    warned[target] = true
+                    notify("remove sun tat", "reminder", 5)
+                end
+            end
+            if currentTime == "05:05AM" then
+                warned = {}
             end
         end
-        if currentTime == "05:05AM" then
-            warned = {}
-        end
+        task.wait(0.1)
     end
-    task.wait(0.1)
-end
+end)
 
 notify('sushi COOKED', "", 4)
 
