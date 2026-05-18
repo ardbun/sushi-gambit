@@ -50,7 +50,7 @@ local TIMINGS = {
     npcLoop    = 0.2,
     cooking    = 0.05,
     washing    = 0.08,
-    chloroform = 0.012,
+    chloroform = 0.05,
     labels     = 0.1,
 }
 
@@ -351,8 +351,7 @@ scheduler:add(TIMINGS.chloroform, function()
     if not tool then return end
     local label = tool:FindFirstChild("ChloroformChallenge", true) and tool.ChloroformChallenge.ButtonToHitFrame.Container:FindFirstChild("TextLabel")
     if not label then return end
-    local k = label.Text == "Q" and 0x51 or label.Text == "E" and 0x45
-    if k then keypress(k) keyrelease(k) end
+    keypress(0x51) keyrelease(0x51)
 end)
 scheduler:add(TIMINGS.npcLoop, function()
     if not isrbxactive() then return end
