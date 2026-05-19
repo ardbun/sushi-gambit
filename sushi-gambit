@@ -577,21 +577,22 @@ task.spawn(function()
         for addr, cached in pairs(npc_cache) do
             local npc = cached.inst
 
-            if ESP_SETTINGS.Armed.Enabled and npc:GetAttribute("WeaponOfChoice") == "Knife" then
+            local isArmed = npc:GetAttribute("WeaponOfChoice") == "Knife" or npc:GetAttribute("Cop") == true
+            if isArmed and ESP_SETTINGS.Armed.Enabled then
                 if not Manager.Entities[addr] then
                     Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "armed"))
                 end
-elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "armed" then
-    Manager:Remove(addr)
-end
+            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "armed" then
+                Manager:Remove(addr)
+            end
 
-if ESP_SETTINGS.Police.Enabled and npc:GetAttribute("Cop") == true then
-    if not Manager.Entities[addr] then
-        Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "armed"))
-    end
-elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "armed" then
-    Manager:Remove(addr)
-end
+            if ESP_SETTINGS.Critic.Enabled and npc:GetAttribute("Critic") == true then
+                if not Manager.Entities[addr] then
+                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "critic"))
+                end
+            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "critic" then
+                Manager:Remove(addr)
+            end
         end
         task.wait(0.2)
     end
