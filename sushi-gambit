@@ -445,26 +445,39 @@ PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
 task.spawn(function()
     local warned = {}
     local lastTime = ""
+
     local pg = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
-    local clockLabel = pg:WaitForChild("clockGui", 30):WaitForChild("clockFrame", 30):WaitForChild("clockLabel", 30)
+    local clockLabel = pg:WaitForChild("clockGui", 30)
+        :WaitForChild("clockFrame", 30)
+        :WaitForChild("clockLabel", 30)
+
+    local function normalize(t)
+        return (t:gsub("%s+", ""):upper())
+    end
+
+    local targets = {
+        ["4:40PM"] = true,
+        ["4:45PM"] = true,
+        ["4:50PM"] = true,
+        ["4:55PM"] = true,
+    }
 
     while true do
-        local currentTime = clockLabel.Text
+        local current = clockLabel.Text
+        local norm = normalize(current)
 
-        if currentTime ~= lastTime then
-            print("CLOCK:", "'" .. currentTime .. "'")
-            lastTime = currentTime
+        if norm ~= lastTime then
+            lastTime = norm
+            print("CLOCK:", current)
 
-            local targetTimes = {"4:40PM", "4:45PM", "4:50PM", "4:55PM"}
-
-            for _, target in ipairs(targetTimes) do
-                if currentTime == target and not warned[target] then
+            for target, _ in pairs(targets) do
+                if norm == normalize(target) and not warned[target] then
                     warned[target] = true
                     notify("remove sun tat", "reminder", 5)
                 end
             end
 
-            if currentTime == "5:05AM" then
+            if norm == "5:05AM" then
                 warned = {}
             end
         end
