@@ -622,8 +622,8 @@ RunService.Heartbeat:Connect(function()
         end
 
         entity:SetColor(cfg.Color)
-        local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(head.Position + Vector3.new(0, 1.5, 0))
-        entity:Update(Vector2.new(pos.X, pos.Y), onScreen and pos.Z > 0)
+        local pos, onScreen = WorldToScreen(head.Position + Vector3.new(0, 1.5, 0))
+        entity:Update(pos, onScreen)
     end
 end)
 
