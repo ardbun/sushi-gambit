@@ -1,4 +1,4 @@
-local Players = game:GetService("Players")
+    local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
@@ -447,25 +447,31 @@ task.spawn(function()
     local lastTime = ""
     local pg = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
     local clockLabel = pg:WaitForChild("clockGui", 30):WaitForChild("clockFrame", 30):WaitForChild("clockLabel", 30)
-    
-    while true do
-        local currentTime = clockLabel.Text
-        if currentTime ~= lastTime then
-            lastTime = currentTime
-            local targetTimes = {"04:40PM", "04:45PM", "04:50PM", "04:55PM"}
-            for _, target in ipairs(targetTimes) do
-                if currentTime == target and not warned[target] then
-                    warned[target] = true
-                    notify("remove sun tat", "reminder", 5)
-                end
-            end
-            if currentTime == "05:05AM" then
-                warned = {}
+
+while true do
+    local currentTime = clockLabel.Text
+
+    if currentTime ~= lastTime then
+        print("'" .. currentTime .. "'")
+        lastTime = currentTime
+
+        local targetTimes = {"4:40PM", "4:45PM", "4:50PM", "4:55PM"}
+
+        for _, target in ipairs(targetTimes) do
+            if currentTime == target and not warned[target] then
+                warned[target] = true
+                notify("remove sun tat", "reminder", 5)
             end
         end
-        task.wait(0.1)
+
+        if currentTime == "05:05AM" then
+            warned = {}
+        end
     end
-end)
+
+    task.wait(0.1)
+end
+
 notify('sushi COOKED', "", 4)
 
 if getgenv then
