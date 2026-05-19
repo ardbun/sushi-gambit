@@ -408,6 +408,69 @@ scheduler:add(TIMINGS.labels, function()
     end
 end)
 
+local espLabels = {}
+
+local function getOrCreateESP(npc)
+    if espLabels[npc] then return espLabels[npc] end
+    local d = Drawing.new("Text")
+    d.Size = 16
+    d.Outline = true
+    d.Visible = false
+    espLabels[npc] = d
+    return d
+end
+
+local function clearESP(npc)
+    if espLabels[npc] then
+        espLabels[npc]:Remove()
+        espLabels[npc] = nil
+    end
+end
+
+RunService.RenderStepped:Connect(function()
+    if not isrbxactive() then return end
+    local camera = workspace.CurrentCamera
+    local folder = workspace.NpcDestination.SpawnedNPCs
+
+    local active = {}
+    for _, npc in ipairs(folder:GetChildren()) do
+        local npcType = npc:GetAttribute("NpcType") or npc.Name
+        local label, color
+
+        if npcType == "Dasher" and ESP_SETTINGS.Dasher.Enabled then
+            label, color = "dasher", ESP_SETTINGS.Dasher.Color
+        elseif npcType == "Armed" or npcType == "Police" then
+            if ESP_SETTINGS.Armed.Enabled then
+                label, color = "armed", ESP_SETTINGS.Armed.Color
+            end
+        elseif npcType == "Critic" and ESP_SETTINGS.Critic.Enabled then
+            label, color = "critic", ESP_SETTINGS.Critic.Color
+        end
+
+        if label then
+            local hrp = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChild("Torso")
+            if hrp then
+                local dist = (hrp.Position - camera.CFrame.Position).Magnitude
+                if dist <= ESP_SETTINGS.MAX_DIST then
+                    local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position + Vector3.new(0, 3, 0))
+                    local d = getOrCreateESP(npc)
+                    d.Text = label .. " [" .. math.floor(dist) .. "]"
+                    d.Color = color
+                    d.Position = Vector2.new(screenPos.X, screenPos.Y)
+                    d.Visible = onScreen and screenPos.Z > 0
+                    active[npc] = true
+                end
+            end
+        end
+    end
+
+    for npc, _ in pairs(espLabels) do
+        if not active[npc] then
+            clearESP(npc)
+        end
+    end
+end)
+
 RunService.Heartbeat:Connect(function(dt)
     for _, task in ipairs(scheduler.tasks) do
         task.timer += dt
