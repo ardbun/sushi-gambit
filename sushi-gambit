@@ -464,8 +464,6 @@ task.spawn(function()
 
         if norm ~= lastTime then
             lastTime = norm
-            print("CLOCK:", current)
-
             for target, _ in pairs(targets) do
                 if norm == normalize(target) and not warned[target] then
                     warned[target] = true
