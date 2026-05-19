@@ -446,11 +446,9 @@ task.spawn(function()
     local lastTime = ""
     local pg = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
     local clockLabel = pg:WaitForChild("clockGui", 30):WaitForChild("clockFrame", 30):WaitForChild("clockLabel", 30)
-    print("clockLabel found:", clockLabel)
     
     while true do
         local currentTime = clockLabel.Text
-        print("current time:", currentTime)
         if currentTime ~= lastTime then
             lastTime = currentTime
             local targetTimes = {"04:40PM", "04:45PM", "04:50PM", "04:55PM"}
@@ -467,7 +465,6 @@ task.spawn(function()
         task.wait(0.1)
     end
 end)
-
 notify('sushi COOKED', "", 4)
 
 if getgenv then
