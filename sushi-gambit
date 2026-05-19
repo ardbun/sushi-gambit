@@ -447,9 +447,13 @@ task.spawn(function()
         :WaitForChild("clockFrame", 30)
         :WaitForChild("clockLabel", 30)
 
-    local function normalize(t)
-        return (t:gsub("%s+", ""):upper())
-    end
+   local function normalize(t)
+    t = t:gsub("%s+", "")
+    t = t:gsub("%[", "")
+    t = t:gsub("%]", "")
+    t = t:gsub("^0", "")
+    return t:upper()
+end
 
     local targets = {
         ["4:40PM"] = true,
