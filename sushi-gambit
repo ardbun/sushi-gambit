@@ -332,17 +332,29 @@ scheduler:add(TIMINGS.cooking, function()
     end
 end)
 
+local lastWash = 0
+
+local lastWash = 0
+
 scheduler:add(TIMINGS.washing, function()
     if not SETTINGS.Auto.Washing.Enabled then return end
+
     local gui = PlayerGui:FindFirstChild("DishWashingGui")
     if not gui or memory_read("byte", gui.Address + ScreenGuiEnabled) ~= 1 then return end
+
     local sink = game.Workspace.Kitchen:FindFirstChild("TheSink")
     if not sink or sink.DirtyDishAmount.Value == 0 then return end
-    task.wait(SETTINGS.Auto.Washing.delay)
+
+    if tick() - lastWash < SETTINGS.Auto.Washing.delay then return end
+    lastWash = tick()
+
     for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
         if v.Name == "KeyTemplate" then
             local key = ({Q=0x51, E=0x45, R=0x52, F=0x46})[v:GetAttribute("Key")]
-            if key then keypress(key) keyrelease(key) end
+            if key then
+                keypress(key)
+                keyrelease(key)
+            end
         end
     end
 end)
