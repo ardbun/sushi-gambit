@@ -338,6 +338,7 @@ scheduler:add(TIMINGS.washing, function()
     if not gui or memory_read("byte", gui.Address + ScreenGuiEnabled) ~= 1 then return end
     local sink = game.Workspace.Kitchen:FindFirstChild("TheSink")
     if not sink or sink.DirtyDishAmount.Value == 0 then return end
+    task.wait(SETTINGS.Auto.Washing.delay)
     for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
         if v.Name == "KeyTemplate" then
             local key = ({Q=0x51, E=0x45, R=0x52, F=0x46})[v:GetAttribute("Key")]
