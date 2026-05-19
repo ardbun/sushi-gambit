@@ -62,10 +62,12 @@ local TIMINGS = {
 local scheduler = {_loops = {}, _render = {}}
 
 function scheduler:addLoop(name, interval, fn)
+    if self._loops[name] then warn("scheduler: overwriting loop '" .. name .. "'") end
     self._loops[name] = {interval = interval, timer = 0, fn = fn}
 end
 
 function scheduler:addRender(name, fn)
+    if self._render[name] then warn("scheduler: overwriting render '" .. name .. "'") end
     self._render[name] = fn
 end
 
@@ -376,8 +378,17 @@ RunService.Heartbeat:Connect(function(dt)
     end
 end)
 
-local npcFolder = workspace.NpcDestination.SpawnedNPCs
+local npcFolder = workspace:FindFirstChild("NpcDestination") and workspace.NpcDestination:FindFirstChild("SpawnedNPCs")
 local npcRegistry = {}
+
+if not npcFolder then
+    warn("NpcDestination not found, ESP disabled")
+    ESP_SETTINGS.Dasher.Enabled = false
+    ESP_SETTINGS.Police.Enabled = false
+    ESP_SETTINGS.Armed.Enabled = false
+    ESP_SETTINGS.Critic.Enabled = false
+    ESP_SETTINGS.HealthInspector.Enabled = false
+end
 
 scheduler:addLoop("npcCache", TIMINGS.npcCache, function()
     local seen = {}
@@ -385,7 +396,11 @@ scheduler:addLoop("npcCache", TIMINGS.npcCache, function()
         local addr = npc.Address
         seen[addr] = true
         if not npcRegistry[addr] then
-            npcRegistry[addr] = {inst = npc, head = npc:FindFirstChild("Head")}
+            npcRegistry[addr] = {
+                inst = npc,
+                head = npc:FindFirstChild("Head"),
+                humanoid = npc:FindFirstChild("Humanoid")
+            }
         end
     end
     for addr in pairs(npcRegistry) do
@@ -395,10 +410,18 @@ end)
 
 scheduler:addLoop("npcPrompts", TIMINGS.npcPrompts, function()
     if not isrbxactive() then return end
-    for _, cached in pairs(npcRegistry) do
-        local npc   = cached.inst
+    for addr, cached in pairs(npcRegistry) do
+        local npc = cached.inst
+        if not npc or not npc.Parent then
+            npcRegistry[addr] = nil
+            continue
+        end
         local torso = npc:FindFirstChild("Torso")
         if not torso then continue end
+
+        if not cached.head or not cached.head.Parent then
+            cached.head = npc:FindFirstChild("Head")
+        end
 
         if npc:GetAttribute("CurrentState") == "WaitingInLine" then
             local prompt = torso:FindFirstChild("WaitProximityPrompt")
@@ -540,9 +563,30 @@ function Manager:Remove(id)
     self.Entities[id] = nil
 end
 
+function Manager:Sweep()
+    for id, entity in pairs(self.Entities) do
+        if entity.State == STATE.DESTROYED then
+            self.Entities[id] = nil
+        end
+    end
+end
+
 scheduler:addLoop("espLogic", TIMINGS.espLogic, function()
+    Manager:Sweep()
     for addr, cached in pairs(npcRegistry) do
         local npc = cached.inst
+        if not npc or not npc.Parent then
+            npcRegistry[addr] = nil
+            Manager:Remove(addr)
+            continue
+        end
+        local humanoid = cached.humanoid or npc:FindFirstChild("Humanoid")
+        cached.humanoid = humanoid
+        if humanoid and humanoid.Health <= 0 then
+            Manager:Remove(addr)
+            npcRegistry[addr] = nil
+            continue
+        end
 
         local isArmed = npc:GetAttribute("WeaponOfChoice") == "Knife"
                      or npc:GetAttribute("Cop") == true
@@ -572,6 +616,8 @@ scheduler:addRender("espRender", function()
 
         local head = cached.head
         if not head or not head.Parent or entity.State == STATE.DESTROYED then entity:Hide() continue end
+        local humanoid = cached.humanoid
+        if humanoid and humanoid.Health <= 0 then entity:Hide() continue end
 
         local typeKey = entity.Type:sub(1,1):upper() .. entity.Type:sub(2)
         local cfg = ESP_SETTINGS[typeKey] or ESP_SETTINGS[entity.Type]
