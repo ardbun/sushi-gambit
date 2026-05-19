@@ -579,7 +579,7 @@ task.spawn(function()
 
             if ESP_SETTINGS.Armed.Enabled and npc:GetAttribute("WeaponOfChoice") == "Knife" then
                 if not Manager.Entities[addr] then
-                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Armed"))
+                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "armed"))
                 end
             elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Armed" then
                 Manager:Remove(addr)
@@ -587,7 +587,7 @@ task.spawn(function()
 
             if ESP_SETTINGS.Police.Enabled and npc:GetAttribute("Cop") == true then
                 if not Manager.Entities[addr] then
-                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Armed"))
+                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "armed"))
                 end
             elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Police" then
                 Manager:Remove(addr)
@@ -605,8 +605,8 @@ task.spawn(function()
     end
 end)
 
-RunService.Heartbeat:Connect(function()
-local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+RunService.RenderStepped:Connect(function()
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     for id, entity in pairs(Manager.Entities) do
         local cached = npc_cache[id]
         if not cached then Manager:Remove(id) continue end
