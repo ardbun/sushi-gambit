@@ -451,19 +451,25 @@ task.spawn(function()
 
     while true do
         local currentTime = clockLabel.Text
+
         if currentTime ~= lastTime then
+            print("CLOCK:", "'" .. currentTime .. "'")
             lastTime = currentTime
-            local targetTimes = {"04:40PM", "04:45PM", "04:50PM", "04:55PM"}
+
+            local targetTimes = {"4:40PM", "4:45PM", "4:50PM", "4:55PM"}
+
             for _, target in ipairs(targetTimes) do
                 if currentTime == target and not warned[target] then
                     warned[target] = true
                     notify("remove sun tat", "reminder", 5)
                 end
             end
-            if currentTime == "05:05AM" then
+
+            if currentTime == "5:05AM" then
                 warned = {}
             end
         end
+
         task.wait(0.1)
     end
 end)
