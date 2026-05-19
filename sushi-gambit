@@ -606,7 +606,7 @@ task.spawn(function()
 end)
 
 RunService.Heartbeat:Connect(function()
-    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     for id, entity in pairs(Manager.Entities) do
         local cached = npc_cache[id]
         if not cached then Manager:Remove(id) continue end
