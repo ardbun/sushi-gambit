@@ -444,12 +444,8 @@ PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
 task.spawn(function()
     local warned = {}
     local lastTime = ""
-    
-    local clockLabel = nil
-    while not clockLabel do
-        clockLabel = safePath(PlayerGui, "clockGui", "clockFrame", "clockLabel")
-        task.wait(1)
-    end
+    local pg = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+    local clockLabel = pg:WaitForChild("clockGui", 30):WaitForChild("clockFrame", 30):WaitForChild("clockLabel", 30)
     
     while true do
         local currentTime = clockLabel.Text
