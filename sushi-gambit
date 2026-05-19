@@ -268,7 +268,7 @@ UI.AddTab("Sushi Gambit", function(tab)
             SETTINGS.Auto.Washing.Enabled = value
         end)
 
-        MainSec:SliderFloat('auto_washing_delay', 'Delay (ms)', 0.08, 2.0, 0.08, '%.2f', function(value)
+        MainSec:SliderFloat('auto_washing_delay', 'Delay (ms)', 0.1, 2.0, 0.1, '%.1f', function(value)
             TIMINGS.washing = value
         end)
 
