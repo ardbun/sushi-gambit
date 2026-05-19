@@ -280,9 +280,10 @@ UI.AddTab("Sushi Gambit", function(tab)
 
     local PlayerTab = tab:Section("Player", "Left")
 
-    PlayerTab:SliderInt('player_walkspeed', 'Walk Speed', 12, 20, 12, function(value)
-        PlayerStats.WalkSpeed.Value = value
-    end)
+    PlayerTab:SliderInt('player_walkspeed', 'Walk Speed', 12, 20, 20, function(value)
+    PlayerStats.WalkSpeed.Value = value
+end)
+PlayerStats.WalkSpeed.Value = 20
 end)
 
 task.wait(2)
