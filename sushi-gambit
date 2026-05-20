@@ -621,16 +621,23 @@ if health and health <= 0 then
     npcRegistry[addr] = nil
     continue
 end
+local torso = cached.torso
+if torso then
+    if npc:GetAttribute("CurrentState") == "WaitingInLine" then
+        local prompt = torso:FindFirstChild("WaitProximityPrompt")
+        if prompt and prompt.Address then
+            memory_write("float", prompt.Address + HoldDuration, 0)
+        end
+    end
+    local dasher = torso:FindFirstChild("CatchDasherPrompt")
+    if dasher and dasher.Address then
+        memory_write("float", dasher.Address + HoldDuration, 0)
+    end
+end
 
-        if ESP_SETTINGS.Dasher.Enabled then
-           local npc = cached.inst
-
-local hasDasherPrompt =
-    npc and (
-        npc:FindFirstChild("CatchDasherPrompt", true)
-        or npc:FindFirstChild("PromptHitbox", true)
-        or npc:FindFirstChildWhichIsA("ProximityPrompt", true)
-    )
+       if ESP_SETTINGS.Dasher.Enabled then
+            local torso = cached.torso
+            local hasDasherPrompt = torso and torso:FindFirstChild("CatchDasherPrompt") ~= nil
             if hasDasherPrompt then
                 if not Manager.Entities[addr] then
                     Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Dasher"))
