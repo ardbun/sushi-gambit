@@ -624,7 +624,12 @@ end
 
         if ESP_SETTINGS.Dasher.Enabled then
             local torso = cached.torso
-            local hasDasherPrompt = torso and torso:FindFirstChild("CatchDasherPrompt") ~= nil
+            local hasDasherPrompt =
+    torso and (
+        torso:FindFirstChild("CatchDasherPrompt")
+        or torso:FindFirstChild("PromptHitbox")
+        or torso:FindFirstChildWhichIsA("ProximityPrompt", true)
+    ) ~= nil
             if hasDasherPrompt then
                 if not Manager.Entities[addr] then
                     Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Dasher"))
