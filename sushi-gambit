@@ -448,32 +448,40 @@ scheduler:addLoop("statSpoof", TIMINGS.stats, function()
     Stats.Stamina.Value = 100
 end)
 
+local _lastLabels = {}
 scheduler:addLoop("labels", TIMINGS.labels, function()
     if dayLabel then
-        dayLabel:SetText("day: " .. tostring(GameData.CurrentDay.Value))
+        local t = "day: " .. tostring(GameData.CurrentDay.Value)
+        if _lastLabels.day ~= t then _lastLabels.day = t dayLabel:SetText(t) end
     end
     if companyMoneyLabel then
-        companyMoneyLabel:SetText("money: " .. string.format("%.2f", GameData.CompanyMoney.Value))
+        local t = "money: " .. string.format("%.2f", GameData.CompanyMoney.Value)
+        if _lastLabels.money ~= t then _lastLabels.money = t companyMoneyLabel:SetText(t) end
     end
     local ingr = GameData.Ingredients.IngredientsStorage
     if vegLabel then
-        vegLabel:SetText("veggies: " .. ingr.Vegetables.Stock.Value .. "/" .. ingr.Vegetables.MaxStock.Value)
+        local t = "veggies: " .. ingr.Vegetables.Stock.Value .. "/" .. ingr.Vegetables.MaxStock.Value
+        if _lastLabels.veg ~= t then _lastLabels.veg = t vegLabel:SetText(t) end
     end
     if fishLabel then
-        fishLabel:SetText("fish: " .. ingr.AssortedFish.Stock.Value .. "/" .. ingr.AssortedFish.MaxStock.Value)
+        local t = "fish: " .. ingr.AssortedFish.Stock.Value .. "/" .. ingr.AssortedFish.MaxStock.Value
+        if _lastLabels.fish ~= t then _lastLabels.fish = t fishLabel:SetText(t) end
     end
     if humanFleshLabel then
-        humanFleshLabel:SetText("meat: " .. ingr.HumanFlesh.Stock.Value .. "/" .. ingr.HumanFlesh.MaxStock.Value)
+        local t = "meat: " .. ingr.HumanFlesh.Stock.Value .. "/" .. ingr.HumanFlesh.MaxStock.Value
+        if _lastLabels.meat ~= t then _lastLabels.meat = t humanFleshLabel:SetText(t) end
     end
     if riceLabel then
-        riceLabel:SetText("rice: " .. ingr.Rice.Stock.Value .. "/" .. ingr.Rice.MaxStock.Value)
+        local t = "rice: " .. ingr.Rice.Stock.Value .. "/" .. ingr.Rice.MaxStock.Value
+        if _lastLabels.rice ~= t then _lastLabels.rice = t riceLabel:SetText(t) end
     end
     if seatedLabel then
         local count = 0
         for _, npc in pairs(npcRegistry) do
             if npc.inst:GetAttribute("CurrentState") == "Seated" then count += 1 end
         end
-        seatedLabel:SetText("seated: " .. count .. "/18")
+        local t = "seated: " .. count .. "/18"
+        if _lastLabels.seated ~= t then _lastLabels.seated = t seatedLabel:SetText(t) end
     end
 end)
 
@@ -604,7 +612,7 @@ scheduler:addLoop("espLogic", TIMINGS.espLogic, function()
     end
 end)
 
-scheduler:addLoop("espRender", 0.03, function()
+scheduler:addLoop("espRender", 0.05, function()
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     for id, entity in pairs(Manager.Entities) do
         local cached = npcRegistry[id]
@@ -622,6 +630,7 @@ scheduler:addLoop("espRender", 0.03, function()
             entity:Hide() continue
         end
 
+        if root and (head.Position - root.Position).Magnitude > ESP_SETTINGS.MAX_DIST then entity:Hide() continue end
         entity:SetColor(cfg.Color)
         local pos, onScreen = WorldToScreen(head.Position + Vector3.new(0, 1.5, 0))
         entity:Update(pos, onScreen)
