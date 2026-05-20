@@ -531,32 +531,30 @@ local _npcList = {}
 local _npcIndex = 0
 local _BATCH = 8
 
+npcFolder.ChildAdded:Connect(function(npc)
+    local addr = npc.Address
+    if not npcRegistry[addr] then
+        npcRegistry[addr] = {
+            inst     = npc,
+            head     = npc:FindFirstChild("Head"),
+            torso    = npc:FindFirstChild("Torso"),
+            humanoid = npc:FindFirstChild("Humanoid"),
+        }
+        _npcList[#_npcList + 1] = addr
+    end
+end)
+
+npcFolder.ChildRemoved:Connect(function(npc)
+    local addr = npc.Address
+    Manager:Remove(addr)
+    npcRegistry[addr] = nil
+    for i = #_npcList, 1, -1 do
+        if _npcList[i] == addr then table.remove(_npcList, i) break end
+    end
+end)
+
 scheduler:addLoop("npcPipeline", 0.1, function()
     if not isrbxactive() then return end
-
-    local children = npcFolder:GetChildren()
-    local seen = {}
-    for _, npc in ipairs(children) do
-        local addr = npc.Address
-        seen[addr] = true
-        if not npcRegistry[addr] then
-            npcRegistry[addr] = {
-                inst     = npc,
-                head     = npc:FindFirstChild("Head"),
-                torso    = npc:FindFirstChild("Torso"),
-                humanoid = npc:FindFirstChild("Humanoid"),
-            }
-            _npcList[#_npcList + 1] = addr
-        end
-    end
-    for i = #_npcList, 1, -1 do
-        local addr = _npcList[i]
-        if not seen[addr] then
-            Manager:Remove(addr)
-            npcRegistry[addr] = nil
-            table.remove(_npcList, i)
-        end
-    end
 
     local count = #_npcList
     if count == 0 then return end
