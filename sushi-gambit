@@ -623,7 +623,7 @@ if health and health <= 0 then
 end
 local torso = cached.torso
 if torso then
-    if npc:GetAttribute("CurrentState") == "WaitingInLine" then
+    if SETTINGS.Cheat.Instant.SeatCustomer.Enabled and npc:GetAttribute("CurrentState") == "WaitingInLine" then
         local prompt = torso:FindFirstChild("WaitProximityPrompt")
         if prompt and prompt.Address then
             memory_write("float", prompt.Address + HoldDuration, 0)
@@ -635,8 +635,7 @@ if torso then
     end
 end
 
-       if ESP_SETTINGS.Dasher.Enabled then
-            local torso = cached.torso
+      if ESP_SETTINGS.Dasher.Enabled then
             local hasDasherPrompt = torso and torso:FindFirstChild("CatchDasherPrompt") ~= nil
             if hasDasherPrompt then
                 if not Manager.Entities[addr] then
