@@ -578,12 +578,29 @@ scheduler:addLoop("npcPipeline", 0.2, function()
         if not cached.head    or not cached.head.Parent  then cached.head    = npc:FindFirstChild("Head")     end
         if not cached.torso   or not cached.torso.Parent then cached.torso   = npc:FindFirstChild("Torso")    end
         if not cached.humanoid or not cached.humanoid.Parent then cached.humanoid = npc:FindFirstChild("Humanoid") end
-        local humanoid = cached.humanoid
-        if humanoid and humanoid.Health <= 0 then
-            Manager:Remove(addr)
-            npcRegistry[addr] = nil
-            continue
-        end
+       local humanoid = cached.humanoid
+local health = humanoid and humanoid.Health
+
+if not cached.head or not cached.head.Parent then
+    cached.head = npc:FindFirstChild("Head")
+end
+
+if not cached.torso or not cached.torso.Parent then
+    cached.torso = npc:FindFirstChild("Torso")
+end
+
+if not cached.humanoid or not cached.humanoid.Parent then
+    cached.humanoid = npc:FindFirstChild("Humanoid")
+end
+
+local humanoid = cached.humanoid
+local health = humanoid and tonumber(humanoid.Health)
+
+if health and health <= 0 then
+    Manager:Remove(addr)
+    npcRegistry[addr] = nil
+    continue
+end
         local torso = cached.torso
         if torso then
             if npc:GetAttribute("CurrentState") == "WaitingInLine" then
