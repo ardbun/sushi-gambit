@@ -538,13 +538,7 @@ local _npcIndex = 0
 local _BATCH = 8
 
 task.spawn(function()
-local folder
-for _, v in ipairs(workspace:GetChildren()) do
-    if v.Name == "NpcDestination" then
-        folder = v
-        break
-    end
-end
+local folder = game.Workspace.NpcDestination.SpawnedNPCs
 
 if not folder then
     warn("NpcDestination not found, ESP disabled")
