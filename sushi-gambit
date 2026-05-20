@@ -33,7 +33,6 @@ local ESP_SETTINGS = {
     MAX_DIST    = 200,
     MAX_DIST_SQ = 200 * 200,
     Dasher          = {Enabled = true,  Color = Color3.new(1, 0, 0)},
-    Armed           = {Enabled = true,  Color = Color3.new(1, 0, 0)},
     Police          = {Enabled = true,  Color = Color3.new(0, 0, 1)},
     Critic          = {Enabled = true,  Color = Color3.fromRGB(255, 252, 0)},
     HealthInspector = {Enabled = true,  Color = Color3.new(1, 0, 0)},
@@ -515,76 +514,78 @@ function Manager:Sweep()
         end
     end
 end
-local npcDestination = workspace:WaitForChild("NpcDestination", 10)
-local npcFolder = npcDestination and npcDestination:WaitForChild("SpawnedNPCs", 10)
+
 local npcRegistry = {}
-
-if not npcFolder then
-    warn("NpcDestination not found, ESP disabled")
-    ESP_SETTINGS.Dasher.Enabled = false
-    ESP_SETTINGS.Police.Enabled = false
-    ESP_SETTINGS.Armed.Enabled = false
-    ESP_SETTINGS.Critic.Enabled = false
-    ESP_SETTINGS.HealthInspector.Enabled = false
-end
-
 local _npcList = {}
 local _npcIndex = 0
 local _BATCH = 8
 
-npcFolder.ChildAdded:Connect(function(npc)
-    local addr = npc.Address
-    if not npcRegistry[addr] then
-        npcRegistry[addr] = {
-            inst     = npc,
-            head     = npc:FindFirstChild("Head"),
-            torso    = npc:FindFirstChild("Torso"),
-            humanoid = npc:FindFirstChild("Humanoid"),
-        }
-        _npcList[#_npcList + 1] = addr
+task.spawn(function()
+    local dest = workspace:FindFirstChild("NpcDestination")
+    if not dest then
+        warn("NpcDestination not found, ESP disabled")
+        ESP_SETTINGS.Dasher.Enabled = false
+        ESP_SETTINGS.Police.Enabled = false
+        ESP_SETTINGS.Critic.Enabled = false
+        ESP_SETTINGS.HealthInspector.Enabled = false
+        return
     end
-end)
-
-npcFolder.ChildRemoved:Connect(function(npc)
-    local addr = npc.Address
-    Manager:Remove(addr)
-    npcRegistry[addr] = nil
-    for i = #_npcList, 1, -1 do
-        if _npcList[i] == addr then table.remove(_npcList, i) break end
+    local folder = dest:FindFirstChild("SpawnedNPCs")
+    if not folder then
+        warn("SpawnedNPCs not found, ESP disabled")
+        return
     end
+    for _, npc in ipairs(folder:GetChildren()) do
+        local addr = npc.Address
+        if addr then
+            npcRegistry[addr] = {inst=npc, head=npc:FindFirstChild("Head"), torso=npc:FindFirstChild("Torso"), humanoid=npc:FindFirstChild("Humanoid")}
+            table.insert(_npcList, addr)
+        end
+    end
+    pcall(function()
+        folder.ChildAdded:Connect(function(npc)
+            task.wait()
+            local addr = npc.Address
+            if not addr then return end
+            npcRegistry[addr] = {inst=npc, head=npc:FindFirstChild("Head"), torso=npc:FindFirstChild("Torso"), humanoid=npc:FindFirstChild("Humanoid")}
+            table.insert(_npcList, addr)
+        end)
+        folder.ChildRemoved:Connect(function(npc)
+            local addr = npc.Address
+            Manager:Remove(addr)
+            npcRegistry[addr] = nil
+            for i = #_npcList, 1, -1 do
+                if _npcList[i] == addr then table.remove(_npcList, i) break end
+            end
+        end)
+    end)
 end)
 
 scheduler:addLoop("npcPipeline", 0.1, function()
     if not isrbxactive() then return end
-
     local count = #_npcList
     if count == 0 then return end
-
     for i = 1, math.min(_BATCH, count) do
         _npcIndex = (_npcIndex % count) + 1
         local addr = _npcList[_npcIndex]
         if not addr then continue end
         local cached = npcRegistry[addr]
         if not cached then continue end
-
         local npc = cached.inst
         if not npc or not npc.Parent then
             Manager:Remove(addr)
             npcRegistry[addr] = nil
             continue
         end
-
         if not cached.head     or not cached.head.Parent   then cached.head     = npc:FindFirstChild("Head")     end
         if not cached.torso    or not cached.torso.Parent  then cached.torso    = npc:FindFirstChild("Torso")    end
         if not cached.humanoid                             then cached.humanoid = npc:FindFirstChild("Humanoid") end
-
         local humanoid = cached.humanoid
         if humanoid and humanoid.Health <= 0 then
             Manager:Remove(addr)
             npcRegistry[addr] = nil
             continue
         end
-
         local torso = cached.torso
         if torso then
             if npc:GetAttribute("CurrentState") == "WaitingInLine" then
@@ -598,16 +599,13 @@ scheduler:addLoop("npcPipeline", 0.1, function()
                 memory_write("float", dasher.Address + HoldDuration, 0)
             end
         end
-
-        local isArmed = npc:GetAttribute("WeaponOfChoice") == "Knife" or npc:GetAttribute("Cop") == true
-        if isArmed and ESP_SETTINGS.Armed.Enabled then
+    if ESP_SETTINGS.Dasher.Enabled and npc:GetAttribute("Dasher") == true then
             if not Manager.Entities[addr] then
-                Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "armed"))
+                Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "dasher"))
             end
-        elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "armed" then
+        elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "dasher" then
             Manager:Remove(addr)
         end
-
         if ESP_SETTINGS.Critic.Enabled and npc:GetAttribute("Critic") == true then
             if not Manager.Entities[addr] then
                 Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "critic"))
@@ -624,27 +622,28 @@ scheduler:addLoop("espRender", 0.1, function()
     for id, entity in pairs(Manager.Entities) do
         local cached = npcRegistry[id]
         if not cached then Manager:Remove(id) continue end
-
         local head = cached.head
         if not head or not head.Parent or entity.State == STATE.DESTROYED then entity:Hide() continue end
         local humanoid = cached.humanoid
         if humanoid and humanoid.Health <= 0 then entity:Hide() continue end
-
         local cfg = ESP_SETTINGS[entity.TypeKey]
         if not cfg or not cfg.Enabled then entity:Hide() continue end
-
         if root and (head.Position - root.Position).Magnitude > ESP_SETTINGS.MAX_DIST then entity:Hide() continue end
-
         entity:SetColor(cfg.Color)
         local pos, onScreen = WorldToScreen(head.Position + Vector3.new(0, 1.5, 0))
         entity:Update(pos, onScreen)
     end
 end)
+
 local Admins = {105479622,65095440,1425697210,126961971,127528152,319065798,2754844524,125440222,1783725423}
 
-Players.PlayerAdded:Connect(function(plr)
-    if table.find(Admins, plr.UserId) and SETTINGS.Notify.AdminJoin.Enabled then
-        notify("Admin Joined: " .. plr.Name, "ADMIN ALERT", 8)
+pcall(function()
+    if Players and Players.PlayerAdded then
+        Players.PlayerAdded:Connect(function(plr)
+            if table.find(Admins, plr.UserId) and SETTINGS.Notify.AdminJoin.Enabled then
+                notify("Admin Joined: " .. plr.Name, "ADMIN ALERT", 8)
+            end
+        end)
     end
 end)
 
