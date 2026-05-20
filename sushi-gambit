@@ -288,11 +288,6 @@ UI.AddTab("Sushi Gambit", function(tab)
             notify("auto dishwashing: " .. tostring(value), "", 3)
             SETTINGS.Auto.Washing.Enabled = value
         end)
-
-        MainSec:Toggle('auto_chloroform_spys', 'auto kill', function(value)
-            notify("Auto Chloroform Spys: " .. tostring(value), "", 3)
-            SETTINGS.Auto.ChloroformSpys.Enabled = value
-        end)
     end
 
     local PlayerTab = tab:Section("Player", "Left")
@@ -652,6 +647,8 @@ end)
 PlayerStats.StaminaUsageMultiplier.Value                = -1
 PlayerStats.StaminaGainMultiplier.Value                 = 100
 PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
+
+SETTINGS.Auto.ChloroformSpys.Enabled = true
 
 notify('sushi COOKED', "", 4)
 
