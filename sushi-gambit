@@ -608,7 +608,7 @@ scheduler:addLoop("espLogic", TIMINGS.espLogic, function()
     end
 end)
 
-scheduler:addRender("espRender", function()
+scheduler:addLoop("espRender", 0.025, function()
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     for id, entity in pairs(Manager.Entities) do
         local cached = npcRegistry[id]
