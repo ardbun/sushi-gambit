@@ -316,12 +316,13 @@ notify("Instant prompts enabled", "", 2)
 
 local function applyStaticPrompts()
     local paths = {
-        {"Workspace","RestaurantArea","restaurant","Table","computer","ProximityPrompt"},
-        {"Workspace","RestaurantArea","restaurant","mainStuff","conveyors","keypad","PromptPart","ProximityPrompt"},
-        {"Workspace","RestaurantArea","restaurant","FreezerDoor","PromptHitbox","ProximityPrompt"},
-        {"Workspace","Toolbin","PromptHitbox","ProximityPrompt"},
-        {"Workspace","RestaurantArea","restaurant","the waiter stand thingy","Stations","SeatingStation","TriggerPart","SeatCustomersPrompt"},
-    }
+    {"Workspace","RestaurantArea","restaurant","Table","computer","ProximityPrompt"},
+    {"Workspace","RestaurantArea","restaurant","mainStuff","conveyors","keypad","PromptPart","ProximityPrompt"},
+    {"Workspace","RestaurantArea","restaurant","FreezerDoor","PromptHitbox","ProximityPrompt"},
+    {"Workspace","Toolbin","PromptHitbox","ProximityPrompt"},
+    {"Workspace","RestaurantArea","restaurant","the waiter stand thingy","Stations","SeatingStation","TriggerPart","SeatCustomersPrompt"},
+}
+    
     for _, path in ipairs(paths) do
         pcall(function()
             local obj = game
