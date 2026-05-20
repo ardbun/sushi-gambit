@@ -52,7 +52,6 @@ local TIMINGS = {
     npcCache      = 0.5,
     npcPrompts    = 0.2,
     espLogic      = 0.2,
-    espRender     = 0,
     stats         = 0.1,
     labels        = 0.1,
     clock         = 0.1,
@@ -616,7 +615,7 @@ scheduler:addLoop("npcPipeline", 0.1, function()
     end
 end)
 
-scheduler:addLoop("espRender", 0.1, function()
+scheduler:addLoop("espRender", 0.05, function()
     Manager:Sweep()
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     for id, entity in pairs(Manager.Entities) do
