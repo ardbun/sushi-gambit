@@ -615,7 +615,7 @@ scheduler:addLoop("npcPipeline", 0.1, function()
     end
 end)
 
-scheduler:addLoop("espRender", 0.05, function()
+scheduler:addLoop("espRender", 0.1, function()
     Manager:Sweep()
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     for id, entity in pairs(Manager.Entities) do
