@@ -418,7 +418,7 @@ scheduler:addLoop("labels", TIMINGS.labels, function()
     end
     if seatedLabel then
         local count = 0
-        for _, npc in pairs(npcRegistry) do
+        for _, npc in pairs(npcRegistry or {}) do
             if npc.inst:GetAttribute("CurrentState") == "Seated" then count += 1 end
         end
         local t = "seated: " .. count .. "/18"
@@ -515,7 +515,8 @@ function Manager:Sweep()
         end
     end
 end
-local npcFolder = workspace:FindFirstChild("NpcDestination") and workspace.NpcDestination:FindFirstChild("SpawnedNPCs")
+local npcDestination = workspace:WaitForChild("NpcDestination", 10)
+local npcFolder = npcDestination and npcDestination:WaitForChild("SpawnedNPCs", 10)
 local npcRegistry = {}
 
 if not npcFolder then
