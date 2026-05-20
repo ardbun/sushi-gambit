@@ -164,7 +164,13 @@ function Lib.new(titleText, width, height, cornerRadius)
         else
             dragging = false
         end
-        if dragging then self:Edit(Vector2.new(mx - dragOffset.X, my - dragOffset.Y)) end
+        if dragging then
+    local newPos = Vector2.new(mx - dragOffset.X, my - dragOffset.Y)
+    self:Edit(newPos)
+    pcall(function()
+        writefile("sushigambit_pos.txt", newPos.X .. "," .. newPos.Y)
+    end)
+end
     end)
 
     return self
@@ -235,6 +241,18 @@ end
 
 local Windows = Lib.new("Sushi Gambit", 220, 200)
 Windows:Show(true)
+
+local savedPos = nil
+pcall(function()
+    local data = readfile("sushigambit_pos.txt")
+    local x, y = data:match("([%d%.]+),([%d%.]+)")
+    if x and y then
+        savedPos = Vector2.new(tonumber(x), tonumber(y))
+    end
+end)
+if savedPos then
+    Windows:Edit(savedPos)
+end
 
 local ok, raw = pcall(function()
     return HttpService:JSONDecode(game:HttpGet("https://imtheo.lol/Offsets/OffsetsHex.json"))
