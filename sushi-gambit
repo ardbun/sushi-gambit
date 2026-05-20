@@ -33,9 +33,7 @@ local ESP_SETTINGS = {
     MAX_DIST    = 200,
     MAX_DIST_SQ = 200 * 200,
     Dasher          = {Enabled = true,  Color = Color3.new(1, 0, 0)},
-    Police          = {Enabled = true,  Color = Color3.new(0, 0, 1)},
     Critic          = {Enabled = true,  Color = Color3.fromRGB(255, 252, 0)},
-    HealthInspector = {Enabled = true,  Color = Color3.new(1, 0, 0)},
     Windows         = {Enabled = true},
     Labels = {
         day = true, companymoney = true, vegstock = true,
@@ -468,7 +466,8 @@ function Entity.new(instance, text, typeName)
         Head     = instance:FindFirstChild("Head"),
         Text     = text,
         Type     = typeName,
-        TypeKey  = typeName:sub(1,1):upper() .. typeName:sub(2),
+
+TypeKey  = typeName:sub(1,1):upper() .. typeName:sub(2),
         State    = STATE.ACTIVE,
     }, Entity)
 end
@@ -524,9 +523,7 @@ task.spawn(function()
     if not dest then
         warn("NpcDestination not found, ESP disabled")
         ESP_SETTINGS.Dasher.Enabled = false
-        ESP_SETTINGS.Police.Enabled = false
         ESP_SETTINGS.Critic.Enabled = false
-        ESP_SETTINGS.HealthInspector.Enabled = false
         return
     end
     local folder = dest:FindFirstChild("SpawnedNPCs")
@@ -560,7 +557,9 @@ task.spawn(function()
     end)
 end)
 
-scheduler:addLoop("npcPipeline", 0.1, function()
+local _visibleEntities = {}
+
+scheduler:addLoop("npcPipeline", 0.2, function()
     if not isrbxactive() then return end
     local count = #_npcList
     if count == 0 then return end
@@ -576,9 +575,9 @@ scheduler:addLoop("npcPipeline", 0.1, function()
             npcRegistry[addr] = nil
             continue
         end
-        if not cached.head     or not cached.head.Parent   then cached.head     = npc:FindFirstChild("Head")     end
-        if not cached.torso    or not cached.torso.Parent  then cached.torso    = npc:FindFirstChild("Torso")    end
-        if not cached.humanoid                             then cached.humanoid = npc:FindFirstChild("Humanoid") end
+        if not cached.head    or not cached.head.Parent  then cached.head    = npc:FindFirstChild("Head")     end
+        if not cached.torso   or not cached.torso.Parent then cached.torso   = npc:FindFirstChild("Torso")    end
+        if not cached.humanoid or not cached.humanoid.Parent then cached.humanoid = npc:FindFirstChild("Humanoid") end
         local humanoid = cached.humanoid
         if humanoid and humanoid.Health <= 0 then
             Manager:Remove(addr)
@@ -593,31 +592,40 @@ scheduler:addLoop("npcPipeline", 0.1, function()
                     memory_write("float", prompt.Address + HoldDuration, 0)
                 end
             end
-            local dasher = torso:FindFirstChild("CatchDasherPrompt")
-            if dasher and dasher.Address then
-                memory_write("float", dasher.Address + HoldDuration, 0)
+            local dasherPrompt = torso:FindFirstChild("CatchDasherPrompt")
+            if dasherPrompt and dasherPrompt.Address then
+                memory_write("float", dasherPrompt.Address + HoldDuration, 0)
             end
         end
-    if ESP_SETTINGS.Dasher.Enabled and npc:GetAttribute("Dasher") == true then
-            if not Manager.Entities[addr] then
-                Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "dasher"))
+
+        if ESP_SETTINGS.Dasher.Enabled then
+            local hasDasherPrompt = torso and torso:FindFirstChild("CatchDasherPrompt") ~= nil
+            if hasDasherPrompt then
+                if not Manager.Entities[addr] then
+                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Dasher"))
+                end
+            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Dasher" then
+                Manager:Remove(addr)
             end
-        elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "dasher" then
+        elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Dasher" then
             Manager:Remove(addr)
         end
+
         if ESP_SETTINGS.Critic.Enabled and npc:GetAttribute("Critic") == true then
             if not Manager.Entities[addr] then
-                Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "critic"))
+                Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Critic"))
             end
-        elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "critic" then
+        elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Critic" then
             Manager:Remove(addr)
         end
     end
 end)
 
-scheduler:addLoop("espRender", 0.1, function()
+scheduler:addLoop("espLogic", 0.2, function()
     Manager:Sweep()
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local rootPos = root and root.Position
+    _visibleEntities = {}
     for id, entity in pairs(Manager.Entities) do
         local cached = npcRegistry[id]
         if not cached then Manager:Remove(id) continue end
@@ -627,10 +635,18 @@ scheduler:addLoop("espRender", 0.1, function()
         if humanoid and humanoid.Health <= 0 then entity:Hide() continue end
         local cfg = ESP_SETTINGS[entity.TypeKey]
         if not cfg or not cfg.Enabled then entity:Hide() continue end
-        if root and (head.Position - root.Position).Magnitude > ESP_SETTINGS.MAX_DIST then entity:Hide() continue end
+        if rootPos and (head.Position - rootPos).Magnitude > ESP_SETTINGS.MAX_DIST then entity:Hide() continue end
         entity:SetColor(cfg.Color)
+        table.insert(_visibleEntities, {entity = entity, head = head})
+    end
+end)
+
+scheduler:addRender("espDraw", function()
+    for _, entry in ipairs(_visibleEntities) do
+        local head = entry.head
+        if not head or not head.Parent then continue end
         local pos, onScreen = WorldToScreen(head.Position + Vector3.new(0, 1.5, 0))
-        entity:Update(pos, onScreen)
+        entry.entity:Update(pos, onScreen)
     end
 end)
 
