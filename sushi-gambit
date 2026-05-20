@@ -621,27 +621,6 @@ if health and health <= 0 then
     npcRegistry[addr] = nil
     continue
 end
-local torso = cached.torso
-if torso then
-    if SETTINGS.Cheat.Instant.SeatCustomer.Enabled and npc:GetAttribute("CurrentState") == "WaitingInLine" then
-        local prompt = torso:FindFirstChild("WaitProximityPrompt")
-        if prompt and prompt.Address then
-            memory_write("float", prompt.Address + HoldDuration, 0)
-        end
-    end
-
-    local dasher = torso:FindFirstChild("CatchDasherPrompt")
-    if dasher and dasher.Address then
-        memory_write("float", dasher.Address + HoldDuration, 0)
-        if ESP_SETTINGS.Dasher.Enabled and not Manager.Entities[addr] then
-            Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Dasher"))
-        end
-    else
-        if Manager.Entities[addr] and Manager.Entities[addr].Type == "Dasher" then
-            Manager:Remove(addr)
-        end
-    end
-end
 
 if ESP_SETTINGS.Critic.Enabled and npc:GetAttribute("Critic") == true then
     if not Manager.Entities[addr] then
@@ -650,6 +629,47 @@ if ESP_SETTINGS.Critic.Enabled and npc:GetAttribute("Critic") == true then
 elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Critic" then
     Manager:Remove(addr)
 end
+    end
+end)
+local customer_list = {}
+
+task.spawn(function()
+    while true do
+        if not isrbxactive() then task.wait(0.2) continue end
+
+        for addr, cached in pairs(npcRegistry) do
+            local npc = cached.inst
+
+if SETTINGS.Cheat.Instant.SeatCustomer
+                and npc:GetAttribute("CurrentState") == "WaitingInLine"
+                and not customer_list[addr]
+            then
+                local torso = npc:FindFirstChild("Torso")
+                local prompt = torso and torso:FindFirstChild("WaitProximityPrompt")
+                if prompt and prompt.Address then
+                    memory_write("float", prompt.Address + HoldDuration, 0)
+                    customer_list[addr] = true
+                end
+            end
+
+            if ESP_SETTINGS.Dasher.Enabled then
+                if customer_list[addr] then
+                    local torso = npc:FindFirstChild("Torso")
+                    local prompt = torso and torso:FindFirstChild("CatchDasherPrompt")
+                    if prompt then
+                        memory_write("float", prompt.Address + HoldDuration, 0)
+                        if not Manager.Entities[addr] then
+                            customer_list[addr] = nil
+                            Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Dasher"))
+                        end
+                    end
+                end
+            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Dasher" then
+                Manager:Remove(addr)
+            end
+        end
+
+        task.wait(0.2)
     end
 end)
 
