@@ -467,8 +467,8 @@ function Entity.new(instance, text, typeName)
         Text     = text,
         Type     = typeName,
 
-TypeKey = string.upper(typeName:sub(1,1)) .. typeName:sub(2),
-State    = STATE.ACTIVE,
+TypeKey  = typeName:sub(1,1):upper() .. typeName:sub(2),
+        State    = STATE.ACTIVE,
     }, Entity)
 end
 
@@ -519,61 +519,45 @@ local _npcIndex = 0
 local _BATCH = 8
 
 task.spawn(function()
-local folder
-for _, v in ipairs(workspace:GetChildren()) do
-    if v.Name == "NpcDestination" then
-        folder = v
-        break
+    local dest = workspace:FindFirstChild("NpcDestination")
+    if not dest then
+        warn("NpcDestination not found, ESP disabled")
+        ESP_SETTINGS.Dasher.Enabled = false
+        ESP_SETTINGS.Critic.Enabled = false
+        return
     end
-end
-
-if not folder then
-    warn("NpcDestination not found, ESP disabled")
-    ESP_SETTINGS.Dasher.Enabled = false
-    ESP_SETTINGS.Critic.Enabled = false
-    return
-end
-
+    local folder = dest:FindFirstChild("SpawnedNPCs")
+    if not folder then
+        warn("SpawnedNPCs not found, ESP disabled")
+        return
+    end
     for _, npc in ipairs(folder:GetChildren()) do
         local addr = npc.Address
         if addr then
-            npcRegistry[addr] = {
-                inst = npc,
-                head = npc:FindFirstChild("Head"),
-                torso = npc:FindFirstChild("Torso"),
-                humanoid = npc:FindFirstChild("Humanoid")
-            }
+            npcRegistry[addr] = {inst=npc, head=npc:FindFirstChild("Head"), torso=npc:FindFirstChild("Torso"), humanoid=npc:FindFirstChild("Humanoid")}
             table.insert(_npcList, addr)
         end
     end
-
-pcall(function()
+    pcall(function()
         folder.ChildAdded:Connect(function(npc)
             task.wait()
-            local ok, addr = pcall(function() return npc.Address end)
-            if not ok or not addr then return end
-            npcRegistry[addr] = {
-                inst = npc,
-                head = npc:FindFirstChild("Head"),
-                torso = npc:FindFirstChild("Torso"),
-                humanoid = npc:FindFirstChild("Humanoid")
-            }
+            local addr = npc.Address
+            if not addr then return end
+            npcRegistry[addr] = {inst=npc, head=npc:FindFirstChild("Head"), torso=npc:FindFirstChild("Torso"), humanoid=npc:FindFirstChild("Humanoid")}
             table.insert(_npcList, addr)
         end)
         folder.ChildRemoved:Connect(function(npc)
             local addr = npc.Address
-            if not addr then return end
             Manager:Remove(addr)
             npcRegistry[addr] = nil
             for i = #_npcList, 1, -1 do
-                if _npcList[i] == addr then
-                    table.remove(_npcList, i)
-                    break
-                end
+                if _npcList[i] == addr then table.remove(_npcList, i) break end
             end
         end)
     end)
 end)
+
+local _visibleEntities = {}
 
 scheduler:addLoop("npcPipeline", 0.2, function()
     if not isrbxactive() then return end
@@ -594,6 +578,21 @@ scheduler:addLoop("npcPipeline", 0.2, function()
         if not cached.head    or not cached.head.Parent  then cached.head    = npc:FindFirstChild("Head")     end
         if not cached.torso   or not cached.torso.Parent then cached.torso   = npc:FindFirstChild("Torso")    end
         if not cached.humanoid or not cached.humanoid.Parent then cached.humanoid = npc:FindFirstChild("Humanoid") end
+       local humanoid = cached.humanoid
+local health = humanoid and humanoid.Health
+
+if not cached.head or not cached.head.Parent then
+    cached.head = npc:FindFirstChild("Head")
+end
+
+if not cached.torso or not cached.torso.Parent then
+    cached.torso = npc:FindFirstChild("Torso")
+end
+
+if not cached.humanoid or not cached.humanoid.Parent then
+    cached.humanoid = npc:FindFirstChild("Humanoid")
+end
+
 local humanoid = cached.humanoid
 local health = humanoid and tonumber(humanoid.Health)
 
@@ -602,9 +601,21 @@ if health and health <= 0 then
     npcRegistry[addr] = nil
     continue
 end
+        local torso = cached.torso
+        if torso then
+            if npc:GetAttribute("CurrentState") == "WaitingInLine" then
+                local prompt = torso:FindFirstChild("WaitProximityPrompt")
+                if prompt and prompt.Address then
+                    memory_write("float", prompt.Address + HoldDuration, 0)
+                end
+            end
+            local dasherPrompt = torso:FindFirstChild("CatchDasherPrompt")
+            if dasherPrompt and dasherPrompt.Address then
+                memory_write("float", dasherPrompt.Address + HoldDuration, 0)
+            end
+        end
 
         if ESP_SETTINGS.Dasher.Enabled then
-            local torso = cached.torso
             local hasDasherPrompt = torso and torso:FindFirstChild("CatchDasherPrompt") ~= nil
             if hasDasherPrompt then
                 if not Manager.Entities[addr] then
@@ -627,7 +638,6 @@ end
     end
 end)
 
-local _visibleEntities = {}
 scheduler:addLoop("espLogic", 0.2, function()
     Manager:Sweep()
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -657,30 +667,18 @@ scheduler:addRender("espDraw", function()
     end
 end)
 
-local Admins = {
-    105479622, 65095440, 1425697210, 126961971,
-    127528152, 319065798, 2754844524, 125440222, 1783725423
-}
+local Admins = {105479622,65095440,1425697210,126961971,127528152,319065798,2754844524,125440222,1783725423}
 
-local function handlePlayer(plr)
-    if table.find(Admins, plr.UserId) and SETTINGS.Notify.AdminJoin.Enabled then
-        notify("Admin Joined: " .. plr.Name, "ADMIN ALERT", 8)
-    end
-end
-
-for _, plr in ipairs(Players:GetPlayers()) do
-    handlePlayer(plr)
-end
-
-local ok, err = pcall(function()
-    if Players.PlayerAdded then
-        Players.PlayerAdded:Connect(handlePlayer)
+pcall(function()
+    if Players and Players.PlayerAdded then
+        Players.PlayerAdded:Connect(function(plr)
+            if table.find(Admins, plr.UserId) and SETTINGS.Notify.AdminJoin.Enabled then
+                notify("Admin Joined: " .. plr.Name, "ADMIN ALERT", 8)
+            end
+        end)
     end
 end)
 
-if not ok then
-    warn("PlayerAdded hook failed:", err)
-end
 UserInputService.InputBegan:Connect(function(inp, gp)
     if gp then return end
     if inp.KeyCode == Enum.KeyCode.X then
