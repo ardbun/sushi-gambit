@@ -18,13 +18,13 @@ local keyrelease   = keyrelease or function() end
 
 local SETTINGS = {
     Auto = {
-        Cooking        = {Enabled = false},
-        Washing        = {Enabled = false},
+        Cooking       = {Enabled = false},
+        Washing       = {Enabled = false},
         ChloroformSpys = {Enabled = false},
     },
     Cheat = {
         Spoof   = {Greenbar = {Enabled = true}, SpongeEffectiveness = {Enabled = true}},
-        Instant = {CleanDish = {Enabled = true}, SeatCustomer = true},
+        Instant = {CleanDish = {Enabled = true}, SeatCustomer = {Enabled = true}},
     },
     Notify = {AdminJoin = {Enabled = true}},
 }
@@ -47,6 +47,9 @@ local TIMINGS = {
     cooking       = 0.05,
     washing       = 0.08,
     chloroform    = 0.03,
+    npcCache      = 0.5,
+    npcPrompts    = 0.2,
+    espLogic      = 0.2,
     stats         = 0.1,
     labels        = 0.1,
     clock         = 0.1,
@@ -134,13 +137,13 @@ function Lib.new(titleText, width, height, cornerRadius)
     self.HorizontalFill = newRect(self.Position + Vector2.new(0, r), Vector2.new(w, h - 2*r))
 
     local title = Drawing.new("Text")
-    title.Text     = titleText
-    title.Size     = 12
+    title.Text    = titleText
+    title.Size    = 12
     title.Position = self.Position + Vector2.new(12, 15)
-    title.Color    = Color3.fromRGB(255, 0, 0)
-    title.Outline  = true
-    title.Visible  = false
-    self.Title     = title
+    title.Color   = Color3.fromRGB(255, 0, 0)
+    title.Outline = true
+    title.Visible = false
+    self.Title    = title
     table.insert(self.Elements, title)
 
     local dragging, dragOffset = false, Vector2.new()
@@ -161,13 +164,7 @@ function Lib.new(titleText, width, height, cornerRadius)
         else
             dragging = false
         end
-        if dragging then
-            local newPos = Vector2.new(mx - dragOffset.X, my - dragOffset.Y)
-            self:Edit(newPos)
-            pcall(function()
-                writefile("sushigambit_pos.txt", newPos.X .. "," .. newPos.Y)
-            end)
-        end
+        if dragging then self:Edit(Vector2.new(mx - dragOffset.X, my - dragOffset.Y)) end
     end)
 
     return self
@@ -221,7 +218,7 @@ function Lib:AddLabel(text, color)
     table.insert(self.Labels, entry)
 
     for i, e in ipairs(self.Labels) do
-        e.relPos           = Vector2.new(12, LABEL_START_Y + (i-1)*LABEL_STEP)
+        e.relPos          = Vector2.new(12, LABEL_START_Y + (i-1)*LABEL_STEP)
         e.drawing.Position = self.Position + e.relPos
     end
 
@@ -238,12 +235,6 @@ end
 
 local Windows = Lib.new("Sushi Gambit", 220, 200)
 Windows:Show(true)
-
-pcall(function()
-    local data = readfile("sushigambit_pos.txt")
-    local x, y = data:match("([%d%.]+),([%d%.]+)")
-    if x and y then Windows:Edit(Vector2.new(tonumber(x), tonumber(y))) end
-end)
 
 local ok, raw = pcall(function()
     return HttpService:JSONDecode(game:HttpGet("https://imtheo.lol/Offsets/OffsetsHex.json"))
@@ -423,8 +414,8 @@ scheduler:addLoop("labels", TIMINGS.labels, function()
     end
     if seatedLabel then
         local count = 0
-        for _, npc in ipairs(game.Workspace.NpcDestination.SpawnedNPCs:GetChildren()) do
-            if npc:IsA("Model") and npc:GetAttribute("CurrentState") == "Seated" then count += 1 end
+        for _, npc in pairs(npcRegistry or {}) do
+            if npc.inst:GetAttribute("CurrentState") == "Seated" then count += 1 end
         end
         local t = "seated: " .. count .. "/18"
         if _lastLabels.seated ~= t then _lastLabels.seated = t seatedLabel:SetText(t) end
@@ -463,33 +454,28 @@ scheduler:addLoop("clock", TIMINGS.clock, function()
     if norm == "5:05AM" then _clockWarned = {} end
 end)
 
--- NPC ESP (from original)
 local STATE = {ACTIVE = 1, DESTROYED = 2}
 
 local Entity = {}
 Entity.__index = Entity
 
 function Entity.new(instance, text, typeName)
-    local head = instance:FindFirstChild("Head")
     text.Text = typeName
     return setmetatable({
         Instance = instance,
-        Head     = head,
+        Head     = instance:FindFirstChild("Head"),
         Text     = text,
         Type     = typeName,
-        State    = STATE.ACTIVE,
+
+TypeKey = string.upper(typeName:sub(1,1)) .. typeName:sub(2),
+State    = STATE.ACTIVE,
     }, Entity)
 end
 
-function Entity:Update(pos, onScreen, enabled)
+function Entity:Update(pos, onScreen)
     if self.State == STATE.DESTROYED then return end
-    if not enabled then self:Destroy() return end
-    if not onScreen then
-        if self.Text.Visible then self.Text.Visible = false end
-        return
-    end
-    self.Text.Position = pos
-    if not self.Text.Visible then self.Text.Visible = true end
+    self.Text.Visible  = onScreen
+    if onScreen then self.Text.Position = pos end
 end
 
 function Entity:Destroy()
@@ -506,11 +492,10 @@ function Entity:SetColor(color)
     if self.Text then self.Text.Color = color self.Text.Outline = true end
 end
 
-local Manager = {Entities = {}, List = {}}
+local Manager = {Entities = {}}
 
 function Manager:Add(id, entity)
     self.Entities[id] = entity
-    table.insert(self.List, entity)
 end
 
 function Manager:Remove(id)
@@ -518,110 +503,164 @@ function Manager:Remove(id)
     if not ent then return end
     ent:Destroy()
     self.Entities[id] = nil
-    for i = 1, #self.List do
-        if self.List[i] == ent then table.remove(self.List, i) break end
+end
+
+function Manager:Sweep()
+    for id, entity in pairs(self.Entities) do
+        if entity.State == STATE.DESTROYED then
+            self.Entities[id] = nil
+        end
     end
 end
 
-local folder = game.Workspace.NpcDestination.SpawnedNPCs
-local customer_list = {}
-local npc_cache = {}
+local npcRegistry = {}
+local _npcList = {}
+local _npcIndex = 0
+local _BATCH = 8
 
 task.spawn(function()
-    while true do
-        local seen = {}
-        for _, npc in ipairs(folder:GetChildren()) do
-            local addr = npc.Address
-            seen[addr] = true
-            if not npc_cache[addr] then
-                npc_cache[addr] = {inst = npc, head = npc:FindFirstChild("Head")}
-            end
-        end
-        for addr in pairs(npc_cache) do
-            if not seen[addr] then npc_cache[addr] = nil end
-        end
-        task.wait(0.5)
+local folder
+for _, v in ipairs(workspace:GetChildren()) do
+    if v.Name == "NpcDestination" then
+        folder = v
+        break
     end
-end)
+end
 
-task.spawn(function()
-    while true do
-        if not isrbxactive() then task.wait(0.2) continue end
+if not folder then
+    warn("NpcDestination not found, ESP disabled")
+    ESP_SETTINGS.Dasher.Enabled = false
+    ESP_SETTINGS.Critic.Enabled = false
+    return
+end
 
-        for addr, cached in pairs(npc_cache) do
-            local npc = cached.inst
+    for _, npc in ipairs(folder:GetChildren()) do
+        local addr = npc.Address
+        if addr then
+            npcRegistry[addr] = {
+                inst = npc,
+                head = npc:FindFirstChild("Head"),
+                torso = npc:FindFirstChild("Torso"),
+                humanoid = npc:FindFirstChild("Humanoid")
+            }
+            table.insert(_npcList, addr)
+        end
+    end
 
-            -- SeatCustomer
-            if SETTINGS.Cheat.Instant.SeatCustomer
-                and npc:GetAttribute("CurrentState") == "WaitingInLine"
-                and not customer_list[addr]
-            then
-                local torso = npc:FindFirstChild("Torso")
-                local prompt = torso and torso:FindFirstChild("WaitProximityPrompt")
-                if prompt and prompt.Address then
-                    memory_write("float", prompt.Address + HoldDuration, 0)
-                    customer_list[addr] = true
+pcall(function()
+        folder.ChildAdded:Connect(function(npc)
+            task.wait()
+            local ok, addr = pcall(function() return npc.Address end)
+            if not ok or not addr then return end
+            npcRegistry[addr] = {
+                inst = npc,
+                head = npc:FindFirstChild("Head"),
+                torso = npc:FindFirstChild("Torso"),
+                humanoid = npc:FindFirstChild("Humanoid")
+            }
+            table.insert(_npcList, addr)
+        end)
+        folder.ChildRemoved:Connect(function(npc)
+            local addr = npc.Address
+            if not addr then return end
+            Manager:Remove(addr)
+            npcRegistry[addr] = nil
+            for i = #_npcList, 1, -1 do
+                if _npcList[i] == addr then
+                    table.remove(_npcList, i)
+                    break
                 end
             end
+        end)
+    end)
+end)
 
-            -- Dasher
-            if ESP_SETTINGS.Dasher.Enabled then
-                local ent = Manager.Entities[addr]
-                if customer_list[addr] then
-                    local torso = npc:FindFirstChild("Torso")
-                    local prompt = torso and torso:FindFirstChild("CatchDasherPrompt")
-                    if prompt then
-                        memory_write("float", prompt.Address + HoldDuration, 0)
-                        if not ent then
-                            customer_list[addr] = nil
-                            Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Dasher"))
-                        else
-                            ent.Instance = npc
-                        end
-                    end
+scheduler:addLoop("npcPipeline", 0.2, function()
+    if not isrbxactive() then return end
+    local count = #_npcList
+    if count == 0 then return end
+    for i = 1, math.min(_BATCH, count) do
+        _npcIndex = (_npcIndex % count) + 1
+        local addr = _npcList[_npcIndex]
+        if not addr then continue end
+        local cached = npcRegistry[addr]
+        if not cached then continue end
+        local npc = cached.inst
+        if not npc or not npc.Parent then
+            Manager:Remove(addr)
+            npcRegistry[addr] = nil
+            continue
+        end
+        if not cached.head    or not cached.head.Parent  then cached.head    = npc:FindFirstChild("Head")     end
+        if not cached.torso   or not cached.torso.Parent then cached.torso   = npc:FindFirstChild("Torso")    end
+        if not cached.humanoid or not cached.humanoid.Parent then cached.humanoid = npc:FindFirstChild("Humanoid") end
+local humanoid = cached.humanoid
+local health = humanoid and tonumber(humanoid.Health)
+
+if health and health <= 0 then
+    Manager:Remove(addr)
+    npcRegistry[addr] = nil
+    continue
+end
+
+        if ESP_SETTINGS.Dasher.Enabled then
+            local torso = cached.torso
+            local hasDasherPrompt = torso and torso:FindFirstChild("CatchDasherPrompt") ~= nil
+            if hasDasherPrompt then
+                if not Manager.Entities[addr] then
+                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Dasher"))
                 end
             elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Dasher" then
                 Manager:Remove(addr)
             end
+        elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Dasher" then
+            Manager:Remove(addr)
+        end
 
-            -- Critic
-            if ESP_SETTINGS.Critic.Enabled and npc:GetAttribute("Critic") == true then
-                if not Manager.Entities[addr] then
-                    Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Critic"))
-                else
-                    Manager.Entities[addr].Instance = npc
-                end
-            elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Critic" then
-                Manager:Remove(addr)
+        if ESP_SETTINGS.Critic.Enabled and npc:GetAttribute("Critic") == true then
+            if not Manager.Entities[addr] then
+                Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "Critic"))
             end
+        elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "Critic" then
+            Manager:Remove(addr)
         end
-
-        if _clockLabel and _clockLabel.Text == "08:00" then
-            customer_list = {}
-        end
-
-        task.wait(0.2)
     end
 end)
 
-RunService.Heartbeat:Connect(function()
+local _visibleEntities = {}
+scheduler:addLoop("espLogic", 0.2, function()
+    Manager:Sweep()
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local rootPos = root and root.Position
+    _visibleEntities = {}
     for id, entity in pairs(Manager.Entities) do
-        local cached = npc_cache[id]
+        local cached = npcRegistry[id]
         if not cached then Manager:Remove(id) continue end
         local head = cached.head
-        if not head or not head.Parent then entity:Hide() continue end
-        local cfg = ESP_SETTINGS[entity.Type]
-        if not cfg then Manager:Remove(id) continue end
-        if not cfg.Enabled then entity:Hide() continue end
-        if root and (head.Position - root.Position).Magnitude > ESP_SETTINGS.MAX_DIST then entity:Hide() continue end
+        if not head or not head.Parent or entity.State == STATE.DESTROYED then entity:Hide() continue end
+        local humanoid = cached.humanoid
+        if humanoid and humanoid.Health <= 0 then entity:Hide() continue end
+        local cfg = ESP_SETTINGS[entity.TypeKey]
+        if not cfg or not cfg.Enabled then entity:Hide() continue end
+        if rootPos and (head.Position - rootPos).Magnitude > ESP_SETTINGS.MAX_DIST then entity:Hide() continue end
         entity:SetColor(cfg.Color)
-        local pos, onScreen = WorldToScreen(head.Position + Vector3.new(0, 1.5, 0))
-        entity:Update(pos, onScreen, true)
+        table.insert(_visibleEntities, {entity = entity, head = head})
     end
 end)
 
-local Admins = {105479622, 65095440, 1425697210, 126961971, 127528152, 319065798, 2754844524, 125440222, 1783725423}
+scheduler:addRender("espDraw", function()
+    for _, entry in ipairs(_visibleEntities) do
+        local head = entry.head
+        if not head or not head.Parent then continue end
+        local pos, onScreen = WorldToScreen(head.Position + Vector3.new(0, 1.5, 0))
+        entry.entity:Update(pos, onScreen)
+    end
+end)
+
+local Admins = {
+    105479622, 65095440, 1425697210, 126961971,
+    127528152, 319065798, 2754844524, 125440222, 1783725423
+}
 
 local function handlePlayer(plr)
     if table.find(Admins, plr.UserId) and SETTINGS.Notify.AdminJoin.Enabled then
@@ -629,9 +668,19 @@ local function handlePlayer(plr)
     end
 end
 
-for _, plr in ipairs(Players:GetPlayers()) do handlePlayer(plr) end
-pcall(function() Players.PlayerAdded:Connect(handlePlayer) end)
+for _, plr in ipairs(Players:GetPlayers()) do
+    handlePlayer(plr)
+end
 
+local ok, err = pcall(function()
+    if Players.PlayerAdded then
+        Players.PlayerAdded:Connect(handlePlayer)
+    end
+end)
+
+if not ok then
+    warn("PlayerAdded hook failed:", err)
+end
 UserInputService.InputBegan:Connect(function(inp, gp)
     if gp then return end
     if inp.KeyCode == Enum.KeyCode.X then
@@ -640,8 +689,8 @@ UserInputService.InputBegan:Connect(function(inp, gp)
     end
 end)
 
-PlayerStats.StaminaUsageMultiplier.Value                  = -1
-PlayerStats.StaminaGainMultiplier.Value                   = 100
+PlayerStats.StaminaUsageMultiplier.Value                = -1
+PlayerStats.StaminaGainMultiplier.Value                 = 100
 PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
 
 SETTINGS.Auto.ChloroformSpys.Enabled = true
