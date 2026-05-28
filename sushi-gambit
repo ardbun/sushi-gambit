@@ -651,7 +651,7 @@ PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
 
 SETTINGS.Auto.ChloroformSpys.Enabled = true
 
-notify('sushi COOKED', "", 4)
+notify('script loaded', "", 4)
 
 if getgenv then
     getgenv().SushiGambitCleanup = function()
