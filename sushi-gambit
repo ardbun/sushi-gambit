@@ -19,7 +19,7 @@ local keyrelease   = keyrelease or function() end
 local SETTINGS = {
     Auto = {
         Cooking       = {Enabled = false},
-        Washing       = {Enabled = false},
+        Washing       = {Enabled = true},
         ChloroformSpys = {Enabled = false},
     },
     Cheat = {
@@ -46,7 +46,6 @@ local ESP_SETTINGS = {
 local TIMINGS = {
     staticPrompts = 5,
     cooking       = 0.05,
-    washing       = 0.08,
     chloroform    = 0.03,
     npcCache      = 0.5,
     npcPrompts    = 0.2,
@@ -280,11 +279,6 @@ UI.AddTab("Sushi Gambit", function(tab)
             notify("auto cooking: " .. tostring(value), "", 3)
             SETTINGS.Auto.Cooking.Enabled = value
         end)
-
-        MainSec:Toggle('auto_washing', 'auto wash', function(value)
-            notify("auto dishwashing: " .. tostring(value), "", 3)
-            SETTINGS.Auto.Washing.Enabled = value
-        end)
     end
 
     local PlayerTab = tab:Section("Player", "Left")
@@ -328,16 +322,24 @@ scheduler:addLoop("cooking", TIMINGS.cooking, function()
     end
 end)
 
-scheduler:addLoop("washing", TIMINGS.washing, function()
+RunService.Heartbeat:Connect(function()
     if not SETTINGS.Auto.Washing.Enabled then return end
+
     local gui = PlayerGui:FindFirstChild("DishWashingGui")
-    if not gui or memory_read("byte", gui.Address + ScreenGuiEnabled) ~= 1 then return end
+    if not gui then return end
+    if memory_read("byte", gui.Address + ScreenGuiEnabled) ~= 1 then return end
+
     local sink = game.Workspace.Kitchen:FindFirstChild("TheSink")
     if not sink or sink.DirtyDishAmount.Value == 0 then return end
+    if sink.Occupied.Value then return end
+
     for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
         if v.Name == "KeyTemplate" then
             local key = ({Q=0x51, E=0x45, R=0x52, F=0x46})[v:GetAttribute("Key")]
-            if key then keypress(key) keyrelease(key) end
+            if key then
+                keypress(key)
+                keyrelease(key)
+            end
         end
     end
 end)
@@ -554,11 +556,13 @@ scheduler:addLoop("npcLogic", 0.15, function()
         if not (cached.torso  and cached.torso.Parent)  then cached.torso    = npc:FindFirstChild("Torso")    end
         if not cached.humanoid                           then cached.humanoid = npc:FindFirstChild("Humanoid") end
 
-        local hum = cached.humanoid
-        if hum and hum.Health and hum.Health <= 0 then
-            Manager:Remove(addr)
-            continue
-        end
+       local humanoid = cached.humanoid
+if humanoid and type(humanoid.Health) == "number" and humanoid.Health <= 0 then
+    Manager:Remove(addr)
+    npcRegistry[addr] = nil
+    _knownAddrs[addr] = nil
+    continue
+end
 
         local torso = cached.torso
         if torso then
@@ -643,6 +647,10 @@ UserInputService.InputBegan:Connect(function(inp, gp)
     if inp.KeyCode == Enum.KeyCode.X then
         SETTINGS.Auto.ChloroformSpys.Enabled = not SETTINGS.Auto.ChloroformSpys.Enabled
         notify("Auto Chloroform: " .. (SETTINGS.Auto.ChloroformSpys.Enabled and "ON" or "OFF"), "Keybind X", 2)
+    end
+    if inp.KeyCode == Enum.KeyCode.Z then
+        SETTINGS.Auto.Washing.Enabled = not SETTINGS.Auto.Washing.Enabled
+        notify("Auto Wash: " .. (SETTINGS.Auto.Washing.Enabled and "ON" or "OFF"), "Keybind Z", 2)
     end
 end)
 
