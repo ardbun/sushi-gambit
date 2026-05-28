@@ -619,7 +619,8 @@ RunService.Heartbeat:Connect(function()
         local hum = cached.humanoid
         if hum and hum.Health and hum.Health <= 0 then entity:Hide() continue end
         if root and (head.Position - root.Position).Magnitude > ESP_SETTINGS.MAX_DIST then entity:Hide() continue end
-        entity:SetColor(ESP_SETTINGS[entity.Type] and ESP_SETTINGS[entity.Type].Color or Color3.new(1,1,1))
+        local typeKey = entity.Type:gsub(" ", "")
+        entity:SetColor(ESP_SETTINGS[typeKey] and ESP_SETTINGS[typeKey].Color or Color3.new(1,1,1))
         local pos, onScreen = WorldToScreen(head.Position + Vector3.new(0, 1.5, 0))
         entity:Update(pos, onScreen)
     end
