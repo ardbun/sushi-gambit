@@ -33,9 +33,8 @@ local ESP_SETTINGS = {
     MAX_DIST    = 200,
     MAX_DIST_SQ = 200 * 200,
     Dasher          = {Enabled = true,  Color = Color3.new(1, 0, 0)},
-    Police          = {Enabled = true,  Color = Color3.new(0, 0, 1)},
     Critic          = {Enabled = true,  Color = Color3.fromRGB(255, 252, 0)},
-    HealthInspector = {Enabled = true,  Color = Color3.new(1, 0, 0)},
+    HealthInspector = {Enabled = true,  Color = Color3.fromRGB(0, 255, 0)},
     Windows         = {Enabled = true},
     Labels = {
         day = true, companymoney = true, vegstock = true,
@@ -295,9 +294,6 @@ UI.AddTab("Sushi Gambit", function(tab)
     PlayerStats.WalkSpeed.Value = 20
 end)
 
-task.wait(2)
-notify("Instant prompts enabled", "", 2)
-
 local function applyStaticPrompts()
     local paths = {
         {"Workspace","RestaurantArea","restaurant","Table","computer","ProximityPrompt"},
@@ -456,26 +452,32 @@ scheduler:addLoop("clock", TIMINGS.clock, function()
     if norm == "5:05AM" then _clockWarned = {} end
 end)
 
+-- Replace your npcRegistry/entity/manager/ESP sections with this:
+
 local STATE = {ACTIVE = 1, DESTROYED = 2}
 
 local Entity = {}
 Entity.__index = Entity
 
-function Entity.new(instance, text, typeName)
-    text.Text = typeName
+function Entity.new(instance, typeName, color)
+    local text = Drawing.new("Text")
+    text.Text    = typeName
+    text.Size    = 14
+    text.Color   = color or Color3.new(1, 1, 1)
+    text.Outline = true
+    text.Visible = false
     return setmetatable({
         Instance = instance,
         Head     = instance:FindFirstChild("Head"),
         Text     = text,
         Type     = typeName,
-        TypeKey  = typeName:sub(1,1):upper() .. typeName:sub(2),
         State    = STATE.ACTIVE,
     }, Entity)
 end
 
 function Entity:Update(pos, onScreen)
     if self.State == STATE.DESTROYED then return end
-    self.Text.Visible  = onScreen
+    self.Text.Visible = onScreen
     if onScreen then self.Text.Position = pos end
 end
 
@@ -490,14 +492,12 @@ function Entity:Hide()
 end
 
 function Entity:SetColor(color)
-    if self.Text then self.Text.Color = color self.Text.Outline = true end
+    if self.Text then self.Text.Color = color end
 end
 
 local Manager = {Entities = {}}
 
-function Manager:Add(id, entity)
-    self.Entities[id] = entity
-end
+function Manager:Add(id, entity) self.Entities[id] = entity end
 
 function Manager:Remove(id)
     local ent = self.Entities[id]
@@ -506,130 +506,133 @@ function Manager:Remove(id)
     self.Entities[id] = nil
 end
 
-function Manager:Sweep()
-    for id, entity in pairs(self.Entities) do
-        if entity.State == STATE.DESTROYED then
-            self.Entities[id] = nil
-        end
-    end
-end
-
+-- NPC registry: addr -> {inst, head, torso, humanoid}
 local npcRegistry = {}
-local _npcList = {}
-local _npcIndex = 0
-local _BATCH = 8
 
-task.spawn(function()
+local _knownAddrs = {}
+
+scheduler:addLoop("npcScan", 0.5, function()
     local dest = workspace:FindFirstChild("NpcDestination")
-    if not dest then
-        warn("NpcDestination not found, ESP disabled")
-        ESP_SETTINGS.Dasher.Enabled = false
-        ESP_SETTINGS.Police.Enabled = false
-        ESP_SETTINGS.Critic.Enabled = false
-        ESP_SETTINGS.HealthInspector.Enabled = false
-        return
-    end
+    if not dest then return end
     local folder = dest:FindFirstChild("SpawnedNPCs")
-    if not folder then
-        warn("SpawnedNPCs not found, ESP disabled")
-        return
-    end
+    if not folder then return end
+
+    local seen = {}
     for _, npc in ipairs(folder:GetChildren()) do
         local addr = npc.Address
-        if addr then
-            npcRegistry[addr] = {inst=npc, head=npc:FindFirstChild("Head"), torso=npc:FindFirstChild("Torso"), humanoid=npc:FindFirstChild("Humanoid")}
-            table.insert(_npcList, addr)
+        if not addr then continue end
+        seen[addr] = true
+        if not _knownAddrs[addr] then
+            _knownAddrs[addr] = true
+            npcRegistry[addr] = {
+                inst     = npc,
+                head     = npc:FindFirstChild("Head"),
+                torso    = npc:FindFirstChild("Torso"),
+                humanoid = npc:FindFirstChild("Humanoid"),
+            }
         end
     end
-    pcall(function()
-        folder.ChildAdded:Connect(function(npc)
-            task.wait()
-            local addr = npc.Address
-            if not addr then return end
-            npcRegistry[addr] = {inst=npc, head=npc:FindFirstChild("Head"), torso=npc:FindFirstChild("Torso"), humanoid=npc:FindFirstChild("Humanoid")}
-            table.insert(_npcList, addr)
-        end)
-        folder.ChildRemoved:Connect(function(npc)
-            local addr = npc.Address
+
+    for addr in pairs(_knownAddrs) do
+        if not seen[addr] then
             Manager:Remove(addr)
             npcRegistry[addr] = nil
-            for i = #_npcList, 1, -1 do
-                if _npcList[i] == addr then table.remove(_npcList, i) break end
-            end
-        end)
-    end)
+            _knownAddrs[addr] = nil
+        end
+    end
 end)
 
-scheduler:addLoop("npcPipeline", 0.1, function()
+
+-- NPC logic: instant prompts + dasher/critic tagging
+-- Runs every 0.15s, touches ALL npcs (no batching — registry is a flat table, cheap to iterate)
+scheduler:addLoop("npcLogic", 0.15, function()
     if not isrbxactive() then return end
-    local count = #_npcList
-    if count == 0 then return end
-    for i = 1, math.min(_BATCH, count) do
-        _npcIndex = (_npcIndex % count) + 1
-        local addr = _npcList[_npcIndex]
-        if not addr then continue end
-        local cached = npcRegistry[addr]
-        if not cached then continue end
+
+    for addr, cached in pairs(npcRegistry) do
         local npc = cached.inst
         if not npc or not npc.Parent then
             Manager:Remove(addr)
             npcRegistry[addr] = nil
             continue
         end
-if not cached.head     or not cached.head.Parent   then cached.head     = npc:FindFirstChild("Head")     end
-if not cached.torso    or not cached.torso.Parent  then cached.torso    = npc:FindFirstChild("Torso")    end
-if not cached.humanoid                             then cached.humanoid = npc:FindFirstChild("Humanoid") end
 
-local humanoid = cached.humanoid
-if humanoid and type(humanoid.Health) == "number" and humanoid.Health <= 0 then
-    Manager:Remove(addr)
-    npcRegistry[addr] = nil
-    continue
-end
+        -- refresh stale child refs
+        if not (cached.head   and cached.head.Parent)   then cached.head     = npc:FindFirstChild("Head")     end
+        if not (cached.torso  and cached.torso.Parent)  then cached.torso    = npc:FindFirstChild("Torso")    end
+        if not cached.humanoid                           then cached.humanoid = npc:FindFirstChild("Humanoid") end
+
+        -- skip dead
+        local hum = cached.humanoid
+        if hum and hum.Health and hum.Health <= 0 then
+            Manager:Remove(addr)
+            continue
+        end
+
         local torso = cached.torso
         if torso then
-            if npc:GetAttribute("CurrentState") == "WaitingInLine" then
-                local prompt = torso:FindFirstChild("WaitProximityPrompt")
-                if prompt and prompt.Address then
-                    memory_write("float", prompt.Address + HoldDuration, 0)
+            -- instant seat customer
+            local state = npc:GetAttribute("CurrentState")
+            if state == "WaitingInLine" then
+                local wp = torso:FindFirstChild("WaitProximityPrompt")
+                if wp and wp.Address then
+                    memory_write("float", wp.Address + HoldDuration, 0)
                 end
             end
-            local dasher = torso:FindFirstChild("CatchDasherPrompt")
-            if dasher and dasher.Address then
-                memory_write("float", dasher.Address + HoldDuration, 0)
+
+            -- instant catch dasher
+            local dp = torso:FindFirstChild("CatchDasherPrompt")
+            if dp and dp.Address then
+                memory_write("float", dp.Address + HoldDuration, 0)
             end
         end
-    if ESP_SETTINGS.Dasher.Enabled and npc:GetAttribute("Dasher") == true then
-            if not Manager.Entities[addr] then
-                Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "dasher"))
+
+        -- ESP tagging
+        local isDasher = cached.torso and cached.torso:FindFirstChild("CatchDasherPrompt") ~= nil
+        local isCritic = npc:GetAttribute("Critic") == true
+        local isInspector = npc:GetAttribute("Behavior") == "Inspector"
+
+        local function syncEntity(condition, typeName, color)
+            local ent = Manager.Entities[addr]
+            if condition then
+                if not ent then
+                    Manager:Add(addr, Entity.new(npc, typeName, color))
+                end
+            else
+                if ent and ent.Type == typeName then
+                    Manager:Remove(addr)
+                end
             end
-        elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "dasher" then
-            Manager:Remove(addr)
         end
-        if ESP_SETTINGS.Critic.Enabled and npc:GetAttribute("Critic") == true then
-            if not Manager.Entities[addr] then
-                Manager:Add(addr, Entity.new(npc, Drawing.new("Text"), "critic"))
-            end
-        elseif Manager.Entities[addr] and Manager.Entities[addr].Type == "critic" then
+
+        -- priority order: only tag one type per npc
+        if isDasher then
+            syncEntity(ESP_SETTINGS.Dasher.Enabled,          "Dasher",           ESP_SETTINGS.Dasher.Color)
+        elseif isCritic then
+            syncEntity(ESP_SETTINGS.Critic.Enabled,          "Critic",           ESP_SETTINGS.Critic.Color)
+        elseif isInspector then
+            syncEntity(ESP_SETTINGS.HealthInspector.Enabled, "Health Inspector", ESP_SETTINGS.HealthInspector.Color)
+        else
             Manager:Remove(addr)
         end
     end
 end)
 
-scheduler:addLoop("espRender", 0.1, function()
-    Manager:Sweep()
+-- Render: world-to-screen, runs on Heartbeat for smooth movement
+RunService.Heartbeat:Connect(function()
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     for id, entity in pairs(Manager.Entities) do
+        if entity.State == STATE.DESTROYED then
+            Manager.Entities[id] = nil
+            continue
+        end
         local cached = npcRegistry[id]
         if not cached then Manager:Remove(id) continue end
         local head = cached.head
-        if not head or not head.Parent or entity.State == STATE.DESTROYED then entity:Hide() continue end
-        local humanoid = cached.humanoid
-        if humanoid and humanoid.Health <= 0 then entity:Hide() continue end
-        local cfg = ESP_SETTINGS[entity.TypeKey]
-        if not cfg or not cfg.Enabled then entity:Hide() continue end
+        if not head or not head.Parent then entity:Hide() continue end
+        local hum = cached.humanoid
+        if hum and hum.Health and hum.Health <= 0 then entity:Hide() continue end
         if root and (head.Position - root.Position).Magnitude > ESP_SETTINGS.MAX_DIST then entity:Hide() continue end
-        entity:SetColor(cfg.Color)
+        entity:SetColor(ESP_SETTINGS[entity.Type] and ESP_SETTINGS[entity.Type].Color or Color3.new(1,1,1))
         local pos, onScreen = WorldToScreen(head.Position + Vector3.new(0, 1.5, 0))
         entity:Update(pos, onScreen)
     end
