@@ -452,8 +452,6 @@ scheduler:addLoop("clock", TIMINGS.clock, function()
     if norm == "5:05AM" then _clockWarned = {} end
 end)
 
--- Replace your npcRegistry/entity/manager/ESP sections with this:
-
 local STATE = {ACTIVE = 1, DESTROYED = 2}
 
 local Entity = {}
@@ -506,7 +504,6 @@ function Manager:Remove(id)
     self.Entities[id] = nil
 end
 
--- NPC registry: addr -> {inst, head, torso, humanoid}
 local npcRegistry = {}
 
 local _knownAddrs = {}
@@ -542,9 +539,6 @@ scheduler:addLoop("npcScan", 0.5, function()
     end
 end)
 
-
--- NPC logic: instant prompts + dasher/critic tagging
--- Runs every 0.15s, touches ALL npcs (no batching — registry is a flat table, cheap to iterate)
 scheduler:addLoop("npcLogic", 0.15, function()
     if not isrbxactive() then return end
 
@@ -556,12 +550,10 @@ scheduler:addLoop("npcLogic", 0.15, function()
             continue
         end
 
-        -- refresh stale child refs
         if not (cached.head   and cached.head.Parent)   then cached.head     = npc:FindFirstChild("Head")     end
         if not (cached.torso  and cached.torso.Parent)  then cached.torso    = npc:FindFirstChild("Torso")    end
         if not cached.humanoid                           then cached.humanoid = npc:FindFirstChild("Humanoid") end
 
-        -- skip dead
         local hum = cached.humanoid
         if hum and hum.Health and hum.Health <= 0 then
             Manager:Remove(addr)
@@ -570,7 +562,6 @@ scheduler:addLoop("npcLogic", 0.15, function()
 
         local torso = cached.torso
         if torso then
-            -- instant seat customer
             local state = npc:GetAttribute("CurrentState")
             if state == "WaitingInLine" then
                 local wp = torso:FindFirstChild("WaitProximityPrompt")
@@ -579,14 +570,12 @@ scheduler:addLoop("npcLogic", 0.15, function()
                 end
             end
 
-            -- instant catch dasher
             local dp = torso:FindFirstChild("CatchDasherPrompt")
             if dp and dp.Address then
                 memory_write("float", dp.Address + HoldDuration, 0)
             end
         end
 
-        -- ESP tagging
         local isDasher = cached.torso and cached.torso:FindFirstChild("CatchDasherPrompt") ~= nil
         local isCritic = npc:GetAttribute("Critic") == true
         local isInspector = npc:GetAttribute("Behavior") == "Inspector"
@@ -604,7 +593,6 @@ scheduler:addLoop("npcLogic", 0.15, function()
             end
         end
 
-        -- priority order: only tag one type per npc
         if isDasher then
             syncEntity(ESP_SETTINGS.Dasher.Enabled,          "Dasher",           ESP_SETTINGS.Dasher.Color)
         elseif isCritic then
@@ -617,7 +605,6 @@ scheduler:addLoop("npcLogic", 0.15, function()
     end
 end)
 
--- Render: world-to-screen, runs on Heartbeat for smooth movement
 RunService.Heartbeat:Connect(function()
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     for id, entity in pairs(Manager.Entities) do
