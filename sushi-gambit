@@ -39,7 +39,7 @@ local ESP_SETTINGS = {
     Labels = {
         day = true, companymoney = true, vegstock = true,
         fishstock = true, humanfleshstock = true, ricestock = true,
-        seated = true,
+        dishes = true,
     },
 }
 
@@ -257,7 +257,7 @@ local ScreenGuiEnabled = getOffset(raw, "Offsets", "GuiObject",       "ScreenGui
 local HoldDuration     = getOffset(raw, "Offsets", "ProximityPrompt", "HoldDuration")      or 0x138
 local PromptEnabled    = getOffset(raw, "Offsets", "ProximityPrompt", "Enabled")           or 0x14e
 
-local dayLabel, companyMoneyLabel, vegLabel, fishLabel, humanFleshLabel, riceLabel, seatedLabel
+local dayLabel, companyMoneyLabel, vegLabel, fishLabel, humanFleshLabel, riceLabel, dishLabel
 
 local function createLabels()
     if ESP_SETTINGS.Labels.humanfleshstock then humanFleshLabel   = Windows:AddLabel("meat: 0/0")    end
@@ -266,7 +266,7 @@ local function createLabels()
     if ESP_SETTINGS.Labels.vegstock        then vegLabel          = Windows:AddLabel("veggies: 0/0") end
     if ESP_SETTINGS.Labels.companymoney    then companyMoneyLabel = Windows:AddLabel("money: 0.00")  end
     if ESP_SETTINGS.Labels.day             then dayLabel          = Windows:AddLabel("day: 0")       end
-    if ESP_SETTINGS.Labels.seated          then seatedLabel       = Windows:AddLabel("seated: 0/18") end
+    if ESP_SETTINGS.Labels.dishes then dishLabel = Windows:AddLabel("dishes: 0") end
 end
 task.wait(2)
 createLabels()
@@ -408,17 +408,14 @@ scheduler:addLoop("labels", TIMINGS.labels, function()
         local t = "meat: " .. ingr.HumanFlesh.Stock.Value .. "/" .. ingr.HumanFlesh.MaxStock.Value
         if _lastLabels.meat ~= t then _lastLabels.meat = t humanFleshLabel:SetText(t) end
     end
-    if riceLabel then
+   if riceLabel then
         local t = "rice: " .. ingr.Rice.Stock.Value .. "/" .. ingr.Rice.MaxStock.Value
         if _lastLabels.rice ~= t then _lastLabels.rice = t riceLabel:SetText(t) end
     end
-    if seatedLabel then
-        local count = 0
-        for _, npc in pairs(npcRegistry or {}) do
-            if npc.inst:GetAttribute("CurrentState") == "Seated" then count += 1 end
-        end
-        local t = "seated: " .. count .. "/18"
-        if _lastLabels.seated ~= t then _lastLabels.seated = t seatedLabel:SetText(t) end
+    if dishLabel then
+        local sink = game.Workspace.Kitchen:FindFirstChild("TheSink")
+        local t = "dishes: " .. tostring(sink and sink.CleanDishAmount and sink.CleanDishAmount.Value or 0)
+        if _lastLabels.dishes ~= t then _lastLabels.dishes = t dishLabel:SetText(t) end
     end
 end)
 
