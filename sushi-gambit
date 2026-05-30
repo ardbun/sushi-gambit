@@ -388,7 +388,7 @@ PlayerStats.WalkSpeed.Value = 24
     PlayerStats.CookingExpMultiplier.Value = 3
     PlayerStats.CleaningExpMultiplier.Value = 3
     PlayerStats.ServiceExpMultiplier.Value = 3
-    PlayerStats.PersonalIncomeMultiplier.Value = 1.50
+    PlayerStats.PersonalIncomeMultiplier.Value = 2
     PlayerStats.SushiValueMultiplier.Value = 2.25
 end)
 
