@@ -389,6 +389,7 @@ PlayerStats.SushiValueMultiplier.Value = 15
 PlayerStats.EffectiveServiceLevel.Value = 9999
 PlayerStats.ManualSeatingBoost.Value = 10
 PlayerStats.TipRevenueMultiplier.Value = 15
+PlayerStats.PersonalIncomeMultiplier.Value = 10
 end)
 
 local _lastLabels = {}
