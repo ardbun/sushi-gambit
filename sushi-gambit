@@ -390,6 +390,8 @@ PlayerStats.WalkSpeed.Value = 24
     PlayerStats.ServiceExpMultiplier.Value = 3
     PlayerStats.PersonalIncomeMultiplier.Value = 2
     PlayerStats.SushiValueMultiplier.Value = 2.25
+    PlayerStats.Charisma.Value = 10
+
 end)
 
 local _lastLabels = {}
