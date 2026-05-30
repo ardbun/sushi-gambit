@@ -383,16 +383,8 @@ scheduler:addLoop("statSpoof", TIMINGS.stats, function()
         PlayerStats.SpongeEffectiveness.Value = 9999
     end
     Stats.Stamina.Value = 100
-PlayerStats.WalkSpeed.Value = 24
+    PlayerStats.WalkSpeed.Value = 24
     PlayerStats.SprintSpeed.Value = 36
-    PlayerStats.CookingExpMultiplier.Value = 3
-    PlayerStats.CleaningExpMultiplier.Value = 3
-    PlayerStats.ServiceExpMultiplier.Value = 3
-    PlayerStats.PersonalIncomeMultiplier.Value = 2
-    PlayerStats.SushiValueMultiplier.Value = 2.25
-    PlayerStats.Charisma.Value = 10
-    PlayerStats.EffectiveServiceLevel.Value = 1000
-
 end)
 
 local _lastLabels = {}
