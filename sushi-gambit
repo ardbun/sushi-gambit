@@ -386,7 +386,6 @@ scheduler:addLoop("statSpoof", TIMINGS.stats, function()
     PlayerStats.WalkSpeed.Value = 24
     PlayerStats.SprintSpeed.Value = 36
     PlayerStats.CookingSpeedMultiplier.Value = 5
-    PlayerStats.HarvestSpeedMultiplier.Value = 10
 end)
 
 local _lastLabels = {}
