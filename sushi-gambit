@@ -392,8 +392,6 @@ PlayerStats.WalkSpeed.Value = 24
     PlayerStats.SushiValueMultiplier.Value = 2.25
     PlayerStats.Charisma.Value = 10
     PlayerStats.EffectiveServiceLevel.Value = 1000
-    PlayerStats.ToolLimit.Value = 6
-
 
 end)
 
