@@ -391,6 +391,8 @@ PlayerStats.WalkSpeed.Value = 24
     PlayerStats.PersonalIncomeMultiplier.Value = 2
     PlayerStats.SushiValueMultiplier.Value = 2.25
     PlayerStats.Charisma.Value = 10
+    PlayerStats.EffectiveServiceLevel.Value = 1000
+
 
 end)
 
