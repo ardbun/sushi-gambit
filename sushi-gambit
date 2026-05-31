@@ -280,11 +280,7 @@ UI.AddTab("Sushi Gambit", function(tab)
             notify("auto cooking: " .. tostring(value), "", 3)
             SETTINGS.Auto.Cooking.Enabled = value
         end)
-        MainSec:Toggle('dasher_alert', 'dasher alert', function(value)
-            _dasherAlertEnabled = value
-        end)
     end
-
     local PlayerTab = tab:Section("Player", "Left")
     PlayerTab:SliderInt('player_walkspeed', 'Walk Speed', 12, 20, 20, function(value)
         PlayerStats.WalkSpeed.Value = value
@@ -465,45 +461,6 @@ scheduler:addLoop("clock", TIMINGS.clock, function()
         notify("remove sun tat", "reminder", 5)
     end
     if norm == "5:05AM" then _clockWarned = {} end
-end)
-
-local _dasherAlert = Drawing.new("Text")
-_dasherAlert.Text     = "dasher"
-_dasherAlert.Size     = 25
-_dasherAlert.Color    = Color3.new(1, 0, 0)
-_dasherAlert.Outline  = true
-_dasherAlert.Visible  = false
-_dasherAlert.Position = Vector2.new(
-    workspace.CurrentCamera.ViewportSize.X / 2 - 60,
-    workspace.CurrentCamera.ViewportSize.Y / 2 - 20
-)
-
-local _dasherAlertEnabled = true
-local _dasherBlinkTimer   = 0
-local _dasherBlinkOn      = false
-
-scheduler:addLoop("dasherAlert", 0.15, function()
-    if not _dasherAlertEnabled then _dasherAlert.Visible = false return end
-    if not npcRegistry then return end  -- ADD THIS
-    local hasDasher = false
-    for _, cached in pairs(npcRegistry) do
-        if cached.torso and cached.torso:FindFirstChild("CatchDasherPrompt") then
-            hasDasher = true
-            break
-        end
-    end
-    if hasDasher then
-        _dasherBlinkTimer += 0.15
-        if _dasherBlinkTimer >= 0.3 then
-            _dasherBlinkTimer = 0
-            _dasherBlinkOn = not _dasherBlinkOn
-        end
-        _dasherAlert.Visible = _dasherBlinkOn
-    else
-        _dasherAlert.Visible = false
-        _dasherBlinkTimer    = 0
-        _dasherBlinkOn       = false
-    end
 end)
 
 local STATE = {ACTIVE = 1, DESTROYED = 2}
