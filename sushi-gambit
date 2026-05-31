@@ -265,9 +265,9 @@ local function createLabels()
     if ESP_SETTINGS.Labels.ricestock       then riceLabel         = Windows:AddLabel("rice: 0/0")    end
     if ESP_SETTINGS.Labels.vegstock        then vegLabel          = Windows:AddLabel("veggies: 0/0") end
     if ESP_SETTINGS.Labels.companymoney    then companyMoneyLabel = Windows:AddLabel("money: 0.00")  end
-    if ESP_SETTINGS.Labels.day             then dayLabel          = Windows:AddLabel("day: 0")       end
-    if ESP_SETTINGS.Labels.dishes then dishLabel = Windows:AddLabel("dishes: 0") end
     reviewLabel = Windows:AddLabel("rating: 0.00")
+    if ESP_SETTINGS.Labels.day             then dayLabel          = Windows:AddLabel("day: 0")       end
+    if ESP_SETTINGS.Labels.dishes          then dishLabel         = Windows:AddLabel("dishes: 0")    end
 end
 task.wait(2)
 createLabels()
