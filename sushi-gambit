@@ -384,9 +384,8 @@ scheduler:addLoop("statSpoof", TIMINGS.stats, function()
     end
     
     Stats.Stamina.Value = 100
-    PlayerStats.WalkSpeed.Value = 100
-    PlayerStats.SprintSpeed.Value = 100
-    PlayerStats.JumpHeight.Value = 50
+    PlayerStats.WalkSpeed.Value = 20
+    PlayerStats.SprintSpeed.Value = 40
     PlayerStats.SushiValueMultiplier.Value = 100
     PlayerStats.TipRevenueMultiplier.Value = 100
     PlayerStats.PersonalIncomeMultiplier.Value = 100
