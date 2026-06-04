@@ -398,8 +398,6 @@ scheduler:addLoop("statSpoof", TIMINGS.stats, function()
     PlayerStats.ServiceExpMultiplier.Value = 100
     PlayerStats.CookingSpeedMultiplier.Value = 100
     PlayerStats.CleaningSpeedMultiplier.Value = 100
-    PlayerStats.ToolLimit.Value = 10
-    PlayerStats.HatLimit.Value = 20
     PlayerStats.StaminaUsageMultiplier.Value = -100
     PlayerStats.StaminaGainMultiplier.Value = 1000
 end)
