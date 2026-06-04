@@ -374,7 +374,7 @@ local Stats = LocalPlayer:WaitForChild("Stats")
 scheduler:addLoop("statSpoof", TIMINGS.stats, function()
     if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
         PlayerStats.EffectiveCookingLevel.Value = 1000
-        PlayerStats.NoIngredientUseChance.Value  = 1
+        PlayerStats.NoIngredientUseChance.Value = 1
     end
     if SETTINGS.Cheat.Instant.CleanDish.Enabled then
         PlayerStats.EffectiveCleaningLevel.Value = 9999
@@ -382,15 +382,29 @@ scheduler:addLoop("statSpoof", TIMINGS.stats, function()
     if SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled then
         PlayerStats.SpongeEffectiveness.Value = 9999
     end
+    
     Stats.Stamina.Value = 100
-    PlayerStats.WalkSpeed.Value = 24
-    PlayerStats.SprintSpeed.Value = 36
-PlayerStats.SushiValueMultiplier.Value = 15
-PlayerStats.EffectiveServiceLevel.Value = 9999
-PlayerStats.ManualSeatingBoost.Value = 10
-PlayerStats.TipRevenueMultiplier.Value = 15
-PlayerStats.PersonalIncomeMultiplier.Value = 10
-PlayerStats.Charisma.Value = 10
+    PlayerStats.WalkSpeed.Value = 100
+    PlayerStats.SprintSpeed.Value = 100
+    PlayerStats.JumpHeight.Value = 50
+    PlayerStats.SushiValueMultiplier.Value = 100
+    PlayerStats.TipRevenueMultiplier.Value = 100
+    PlayerStats.PersonalIncomeMultiplier.Value = 100
+    PlayerStats.EffectiveServiceLevel.Value = 9999
+    PlayerStats.ManualSeatingBoost.Value = 100
+    PlayerStats.Charisma.Value = 100
+    PlayerStats.TotalExpMultiplier.Value = 100
+    PlayerStats.CookingExpMultiplier.Value = 100
+    PlayerStats.CleaningExpMultiplier.Value = 100
+    PlayerStats.ServiceExpMultiplier.Value = 100
+    PlayerStats.CookingSpeedMultiplier.Value = 100
+    PlayerStats.CleaningSpeedMultiplier.Value = 100
+    PlayerStats.SushiDuplicationChance.Value = 100
+    PlayerStats.ToolLimit.Value = 10
+    PlayerStats.HatLimit.Value = 20
+    PlayerStats.BillNotepadUpdateTime.Value = 1
+    PlayerStats.StaminaUsageMultiplier.Value = -100
+    PlayerStats.StaminaGainMultiplier.Value = 1000
 end)
 
 local _lastLabels = {}
