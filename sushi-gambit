@@ -395,6 +395,21 @@ scheduler:addLoop("labels", TIMINGS.labels, function()
         local t = "rice: " .. Rice.Stock.Value .. "/" .. Rice.MaxStock.Value
         if _lastLabels.rice ~= t then _lastLabels.rice = t riceLabel:SetText(t) end
     end
+    if dishLabel then
+        local sink = workspace.Kitchen:FindFirstChild("TheSink")
+        local t = "dishes: " .. tostring(sink and sink.CleanDishAmount and sink.CleanDishAmount.Value or 0)
+        if _lastLabels.dishes ~= t then 
+            _lastLabels.dishes = t 
+            dishLabel:SetText(t) 
+        end
+    end
+    if reviewLabel then
+        local t = string.format("rating: %.2f", GameData.CurrentReviewScore.Value)
+        if _lastLabels.review ~= t then 
+            _lastLabels.review = t 
+            reviewLabel:SetText(t) 
+        end
+    end
 end)
 
 local _clockWarned   = {}
