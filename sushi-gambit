@@ -258,6 +258,10 @@ local HoldDuration     = getOffset(raw, "Offsets", "ProximityPrompt", "HoldDurat
 local PromptEnabled    = getOffset(raw, "Offsets", "ProximityPrompt", "Enabled")           or 0x14e
 
 local dayLabel, companyMoneyLabel, vegLabel, fishLabel, humanFleshLabel, riceLabel, dishLabel, reviewLabel
+local Vegetables   = GameData.Ingredients.IngredientsStorage.Vegetables
+local AssortedFish = GameData.Ingredients.IngredientsStorage.AssortedFish
+local HumanFlesh   = GameData.Ingredients.IngredientsStorage.HumanFlesh
+local Rice         = GameData.Ingredients.IngredientsStorage.Rice
 
 local function createLabels()
     if ESP_SETTINGS.Labels.humanfleshstock then humanFleshLabel   = Windows:AddLabel("meat: 0/0")    end
@@ -312,7 +316,12 @@ scheduler:addLoop("cooking", TIMINGS.cooking, function()
     if not SETTINGS.Auto.Cooking.Enabled then return end
     local gui = PlayerGui:FindFirstChild("MakeSushiMinigame")
     if not gui then return end
-    if memory_read("byte", gui.Address + ScreenGuiEnabled) ~= 1 then return end
+    if memory_read("byte", gui.Address + ScreenGuiEnabled) ~= 1 then
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum and not hum.AutoRotate then hum.AutoRotate = true end
+        return
+    end
     local bar = gui.MainFrame:FindFirstChild("CuttingBarFrame")
     if not bar then return end
     local slider = bar.CutBar.Slider.AbsolutePosition
@@ -322,24 +331,19 @@ scheduler:addLoop("cooking", TIMINGS.cooking, function()
     end
 end)
 
-RunService.Heartbeat:Connect(function()
-    if not SETTINGS.Auto.Washing.Enabled then return end
+scheduler:addLoop("autoRotateFix", 0.2, function()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
 
-    local gui = PlayerGui:FindFirstChild("DishWashingGui")
-    if not gui then return end
-    if memory_read("byte", gui.Address + ScreenGuiEnabled) ~= 1 then return end
+    local cookingGui = PlayerGui:FindFirstChild("MakeSushiMinigame")
+    local cookingOpen = cookingGui 
+        and memory_read("byte", cookingGui.Address + ScreenGuiEnabled) == 1
 
-    local sink = game.Workspace.Kitchen:FindFirstChild("TheSink")
-    if not sink or sink.DirtyDishAmount.Value == 0 then return end
-    if sink.Occupied.Value then return end
-
-    for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
-        if v.Name == "KeyTemplate" then
-            local key = ({Q=0x51, E=0x45, R=0x52, F=0x46})[v:GetAttribute("Key")]
-            if key then
-                keypress(key)
-                keyrelease(key)
-            end
+    if not cookingOpen then
+        if not hum.AutoRotate then
+            hum.AutoRotate = true
         end
     end
 end)
@@ -356,17 +360,6 @@ scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
     if not tool:FindFirstChild("ChloroformChallenge", true) then return end
     keypress(0x51)
     _chloroKeyHeld = true
-end)
-
-local _chloroReleaseTimer = 0
-RunService.Heartbeat:Connect(function(dt)
-    if not _chloroKeyHeld then return end
-    _chloroReleaseTimer += dt
-    if _chloroReleaseTimer >= 0.02 then
-        _chloroReleaseTimer = 0
-        keyrelease(0x51)
-        _chloroKeyHeld = false
-    end
 end)
 
 local Stats = LocalPlayer:WaitForChild("Stats")
@@ -408,31 +401,21 @@ scheduler:addLoop("labels", TIMINGS.labels, function()
         local t = "money: " .. string.format("%.2f", GameData.CompanyMoney.Value)
         if _lastLabels.money ~= t then _lastLabels.money = t companyMoneyLabel:SetText(t) end
     end
-    local ingr = GameData.Ingredients.IngredientsStorage
     if vegLabel then
-        local t = "veggies: " .. ingr.Vegetables.Stock.Value .. "/" .. ingr.Vegetables.MaxStock.Value
+        local t = "veggies: " .. Vegetables.Stock.Value .. "/" .. Vegetables.MaxStock.Value
         if _lastLabels.veg ~= t then _lastLabels.veg = t vegLabel:SetText(t) end
     end
     if fishLabel then
-        local t = "fish: " .. ingr.AssortedFish.Stock.Value .. "/" .. ingr.AssortedFish.MaxStock.Value
+        local t = "fish: " .. AssortedFish.Stock.Value .. "/" .. AssortedFish.MaxStock.Value
         if _lastLabels.fish ~= t then _lastLabels.fish = t fishLabel:SetText(t) end
     end
     if humanFleshLabel then
-        local t = "meat: " .. ingr.HumanFlesh.Stock.Value .. "/" .. ingr.HumanFlesh.MaxStock.Value
+        local t = "meat: " .. HumanFlesh.Stock.Value .. "/" .. HumanFlesh.MaxStock.Value
         if _lastLabels.meat ~= t then _lastLabels.meat = t humanFleshLabel:SetText(t) end
     end
-   if riceLabel then
-        local t = "rice: " .. ingr.Rice.Stock.Value .. "/" .. ingr.Rice.MaxStock.Value
+    if riceLabel then
+        local t = "rice: " .. Rice.Stock.Value .. "/" .. Rice.MaxStock.Value
         if _lastLabels.rice ~= t then _lastLabels.rice = t riceLabel:SetText(t) end
-    end
-    if dishLabel then
-        local sink = game.Workspace.Kitchen:FindFirstChild("TheSink")
-        local t = "dishes: " .. tostring(sink and sink.CleanDishAmount and sink.CleanDishAmount.Value or 0)
-        if _lastLabels.dishes ~= t then _lastLabels.dishes = t dishLabel:SetText(t) end
-    end
-if reviewLabel then
-        local t = string.format("rating: %.2f", GameData.CurrentReviewScore.Value)
-        if _lastLabels.review ~= t then _lastLabels.review = t reviewLabel:SetText(t) end
     end
 end)
 
@@ -485,6 +468,7 @@ function Entity.new(instance, typeName, color)
         Head     = instance:FindFirstChild("Head"),
         Text     = text,
         Type     = typeName,
+        TypeKey  = typeName:gsub(" ", ""),
         State    = STATE.ACTIVE,
     }, Entity)
 end
@@ -623,7 +607,37 @@ end
     end
 end)
 
-RunService.Heartbeat:Connect(function()
+local WASH_KEYS = {Q=0x51, E=0x45, R=0x52, F=0x46}
+local _chloroReleaseTimer = 0
+
+RunService.Heartbeat:Connect(function(dt)
+if SETTINGS.Auto.Washing.Enabled then
+    local gui = PlayerGui:FindFirstChild("DishWashingGui")
+    local guiOpen = gui and memory_read("byte", gui.Address + ScreenGuiEnabled) == 1
+    if guiOpen then
+        local sink = workspace.Kitchen:FindFirstChild("TheSink")
+        if sink and sink.DirtyDishAmount.Value > 0 and not sink.Occupied.Value then
+            for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
+                if v.Name == "KeyTemplate" then
+                    local key = WASH_KEYS[v:GetAttribute("Key")]
+                    if key then keypress(key) keyrelease(key) end
+                end
+            end
+        end
+    end
+end
+
+    -- chloro release
+    if _chloroKeyHeld then
+        _chloroReleaseTimer += dt
+        if _chloroReleaseTimer >= 0.02 then
+            _chloroReleaseTimer = 0
+            keyrelease(0x51)
+            _chloroKeyHeld = false
+        end
+    end
+
+    -- ESP render
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     for id, entity in pairs(Manager.Entities) do
         if entity.State == STATE.DESTROYED then
@@ -637,8 +651,7 @@ RunService.Heartbeat:Connect(function()
         local hum = cached.humanoid
         if hum and hum.Health and hum.Health <= 0 then entity:Hide() continue end
         if root and (head.Position - root.Position).Magnitude > ESP_SETTINGS.MAX_DIST then entity:Hide() continue end
-        local typeKey = entity.Type:gsub(" ", "")
-        entity:SetColor(ESP_SETTINGS[typeKey] and ESP_SETTINGS[typeKey].Color or Color3.new(1,1,1))
+        entity:SetColor(ESP_SETTINGS[entity.TypeKey] and ESP_SETTINGS[entity.TypeKey].Color or Color3.new(1,1,1))
         local pos, onScreen = WorldToScreen(head.Position + Vector3.new(0, 1.5, 0))
         entity:Update(pos, onScreen)
     end
