@@ -736,6 +736,10 @@ scheduler:addLoop("npcAlerts", 0.5, function()
     if not inspectorSeen then removeScreenAlert("inspector") end
 end)
 
+
+scheduler:addLoop("cleanup", 60, function()
+    _notifiedNpcs = {}
+end)
 UserInputService.InputBegan:Connect(function(inp, gp)
     if gp then return end
     if inp.KeyCode == Enum.KeyCode.X then
