@@ -316,35 +316,13 @@ scheduler:addLoop("cooking", TIMINGS.cooking, function()
     if not SETTINGS.Auto.Cooking.Enabled then return end
     local gui = PlayerGui:FindFirstChild("MakeSushiMinigame")
     if not gui then return end
-    if memory_read("byte", gui.Address + ScreenGuiEnabled) ~= 1 then
-        local char = LocalPlayer.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hum and not hum.AutoRotate then hum.AutoRotate = true end
-        return
-    end
+    if memory_read("byte", gui.Address + ScreenGuiEnabled) ~= 1 then return end
     local bar = gui.MainFrame:FindFirstChild("CuttingBarFrame")
     if not bar then return end
     local slider = bar.CutBar.Slider.AbsolutePosition
     local green  = bar.CutBar.GreenBar.AbsolutePosition
     if slider.X >= green.X and slider.X <= green.X + bar.CutBar.GreenBar.AbsoluteSize.X then
         keypress(0x43) keyrelease(0x43)
-    end
-end)
-
-scheduler:addLoop("autoRotateFix", 0.2, function()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-
-    local cookingGui = PlayerGui:FindFirstChild("MakeSushiMinigame")
-    local cookingOpen = cookingGui 
-        and memory_read("byte", cookingGui.Address + ScreenGuiEnabled) == 1
-
-    if not cookingOpen then
-        if not hum.AutoRotate then
-            hum.AutoRotate = true
-        end
     end
 end)
 
