@@ -219,11 +219,19 @@ local Windows = Lib.new("Sushi Gambit", 220, 200)
 Windows:Edit(Vector2.new(1695, 845))
 Windows:Show(true)
 
-local ok, raw = pcall(function()
-    return HttpService:JSONDecode(game:HttpGet("https://imtheo.lol/Offsets/OffsetsHex.json"))
+local raw = nil
+local fetchDone = false
+task.spawn(function()
+    local ok, result = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet("https://imtheo.lol/Offsets/OffsetsHex.json"))
+    end)
+    raw = ok and result or nil
+    fetchDone = true
 end)
-if not ok then
-    warn("Offset fetch failed, using fallbacks")
+local fetchStart = tick()
+repeat task.wait(0.1) until fetchDone or (tick() - fetchStart) > 5
+if not raw then
+    warn("Offset fetch failed or timed out, using fallbacks")
     raw = {Offsets={GuiObject={ScreenGui_Enabled="0x4cc"},ProximityPrompt={HoldDuration="0x138",Enabled="0x14e"}}}
 end
 
