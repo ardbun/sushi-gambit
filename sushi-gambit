@@ -721,9 +721,9 @@ scheduler:addLoop("npcAlerts", 0.5, function()
         if (isCritic or isInspector) and not _notifiedNpcs[addr] then
             _notifiedNpcs[addr] = true
             if isInspector then
-                showScreenAlert("HEALTH INSPECTOR ARRIVED", Color3.fromRGB(0, 255, 0), "inspector")
+                showScreenAlert("health inspector present", Color3.fromRGB(0, 255, 0), "inspector")
             else
-                showScreenAlert("CRITIC ARRIVED", Color3.fromRGB(255, 252, 0), "critic")
+                showScreenAlert("critic is present", Color3.fromRGB(255, 252, 0), "critic")
             end
         end
 
