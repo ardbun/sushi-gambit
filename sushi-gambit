@@ -326,7 +326,6 @@ scheduler:addLoop("cooking", TIMINGS.cooking, function()
     end
 end)
 
-local _chloroKeyHeld = false
 scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
     if not SETTINGS.Auto.ChloroformSpys.Enabled then
         if _chloroKeyHeld then keyrelease(0x51) _chloroKeyHeld = false end
@@ -541,7 +540,7 @@ scheduler:addLoop("npcScan", 0.5, function()
     end
 end)
 
-scheduler:addLoop("npcLogic", 0.15, function()
+scheduler:addLoop("npcLogic", 0.2, function()
     if not isrbxactive() then return end
 
     for addr, cached in pairs(npcRegistry) do
@@ -598,14 +597,10 @@ end
         end
 
         if isDasher then
-            syncEntity(ESP_SETTINGS.Dasher.Enabled,          "Dasher",           ESP_SETTINGS.Dasher.Color)
-        elseif isCritic then
-            syncEntity(ESP_SETTINGS.Critic.Enabled,          "Critic",           ESP_SETTINGS.Critic.Color)
-        elseif isInspector then
-            syncEntity(ESP_SETTINGS.HealthInspector.Enabled, "Health Inspector", ESP_SETTINGS.HealthInspector.Color)
-        else
-            Manager:Remove(addr)
-        end
+    syncEntity(ESP_SETTINGS.Dasher.Enabled, "Dasher", ESP_SETTINGS.Dasher.Color)
+else
+    Manager:Remove(addr)
+end
     end
 end)
 
@@ -614,8 +609,12 @@ local WASH_KEYS = {Q=0x51, E=0x45, R=0x52, F=0x46}
 local _chloroReleaseTimer = 0
 
 local _washTimer = 0
+local _espTimer = 0
+
 RunService.Heartbeat:Connect(function(dt)
     _washTimer += dt
+    _espTimer += dt
+
     if SETTINGS.Auto.Washing.Enabled and _washTimer >= 0.1 then
         _washTimer = 0
         local gui = PlayerGui:FindFirstChild("DishWashingGui")
@@ -633,7 +632,7 @@ RunService.Heartbeat:Connect(function(dt)
             end
         end
     end
-    -- chloro release
+
     if _chloroKeyHeld then
         _chloroReleaseTimer += dt
         if _chloroReleaseTimer >= 0.02 then
@@ -643,23 +642,25 @@ RunService.Heartbeat:Connect(function(dt)
         end
     end
 
-    -- ESP render
-    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    for id, entity in pairs(Manager.Entities) do
-        if entity.State == STATE.DESTROYED then
-            Manager.Entities[id] = nil
-            continue
+    if _espTimer >= 0.05 then
+        _espTimer = 0
+        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        for id, entity in pairs(Manager.Entities) do
+            if entity.State == STATE.DESTROYED then
+                Manager.Entities[id] = nil
+                continue
+            end
+            local cached = npcRegistry[id]
+            if not cached then Manager:Remove(id) continue end
+            local head = cached.head
+            if not head or not head.Parent then entity:Hide() continue end
+            local hum = cached.humanoid
+            if hum and hum.Health and hum.Health <= 0 then entity:Hide() continue end
+            if root and (head.Position - root.Position).Magnitude > ESP_SETTINGS.MAX_DIST then entity:Hide() continue end
+            entity:SetColor(ESP_SETTINGS[entity.TypeKey] and ESP_SETTINGS[entity.TypeKey].Color or Color3.new(1,1,1))
+            local pos, onScreen = WorldToScreen(head.Position + Vector3.new(0, 1.5, 0))
+            entity:Update(pos, onScreen)
         end
-        local cached = npcRegistry[id]
-        if not cached then Manager:Remove(id) continue end
-        local head = cached.head
-        if not head or not head.Parent then entity:Hide() continue end
-        local hum = cached.humanoid
-        if hum and hum.Health and hum.Health <= 0 then entity:Hide() continue end
-        if root and (head.Position - root.Position).Magnitude > ESP_SETTINGS.MAX_DIST then entity:Hide() continue end
-        entity:SetColor(ESP_SETTINGS[entity.TypeKey] and ESP_SETTINGS[entity.TypeKey].Color or Color3.new(1,1,1))
-        local pos, onScreen = WorldToScreen(head.Position + Vector3.new(0, 1.5, 0))
-        entity:Update(pos, onScreen)
     end
 end)
 
@@ -673,6 +674,66 @@ pcall(function()
             end
         end)
     end
+end)
+
+local _alertDrawings = {}
+
+local function showScreenAlert(message, color, key)
+    if _alertDrawings[key] then
+        pcall(function() _alertDrawings[key]:Remove() end)
+    end
+    local text = Drawing.new("Text")
+    text.Text = message
+    text.Size = 25
+    text.Color = color or Color3.new(1, 1, 1)
+    text.Outline = true
+    text.Center = true
+    text.Position = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, 150)
+    text.Visible = true
+    _alertDrawings[key] = text
+end
+
+local function removeScreenAlert(key)
+    if _alertDrawings[key] then
+        pcall(function() _alertDrawings[key]:Remove() end)
+        _alertDrawings[key] = nil
+    end
+end
+
+local _notifiedNpcs = {}
+
+scheduler:addLoop("npcAlerts", 0.5, function()
+    local dest = workspace:FindFirstChild("NpcDestination")
+    local folder = dest and dest:FindFirstChild("SpawnedNPCs")
+    if not folder then return end
+
+    local criticSeen, inspectorSeen = false, false
+
+    for _, npc in ipairs(folder:GetChildren()) do
+        local addr = npc.Address
+        if not addr then continue end
+        local isCritic = npc:GetAttribute("Critic") == true
+        local isInspector = npc:GetAttribute("Behavior") == "Inspector"
+
+        if isCritic then criticSeen = true end
+        if isInspector then inspectorSeen = true end
+
+        if (isCritic or isInspector) and not _notifiedNpcs[addr] then
+            _notifiedNpcs[addr] = true
+            if isInspector then
+                showScreenAlert("HEALTH INSPECTOR ARRIVED", Color3.fromRGB(0, 255, 0), "inspector")
+            else
+                showScreenAlert("CRITIC ARRIVED", Color3.fromRGB(255, 252, 0), "critic")
+            end
+        end
+
+        if not (isCritic or isInspector) then
+            _notifiedNpcs[addr] = nil
+        end
+    end
+
+    if not criticSeen then removeScreenAlert("critic") end
+    if not inspectorSeen then removeScreenAlert("inspector") end
 end)
 
 UserInputService.InputBegan:Connect(function(inp, gp)
