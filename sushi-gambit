@@ -609,27 +609,30 @@ end
     end
 end)
 
+local _chloroKeyHeld = false
 local WASH_KEYS = {Q=0x51, E=0x45, R=0x52, F=0x46}
 local _chloroReleaseTimer = 0
 
+local _washTimer = 0
 RunService.Heartbeat:Connect(function(dt)
-if SETTINGS.Auto.Washing.Enabled then
-    local gui = PlayerGui:FindFirstChild("DishWashingGui")
-    local guiOpen = gui and memory_read("byte", gui.Address + ScreenGuiEnabled) == 1
-    if guiOpen then
-        local kitchen = workspace:FindFirstChild("Kitchen")
-        local sink = kitchen and kitchen:FindFirstChild("TheSink")
-        if sink and sink.DirtyDishAmount.Value > 0 and not sink.Occupied.Value then
-            for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
-                if v.Name == "KeyTemplate" then
-                    local key = WASH_KEYS[v:GetAttribute("Key")]
-                    if key then keypress(key) keyrelease(key) end
+    _washTimer += dt
+    if SETTINGS.Auto.Washing.Enabled and _washTimer >= 0.1 then
+        _washTimer = 0
+        local gui = PlayerGui:FindFirstChild("DishWashingGui")
+        local guiOpen = gui and memory_read("byte", gui.Address + ScreenGuiEnabled) == 1
+        if guiOpen then
+            local kitchen = workspace:FindFirstChild("Kitchen")
+            local sink = kitchen and kitchen:FindFirstChild("TheSink")
+            if sink and sink.DirtyDishAmount.Value > 0 and not sink.Occupied.Value then
+                for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
+                    if v.Name == "KeyTemplate" then
+                        local key = WASH_KEYS[v:GetAttribute("Key")]
+                        if key then keypress(key) keyrelease(key) end
+                    end
                 end
             end
         end
     end
-end
-
     -- chloro release
     if _chloroKeyHeld then
         _chloroReleaseTimer += dt
@@ -683,10 +686,6 @@ UserInputService.InputBegan:Connect(function(inp, gp)
         notify("Auto Wash: " .. (SETTINGS.Auto.Washing.Enabled and "ON" or "OFF"), "Keybind Z", 2)
     end
 end)
-
-PlayerStats.StaminaUsageMultiplier.Value                = -1
-PlayerStats.StaminaGainMultiplier.Value                 = 100
-PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
 
 SETTINGS.Auto.ChloroformSpys.Enabled = true
 
