@@ -326,6 +326,7 @@ scheduler:addLoop("cooking", TIMINGS.cooking, function()
     end
 end)
 
+local _chloroKeyHeld = false
 scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
     if not SETTINGS.Auto.ChloroformSpys.Enabled then
         if _chloroKeyHeld then keyrelease(0x51) _chloroKeyHeld = false end
@@ -604,7 +605,6 @@ end
     end
 end)
 
-local _chloroKeyHeld = false
 local WASH_KEYS = {Q=0x51, E=0x45, R=0x52, F=0x46}
 local _chloroReleaseTimer = 0
 
