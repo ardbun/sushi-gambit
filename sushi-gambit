@@ -146,27 +146,6 @@ function Lib.new(titleText, width, height, cornerRadius)
     self.Title    = title
     table.insert(self.Elements, title)
 
-    local dragging, dragOffset = false, Vector2.new()
-    local mouse = LocalPlayer:GetMouse()
-
-    scheduler:addRender("windowDrag", function()
-        if not isrbxactive() then return end
-        local mx, my = mouse.X, mouse.Y
-        local px, py = self.Position.X, self.Position.Y
-        if ismouse1pressed() then
-            if not dragging
-                and mx >= px and mx <= px + self.Size.X
-                and my >= py and my <= py + self.Size.Y
-            then
-                dragging   = true
-                dragOffset = Vector2.new(mx - px, my - py)
-            end
-        else
-            dragging = false
-        end
-        if dragging then self:Edit(Vector2.new(mx - dragOffset.X, my - dragOffset.Y)) end
-    end)
-
     return self
 end
 
@@ -234,6 +213,7 @@ function Lib:AddLabel(text, color)
 end
 
 local Windows = Lib.new("Sushi Gambit", 220, 200)
+Windows:Edit(Vector2.new(1695, 845))
 Windows:Show(true)
 
 local ok, raw = pcall(function()
@@ -566,17 +546,20 @@ end
 
         local torso = cached.torso
         if torso then
-            local state = npc:GetAttribute("CurrentState")
-            if state == "WaitingInLine" then
-                local wp = torso:FindFirstChild("WaitProximityPrompt")
-                if wp and wp.Address then
-                    memory_write("float", wp.Address + HoldDuration, 0)
+            local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local close = not root or (torso.Position - root.Position).Magnitude < 60
+            if close then
+                local state = npc:GetAttribute("CurrentState")
+                if state == "WaitingInLine" then
+                    local wp = torso:FindFirstChild("WaitProximityPrompt")
+                    if wp and wp.Address then
+                        memory_write("float", wp.Address + HoldDuration, 0)
+                    end
                 end
-            end
-
-            local dp = torso:FindFirstChild("CatchDasherPrompt")
-            if dp and dp.Address then
-                memory_write("float", dp.Address + HoldDuration, 0)
+                local dp = torso:FindFirstChild("CatchDasherPrompt")
+                if dp and dp.Address then
+                    memory_write("float", dp.Address + HoldDuration, 0)
+                end
             end
         end
 
@@ -606,64 +589,54 @@ end
 end)
 
 local WASH_KEYS = {Q=0x51, E=0x45, R=0x52, F=0x46}
-local _chloroReleaseTimer = 0
 
-local _washTimer = 0
-local _espTimer = 0
-
-RunService.Heartbeat:Connect(function(dt)
-    _washTimer += dt
-    _espTimer += dt
-
-    if SETTINGS.Auto.Washing.Enabled and _washTimer >= 0.1 then
-        _washTimer = 0
-        local gui = PlayerGui:FindFirstChild("DishWashingGui")
-        local guiOpen = gui and memory_read("byte", gui.Address + ScreenGuiEnabled) == 1
-        if guiOpen then
-            local kitchen = workspace:FindFirstChild("Kitchen")
-            local sink = kitchen and kitchen:FindFirstChild("TheSink")
-            if sink and sink.DirtyDishAmount.Value > 0 and not sink.Occupied.Value then
-                for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
-                    if v.Name == "KeyTemplate" then
-                        local key = WASH_KEYS[v:GetAttribute("Key")]
-                        if key then keypress(key) keyrelease(key) end
-                    end
-                end
-            end
-        end
-    end
-
-    if _chloroKeyHeld then
-        _chloroReleaseTimer += dt
-        if _chloroReleaseTimer >= 0.02 then
-            _chloroReleaseTimer = 0
-            keyrelease(0x51)
-            _chloroKeyHeld = false
-        end
-    end
-
-    if _espTimer >= 0.05 then
-        _espTimer = 0
-        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        for id, entity in pairs(Manager.Entities) do
-            if entity.State == STATE.DESTROYED then
-                Manager.Entities[id] = nil
-                continue
-            end
-            local cached = npcRegistry[id]
-            if not cached then Manager:Remove(id) continue end
-            local head = cached.head
-            if not head or not head.Parent then entity:Hide() continue end
-            local hum = cached.humanoid
-            if hum and hum.Health and hum.Health <= 0 then entity:Hide() continue end
-            if root and (head.Position - root.Position).Magnitude > ESP_SETTINGS.MAX_DIST then entity:Hide() continue end
-            entity:SetColor(ESP_SETTINGS[entity.TypeKey] and ESP_SETTINGS[entity.TypeKey].Color or Color3.new(1,1,1))
-            local pos, onScreen = WorldToScreen(head.Position + Vector3.new(0, 1.5, 0))
-            entity:Update(pos, onScreen)
+scheduler:addLoop("washing", 0.1, function()
+    if not SETTINGS.Auto.Washing.Enabled then return end
+    local gui = PlayerGui:FindFirstChild("DishWashingGui")
+    if not gui or memory_read("byte", gui.Address + ScreenGuiEnabled) ~= 1 then return end
+    local sink = workspace:FindFirstChild("Kitchen") and workspace.Kitchen:FindFirstChild("TheSink")
+    if not sink or sink.DirtyDishAmount.Value == 0 or sink.Occupied.Value then return end
+    for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
+        if v.Name == "KeyTemplate" then
+            local key = WASH_KEYS[v:GetAttribute("Key")]
+            if key then keypress(key) keyrelease(key) end
         end
     end
 end)
 
+scheduler:addLoop("chloroRelease", 0.02, function()
+    if not _chloroKeyHeld then return end
+    keyrelease(0x51)
+    _chloroKeyHeld = false
+end)
+
+local _visibleEntities = {}
+
+scheduler:addLoop("espLogic", 0.2, function()
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local rootPos = root and root.Position
+    _visibleEntities = {}
+    for id, entity in pairs(Manager.Entities) do
+        if entity.State == STATE.DESTROYED then Manager.Entities[id] = nil continue end
+        local cached = npcRegistry[id]
+        if not cached then Manager:Remove(id) continue end
+        local head = cached.head
+        if not head or not head.Parent then entity:Hide() continue end
+        local hum = cached.humanoid
+        if hum and hum.Health and hum.Health <= 0 then entity:Hide() continue end
+        if rootPos and (head.Position - rootPos).Magnitude > ESP_SETTINGS.MAX_DIST then entity:Hide() continue end
+        entity:SetColor(ESP_SETTINGS[entity.TypeKey] and ESP_SETTINGS[entity.TypeKey].Color or Color3.new(1,1,1))
+        table.insert(_visibleEntities, {entity = entity, head = head})
+    end
+end)
+
+scheduler:addRender("espDraw", function()
+    for _, entry in ipairs(_visibleEntities) do
+        if not entry.head or not entry.head.Parent then continue end
+        local pos, onScreen = WorldToScreen(entry.head.Position + Vector3.new(0, 1.5, 0))
+        entry.entity:Update(pos, onScreen)
+    end
+end)
 local Admins = {105479622,65095440,1425697210,126961971,127528152,319065798,2754844524,125440222,1783725423}
 
 pcall(function()
@@ -754,12 +727,11 @@ end)
 
 SETTINGS.Auto.ChloroformSpys.Enabled = true
 
-notify('script loaded', "", 4)
-
 if getgenv then
     getgenv().SushiGambitCleanup = function()
         for name in pairs(scheduler._loops)  do scheduler:remove(name) end
         for name in pairs(scheduler._render) do scheduler:remove(name) end
-        Windows:Delete()
+        pcall(function() Windows:Delete() end)
+        for _, d in pairs(_alertDrawings or {}) do pcall(function() d:Remove() end) end
     end
 end
