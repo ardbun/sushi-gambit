@@ -72,8 +72,10 @@ function scheduler:remove(name)
     self._render[name] = nil
 end
 local Connections = {}
+local CurrentLoop = "idle"
 table.insert(Connections, RunService.Heartbeat:Connect(function(dt)
     for name, job in pairs(scheduler._loops) do
+        CurrentLoop = name
         job.timer += dt
         if job.timer >= job.interval then
             job.timer -= job.interval
@@ -81,6 +83,7 @@ table.insert(Connections, RunService.Heartbeat:Connect(function(dt)
             if not ok then warn("scheduler job '" .. name .. "' errored: " .. tostring(err)) end
         end
     end
+    CurrentLoop = "idle"
 end))
 
 table.insert(Connections, RunService.RenderStepped:Connect(function()
@@ -608,6 +611,10 @@ scheduler:addLoop("chloroRelease", 0.02, function()
     if not _chloroKeyHeld then return end
     keyrelease(0x51)
     _chloroKeyHeld = false
+end)
+
+scheduler:addLoop("debugLoop", 5, function()
+    print("last loop:", CurrentLoop)
 end)
 
 local _visibleEntities = {}
