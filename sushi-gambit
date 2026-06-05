@@ -344,33 +344,42 @@ local Stats = LocalPlayer:WaitForChild("Stats")
 
 scheduler:addLoop("statSpoof", TIMINGS.stats, function()
     if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
-        PlayerStats.EffectiveCookingLevel.Value = 1000
-        PlayerStats.NoIngredientUseChance.Value = 1
+        if PlayerStats:FindFirstChild("EffectiveCookingLevel") then PlayerStats.EffectiveCookingLevel.Value = 1000 end
+        if PlayerStats:FindFirstChild("NoIngredientUseChance") then PlayerStats.NoIngredientUseChance.Value = 1 end
     end
     if SETTINGS.Cheat.Instant.CleanDish.Enabled then
-        PlayerStats.EffectiveCleaningLevel.Value = 9999
+        if PlayerStats:FindFirstChild("EffectiveCleaningLevel") then PlayerStats.EffectiveCleaningLevel.Value = 9999 end
     end
     if SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled then
-        PlayerStats.SpongeEffectiveness.Value = 9999
+        if PlayerStats:FindFirstChild("SpongeEffectiveness") then PlayerStats.SpongeEffectiveness.Value = 9999 end
     end
-    
-    PlayerStats.StaminaUsageMultiplier.Value = -1
-    PlayerStats.StaminaGainMultiplier.Value = 100
-    PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0
-    
-    Stats.Stamina.Value = 100
-    PlayerStats.WalkSpeed.Value = 24
-    PlayerStats.SprintSpeed.Value = 36
-    PlayerStats.SushiValueMultiplier.Value = 15
-    PlayerStats.EffectiveServiceLevel.Value = 9999
-    PlayerStats.ManualSeatingBoost.Value = 10
-    PlayerStats.TipRevenueMultiplier.Value = 15
-    PlayerStats.PersonalIncomeMultiplier.Value = 10
-    PlayerStats.Charisma.Value = 10
+    if PlayerStats:FindFirstChild("StaminaUsageMultiplier") then PlayerStats.StaminaUsageMultiplier.Value = -1 end
+    if PlayerStats:FindFirstChild("StaminaGainMultiplier") then PlayerStats.StaminaGainMultiplier.Value = 100 end
+    if PlayerStats:FindFirstChild("StaminaUsageMultiplierNonHarvestRelated") then PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0 end
+    if Stats:FindFirstChild("Stamina") then Stats.Stamina.Value = 100 end
+    if PlayerStats:FindFirstChild("WalkSpeed") then PlayerStats.WalkSpeed.Value = 24 end
+    if PlayerStats:FindFirstChild("SprintSpeed") then PlayerStats.SprintSpeed.Value = 36 end
+    if PlayerStats:FindFirstChild("SushiValueMultiplier") then PlayerStats.SushiValueMultiplier.Value = 15 end
+    if PlayerStats:FindFirstChild("EffectiveServiceLevel") then PlayerStats.EffectiveServiceLevel.Value = 9999 end
+    if PlayerStats:FindFirstChild("ManualSeatingBoost") then PlayerStats.ManualSeatingBoost.Value = 10 end
+    if PlayerStats:FindFirstChild("TipRevenueMultiplier") then PlayerStats.TipRevenueMultiplier.Value = 15 end
+    if PlayerStats:FindFirstChild("PersonalIncomeMultiplier") then PlayerStats.PersonalIncomeMultiplier.Value = 10 end
+    if PlayerStats:FindFirstChild("Charisma") then PlayerStats.Charisma.Value = 10 end
 end)
 
 local _lastLabels = {}
 scheduler:addLoop("labels", TIMINGS.labels, function()
+if not Vegetables or not AssortedFish or not HumanFlesh or not Rice then
+        local ingr = GameData:FindFirstChild("Ingredients")
+        if ingr and ingr:FindFirstChild("IngredientsStorage") then
+            local storage = ingr.IngredientsStorage
+            Vegetables = storage:FindFirstChild("Vegetables")
+            AssortedFish = storage:FindFirstChild("AssortedFish")
+            HumanFlesh = storage:FindFirstChild("HumanFlesh")
+            Rice = storage:FindFirstChild("Rice")
+        end
+        if not Vegetables then return end
+    end
     if dayLabel then
         local t = "day: " .. tostring(GameData.CurrentDay.Value)
         if _lastLabels.day ~= t then _lastLabels.day = t dayLabel:SetText(t) end
@@ -403,13 +412,13 @@ scheduler:addLoop("labels", TIMINGS.labels, function()
             dishLabel:SetText(t) 
         end
     end
-    if reviewLabel then
-        local t = string.format("rating: %.2f", GameData.CurrentReviewScore.Value)
-        if _lastLabels.review ~= t then 
-            _lastLabels.review = t 
-            reviewLabel:SetText(t) 
-        end
+if reviewLabel then
+    local rs = GameData:FindFirstChild("CurrentReviewScore")
+    if rs then
+        local t = string.format("rating: %.2f", rs.Value)
+        if _lastLabels.review ~= t then _lastLabels.review = t reviewLabel:SetText(t) end
     end
+end
 end)
 
 local _clockWarned   = {}
@@ -434,7 +443,7 @@ end
 
 scheduler:addLoop("clock", TIMINGS.clock, function()
     if not _clockLabel then return end
-    local norm = normalizeClock(_clockLabel.Text)
+    local norm = normalizeClock(_clockLabel.Text or "")
     if norm == _clockLastTime then return end
     _clockLastTime = norm
     if _clockTargets[norm] and not _clockWarned[norm] then
@@ -608,7 +617,8 @@ if SETTINGS.Auto.Washing.Enabled then
     local gui = PlayerGui:FindFirstChild("DishWashingGui")
     local guiOpen = gui and memory_read("byte", gui.Address + ScreenGuiEnabled) == 1
     if guiOpen then
-        local sink = workspace.Kitchen:FindFirstChild("TheSink")
+        local kitchen = workspace:FindFirstChild("Kitchen")
+        local sink = kitchen and kitchen:FindFirstChild("TheSink")
         if sink and sink.DirtyDishAmount.Value > 0 and not sink.Occupied.Value then
             for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
                 if v.Name == "KeyTemplate" then
