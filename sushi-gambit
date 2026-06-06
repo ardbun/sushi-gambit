@@ -4,6 +4,7 @@ pcall(function()
     end
 end)
 task.wait(0.1)
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
@@ -24,8 +25,8 @@ local keyrelease   = keyrelease or function() end
 
 local SETTINGS = {
     Auto = {
-        Cooking       = {Enabled = false},
-        Washing       = {Enabled = true},
+        Cooking        = {Enabled = false},
+        Washing        = {Enabled = true},
         ChloroformSpys = {Enabled = false},
     },
     Cheat = {
@@ -36,11 +37,11 @@ local SETTINGS = {
 }
 
 local ESP_SETTINGS = {
-    MAX_DIST    = 200,
-    MAX_DIST_SQ = 200 * 200,
-    Dasher          = {Enabled = true,  Color = Color3.new(1, 0, 0)},
-    Critic          = {Enabled = true,  Color = Color3.fromRGB(255, 252, 0)},
-    HealthInspector = {Enabled = true,  Color = Color3.fromRGB(0, 255, 0)},
+    MAX_DIST        = 200,
+    MAX_DIST_SQ     = 200 * 200,
+    Dasher          = {Enabled = true, Color = Color3.new(1, 0, 0)},
+    Critic          = {Enabled = true, Color = Color3.fromRGB(255, 252, 0)},
+    HealthInspector = {Enabled = true, Color = Color3.fromRGB(0, 255, 0)},
     Windows         = {Enabled = true},
     Labels = {
         day = true, companymoney = true, vegstock = true,
@@ -53,12 +54,13 @@ local TIMINGS = {
     staticPrompts = 5,
     cooking       = 0.05,
     chloroform    = 0.03,
-    npcCache      = 0.5,
-    npcPrompts    = 0.2,
-    espLogic      = 0.2,
     stats         = 0.5,
     labels        = 0.1,
     clock         = 0.1,
+    npcScan       = 0.5,
+    npcLogic      = 0.2,
+    npcAlerts     = 0.5,
+    cleanup       = 60,
 }
 
 local scheduler = {_loops = {}, _render = {}}
@@ -77,7 +79,25 @@ function scheduler:remove(name)
     self._loops[name]  = nil
     self._render[name] = nil
 end
+
 local Connections = {}
+
+local STATE = {ACTIVE = 1, DESTROYED = 2}
+
+local Manager = {Entities = {}}
+
+function Manager:Add(id, entity) self.Entities[id] = entity end
+
+function Manager:Remove(id)
+    local ent = self.Entities[id]
+    if not ent then return end
+    ent:Destroy()
+    self.Entities[id] = nil
+end
+
+local npcRegistry = {}
+local _knownAddrs = {}
+
 table.insert(Connections, RunService.Heartbeat:Connect(function(dt)
     for name, job in pairs(scheduler._loops) do
         job.timer += dt
@@ -143,13 +163,13 @@ function Lib.new(titleText, width, height, cornerRadius)
     self.HorizontalFill = newRect(self.Position + Vector2.new(0, r), Vector2.new(w, h - 2*r))
 
     local title = Drawing.new("Text")
-    title.Text    = titleText
-    title.Size    = 12
+    title.Text     = titleText
+    title.Size     = 12
     title.Position = self.Position + Vector2.new(12, 15)
-    title.Color   = Color3.fromRGB(255, 0, 0)
-    title.Outline = true
-    title.Visible = false
-    self.Title    = title
+    title.Color    = Color3.fromRGB(255, 0, 0)
+    title.Outline  = true
+    title.Visible  = false
+    self.Title     = title
     table.insert(self.Elements, title)
 
     return self
@@ -203,7 +223,7 @@ function Lib:AddLabel(text, color)
     table.insert(self.Labels, entry)
 
     for i, e in ipairs(self.Labels) do
-        e.relPos          = Vector2.new(12, LABEL_START_Y + (i-1)*LABEL_STEP)
+        e.relPos           = Vector2.new(12, LABEL_START_Y + (i-1)*LABEL_STEP)
         e.drawing.Position = self.Position + e.relPos
     end
 
@@ -234,7 +254,7 @@ end)
 local fetchStart = tick()
 repeat task.wait(0.1) until fetchDone or (tick() - fetchStart) > 5
 if not raw then
-    warn("Offset fetch failed or timed out, using fallbacks")
+    warn("Offset fetch failed, using fallbacks")
     raw = {Offsets={GuiObject={ScreenGui_Enabled="0x4cc"},ProximityPrompt={HoldDuration="0x138",Enabled="0x14e"}}}
 end
 
@@ -272,13 +292,13 @@ createLabels()
 
 UI.AddTab("Sushi Gambit", function(tab)
     local MainSec = tab:Section("Main", "Left", {"auto"})
-
     if MainSec.page == 0 then
         MainSec:Toggle('auto_cooking', 'auto cook', function(value)
             notify("auto cooking: " .. tostring(value), "", 3)
             SETTINGS.Auto.Cooking.Enabled = value
         end)
     end
+
     local PlayerTab = tab:Section("Player", "Left")
     PlayerTab:SliderInt('player_walkspeed', 'Walk Speed', 12, 20, 20, function(value)
         PlayerStats.WalkSpeed.Value = value
@@ -321,7 +341,57 @@ scheduler:addLoop("cooking", TIMINGS.cooking, function()
     end
 end)
 
+local WASH_KEYS = {Q=0x51, E=0x45, R=0x52, F=0x46}
 local _chloroKeyHeld = false
+local _chloroReleaseTimer = 0
+
+table.insert(Connections, RunService.Heartbeat:Connect(function(dt)
+    -- washing
+    if SETTINGS.Auto.Washing.Enabled then
+        local gui = PlayerGui:FindFirstChild("DishWashingGui")
+        if gui then
+            local sink = workspace.Kitchen:FindFirstChild("TheSink")
+            if sink and sink:FindFirstChild("DirtyDishAmount") and sink.DirtyDishAmount.Value > 0 and sink:FindFirstChild("Occupied") and not sink.Occupied.Value then
+                for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
+                    if v.Name == "KeyTemplate" then
+                        local key = WASH_KEYS[v:GetAttribute("Key")]
+                        if key then keypress(key) keyrelease(key) end
+                    end
+                end
+            end
+        end
+    end
+
+    -- chloro release
+    if _chloroKeyHeld then
+        _chloroReleaseTimer += dt
+        if _chloroReleaseTimer >= 0.02 then
+            _chloroReleaseTimer = 0
+            keyrelease(0x51)
+            _chloroKeyHeld = false
+        end
+    end
+
+    -- ESP render
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    for id, entity in pairs(Manager.Entities) do
+        if entity.State == STATE.DESTROYED then
+            Manager.Entities[id] = nil
+            continue
+        end
+        local cached = npcRegistry[id]
+        if not cached then Manager:Remove(id) continue end
+        local head = cached.head
+        if not head or not head.Parent then entity:Hide() continue end
+        local hum = cached.humanoid
+        if hum and hum.Health and hum.Health <= 0 then entity:Hide() continue end
+        if root and (head.Position - root.Position).Magnitude > ESP_SETTINGS.MAX_DIST then entity:Hide() continue end
+        entity:SetColor(ESP_SETTINGS[entity.TypeKey] and ESP_SETTINGS[entity.TypeKey].Color or Color3.new(1,1,1))
+        local pos, onScreen = WorldToScreen(head.Position + Vector3.new(0, 1.5, 0))
+        entity:Update(pos, onScreen)
+    end
+end))
+
 scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
     if not SETTINGS.Auto.ChloroformSpys.Enabled then
         if _chloroKeyHeld then keyrelease(0x51) _chloroKeyHeld = false end
@@ -338,43 +408,36 @@ end)
 local Stats = LocalPlayer:WaitForChild("Stats")
 
 scheduler:addLoop("statSpoof", TIMINGS.stats, function()
+    local function setIf(obj, prop, val)
+        local p = obj:FindFirstChild(prop)
+        if p and p.Value ~= val then p.Value = val end
+    end
     if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
-        if PlayerStats:FindFirstChild("EffectiveCookingLevel") and PlayerStats.EffectiveCookingLevel.Value ~= 1000 then PlayerStats.EffectiveCookingLevel.Value = 1000 end
-        if PlayerStats:FindFirstChild("NoIngredientUseChance") and PlayerStats.NoIngredientUseChance.Value ~= 1 then PlayerStats.NoIngredientUseChance.Value = 1 end
+        setIf(PlayerStats, "EffectiveCookingLevel", 1000)
+        setIf(PlayerStats, "NoIngredientUseChance", 1)
     end
     if SETTINGS.Cheat.Instant.CleanDish.Enabled then
-        if PlayerStats:FindFirstChild("EffectiveCleaningLevel") and PlayerStats.EffectiveCleaningLevel.Value ~= 9999 then PlayerStats.EffectiveCleaningLevel.Value = 9999 end
+        setIf(PlayerStats, "EffectiveCleaningLevel", 9999)
     end
     if SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled then
-        if PlayerStats:FindFirstChild("SpongeEffectiveness") and PlayerStats.SpongeEffectiveness.Value ~= 9999 then PlayerStats.SpongeEffectiveness.Value = 9999 end
+        setIf(PlayerStats, "SpongeEffectiveness", 9999)
     end
-    if PlayerStats:FindFirstChild("StaminaUsageMultiplier") and PlayerStats.StaminaUsageMultiplier.Value ~= -1 then PlayerStats.StaminaUsageMultiplier.Value = -1 end
-    if PlayerStats:FindFirstChild("StaminaGainMultiplier") and PlayerStats.StaminaGainMultiplier.Value ~= 100 then PlayerStats.StaminaGainMultiplier.Value = 100 end
-    if PlayerStats:FindFirstChild("StaminaUsageMultiplierNonHarvestRelated") and PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value ~= 0 then PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0 end
-    if Stats:FindFirstChild("Stamina") and Stats.Stamina.Value ~= 100 then Stats.Stamina.Value = 100 end
-    if PlayerStats:FindFirstChild("WalkSpeed") and PlayerStats.WalkSpeed.Value ~= 24 then PlayerStats.WalkSpeed.Value = 24 end
-    if PlayerStats:FindFirstChild("SprintSpeed") and PlayerStats.SprintSpeed.Value ~= 36 then PlayerStats.SprintSpeed.Value = 36 end
-    if PlayerStats:FindFirstChild("SushiValueMultiplier") and PlayerStats.SushiValueMultiplier.Value ~= 15 then PlayerStats.SushiValueMultiplier.Value = 15 end
-    if PlayerStats:FindFirstChild("EffectiveServiceLevel") and PlayerStats.EffectiveServiceLevel.Value ~= 9999 then PlayerStats.EffectiveServiceLevel.Value = 9999 end
-    if PlayerStats:FindFirstChild("ManualSeatingBoost") and PlayerStats.ManualSeatingBoost.Value ~= 10 then PlayerStats.ManualSeatingBoost.Value = 10 end
-    if PlayerStats:FindFirstChild("TipRevenueMultiplier") and PlayerStats.TipRevenueMultiplier.Value ~= 15 then PlayerStats.TipRevenueMultiplier.Value = 15 end
-    if PlayerStats:FindFirstChild("PersonalIncomeMultiplier") and PlayerStats.PersonalIncomeMultiplier.Value ~= 10 then PlayerStats.PersonalIncomeMultiplier.Value = 10 end
-    if PlayerStats:FindFirstChild("Charisma") and PlayerStats.Charisma.Value ~= 10 then PlayerStats.Charisma.Value = 10 end
+    setIf(PlayerStats, "StaminaUsageMultiplier", -1)
+    setIf(PlayerStats, "StaminaGainMultiplier", 100)
+    setIf(PlayerStats, "StaminaUsageMultiplierNonHarvestRelated", 0)
+    setIf(Stats, "Stamina", 100)
+    setIf(PlayerStats, "WalkSpeed", 24)
+    setIf(PlayerStats, "SprintSpeed", 36)
+    setIf(PlayerStats, "SushiValueMultiplier", 15)
+    setIf(PlayerStats, "EffectiveServiceLevel", 9999)
+    setIf(PlayerStats, "ManualSeatingBoost", 10)
+    setIf(PlayerStats, "TipRevenueMultiplier", 15)
+    setIf(PlayerStats, "PersonalIncomeMultiplier", 10)
+    setIf(PlayerStats, "Charisma", 10)
 end)
 
 local _lastLabels = {}
 scheduler:addLoop("labels", TIMINGS.labels, function()
-if not Vegetables or not AssortedFish or not HumanFlesh or not Rice then
-        local ingr = GameData:FindFirstChild("Ingredients")
-        if ingr and ingr:FindFirstChild("IngredientsStorage") then
-            local storage = ingr.IngredientsStorage
-            Vegetables = storage:FindFirstChild("Vegetables")
-            AssortedFish = storage:FindFirstChild("AssortedFish")
-            HumanFlesh = storage:FindFirstChild("HumanFlesh")
-            Rice = storage:FindFirstChild("Rice")
-        end
-        if not Vegetables then return end
-    end
     if dayLabel then
         local t = "day: " .. tostring(GameData.CurrentDay.Value)
         if _lastLabels.day ~= t then _lastLabels.day = t dayLabel:SetText(t) end
@@ -402,18 +465,15 @@ if not Vegetables or not AssortedFish or not HumanFlesh or not Rice then
     if dishLabel then
         local sink = workspace.Kitchen:FindFirstChild("TheSink")
         local t = "dishes: " .. tostring(sink and sink.CleanDishAmount and sink.CleanDishAmount.Value or 0)
-        if _lastLabels.dishes ~= t then 
-            _lastLabels.dishes = t 
-            dishLabel:SetText(t) 
+        if _lastLabels.dishes ~= t then _lastLabels.dishes = t dishLabel:SetText(t) end
+    end
+    if reviewLabel then
+        local rs = GameData:FindFirstChild("CurrentReviewScore")
+        if rs then
+            local t = string.format("rating: %.2f", rs.Value)
+            if _lastLabels.review ~= t then _lastLabels.review = t reviewLabel:SetText(t) end
         end
     end
-if reviewLabel then
-    local rs = GameData:FindFirstChild("CurrentReviewScore")
-    if rs then
-        local t = string.format("rating: %.2f", rs.Value)
-        if _lastLabels.review ~= t then _lastLabels.review = t reviewLabel:SetText(t) end
-    end
-end
 end)
 
 local _clockWarned   = {}
@@ -490,22 +550,7 @@ function Entity:SetColor(color)
     if self.Text then self.Text.Color = color end
 end
 
-local Manager = {Entities = {}}
-
-function Manager:Add(id, entity) self.Entities[id] = entity end
-
-function Manager:Remove(id)
-    local ent = self.Entities[id]
-    if not ent then return end
-    ent:Destroy()
-    self.Entities[id] = nil
-end
-
-local npcRegistry = {}
-
-local _knownAddrs = {}
-
-scheduler:addLoop("npcScan", 0.5, function()
+scheduler:addLoop("npcScan", TIMINGS.npcScan, function()
     local dest = workspace:FindFirstChild("NpcDestination")
     if not dest then return end
     local folder = dest:FindFirstChild("SpawnedNPCs")
@@ -536,9 +581,11 @@ scheduler:addLoop("npcScan", 0.5, function()
     end
 end)
 
-scheduler:addLoop("npcLogic", 0.2, function()
+scheduler:addLoop("npcLogic", TIMINGS.npcLogic, function()
     if not isrbxactive() then return end
+
     local toRemove = {}
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 
     for addr, cached in pairs(npcRegistry) do
         local npc = cached.inst
@@ -558,11 +605,11 @@ scheduler:addLoop("npcLogic", 0.2, function()
         end
 
         local torso = cached.torso
+        local state = npc:GetAttribute("CurrentState")
+
         if torso and torso.Position then
-            local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            local close = not root or not root.Position or (torso.Position - root.Position).Magnitude < 60
+            local close = not root or (torso.Position - root.Position).Magnitude < 60
             if close then
-                local state = npc:GetAttribute("CurrentState")
                 if state == "WaitingInLine" then
                     local wp = torso:FindFirstChild("WaitProximityPrompt")
                     if wp and wp.Address then
@@ -576,7 +623,9 @@ scheduler:addLoop("npcLogic", 0.2, function()
             end
         end
 
-        local isDasher = cached.torso and cached.torso:FindFirstChild("CatchDasherPrompt") ~= nil
+        local isDasher    = cached.torso and cached.torso:FindFirstChild("CatchDasherPrompt") ~= nil
+        local isCritic    = npc:GetAttribute("Critic") == true
+        local isInspector = npc:GetAttribute("Behavior") == "Inspector"
 
         local function syncEntity(condition, typeName, color)
             local ent = Manager.Entities[addr]
@@ -592,9 +641,14 @@ scheduler:addLoop("npcLogic", 0.2, function()
         end
 
         if isDasher then
-            syncEntity(ESP_SETTINGS.Dasher.Enabled, "Dasher", ESP_SETTINGS.Dasher.Color)
+            syncEntity(ESP_SETTINGS.Dasher.Enabled,          "Dasher",           ESP_SETTINGS.Dasher.Color)
+        elseif isCritic then
+            syncEntity(ESP_SETTINGS.Critic.Enabled,          "Critic",           ESP_SETTINGS.Critic.Color)
+        elseif isInspector then
+            syncEntity(ESP_SETTINGS.HealthInspector.Enabled, "Health Inspector", ESP_SETTINGS.HealthInspector.Color)
         else
-            Manager:Remove(addr)
+            local ent = Manager.Entities[addr]
+            if ent then Manager:Remove(addr) end
         end
     end
 
@@ -605,42 +659,6 @@ scheduler:addLoop("npcLogic", 0.2, function()
     end
 end)
 
-local WASH_KEYS = {Q=0x51, E=0x45, R=0x52, F=0x46}
-
-scheduler:addLoop("washing", 0.1, function()
-    if not SETTINGS.Auto.Washing.Enabled then return end
-    local gui = PlayerGui:FindFirstChild("DishWashingGui")
-    if not gui then return end
-        local ok, val = pcall(memory_read, "byte", gui.Address + ScreenGuiEnabled)
-    if not ok or val ~= 1 then return end
-        local sink = workspace:FindFirstChild("Kitchen") and workspace.Kitchen:FindFirstChild("TheSink")
-        if not sink or sink.DirtyDishAmount.Value == 0 or sink.Occupied.Value then return end
-        for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
-            if v.Name == "KeyTemplate" then
-                local key = WASH_KEYS[v:GetAttribute("Key")]
-                if key then keypress(key) keyrelease(key) end
-            end
-        end
-    end)
-
-scheduler:addLoop("chloroRelease", 0.02, function()
-    if not _chloroKeyHeld then return end
-    keyrelease(0x51)
-    _chloroKeyHeld = false
-end)
-
-local Admins = {105479622,65095440,1425697210,126961971,127528152,319065798,2754844524,125440222,1783725423}
-
-pcall(function()
-    if Players and Players.PlayerAdded then
-        table.insert(Connections, Players.PlayerAdded:Connect(function(plr)
-            if table.find(Admins, plr.UserId) and SETTINGS.Notify.AdminJoin.Enabled then
-                notify("Admin Joined: " .. plr.Name, "ADMIN ALERT", 8)
-            end
-        end))
-    end
-end)
-
 local _alertDrawings = {}
 
 local function showScreenAlert(message, color, key)
@@ -648,13 +666,13 @@ local function showScreenAlert(message, color, key)
         pcall(function() _alertDrawings[key]:Remove() end)
     end
     local text = Drawing.new("Text")
-    text.Text = message
-    text.Size = 25
-    text.Color = color or Color3.new(1, 1, 1)
-    text.Outline = true
-    text.Center = true
+    text.Text     = message
+    text.Size     = 25
+    text.Color    = color or Color3.new(1, 1, 1)
+    text.Outline  = true
+    text.Center   = true
     text.Position = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, 140)
-    text.Visible = true
+    text.Visible  = true
     _alertDrawings[key] = text
 end
 
@@ -667,7 +685,7 @@ end
 
 local _notifiedNpcs = {}
 
-scheduler:addLoop("npcAlerts", 0.5, function()
+scheduler:addLoop("npcAlerts", TIMINGS.npcAlerts, function()
     local dest = workspace:FindFirstChild("NpcDestination")
     local folder = dest and dest:FindFirstChild("SpawnedNPCs")
     if not folder then return end
@@ -678,10 +696,10 @@ scheduler:addLoop("npcAlerts", 0.5, function()
         local addr = npc.Address
         if not addr then continue end
         local state = npc:GetAttribute("CurrentState")
-local isCritic = npc:GetAttribute("Critic") == true and state ~= "Leaving" and state ~= "Left" and state ~= "Done"
+        local isCritic    = npc:GetAttribute("Critic") == true and state ~= "Leaving" and state ~= "Left" and state ~= "Done"
         local isInspector = npc:GetAttribute("Behavior") == "Inspector"
 
-        if isCritic then criticSeen = true end
+        if isCritic    then criticSeen    = true end
         if isInspector then inspectorSeen = true end
 
         if (isCritic or isInspector) and not _notifiedNpcs[addr] then
@@ -698,14 +716,26 @@ local isCritic = npc:GetAttribute("Critic") == true and state ~= "Leaving" and s
         end
     end
 
-    if not criticSeen then removeScreenAlert("critic") end
+    if not criticSeen    then removeScreenAlert("critic")    end
     if not inspectorSeen then removeScreenAlert("inspector") end
 end)
 
-
-scheduler:addLoop("cleanup", 60, function()
+scheduler:addLoop("cleanup", TIMINGS.cleanup, function()
     _notifiedNpcs = {}
 end)
+
+local Admins = {105479622,65095440,1425697210,126961971,127528152,319065798,2754844524,125440222,1783725423}
+
+pcall(function()
+    if Players and Players.PlayerAdded then
+        table.insert(Connections, Players.PlayerAdded:Connect(function(plr)
+            if table.find(Admins, plr.UserId) and SETTINGS.Notify.AdminJoin.Enabled then
+                notify("Admin Joined: " .. plr.Name, "ADMIN ALERT", 8)
+            end
+        end))
+    end
+end)
+
 table.insert(Connections, UserInputService.InputBegan:Connect(function(inp, gp)
     if gp then return end
     if inp.KeyCode == Enum.KeyCode.X then
