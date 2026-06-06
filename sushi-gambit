@@ -629,6 +629,12 @@ scheduler:addLoop("washing", 0.1, function()
         end
     end)
 
+scheduler:addLoop("chloroRelease", 0.02, function()
+    if not _chloroKeyHeld then return end
+    keyrelease(0x51)
+    _chloroKeyHeld = false
+end)
+
 local Admins = {105479622,65095440,1425697210,126961971,127528152,319065798,2754844524,125440222,1783725423}
 
 pcall(function()
