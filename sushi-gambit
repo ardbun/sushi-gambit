@@ -16,9 +16,6 @@ local PlayerStats = LocalPlayer:WaitForChild("PlayerStats")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 local memory_read  = memory_read  or function() return 0 end
-local memory_write = memory_write or function() end
-local isrbxactive  = isrbxactive  or function() return true end
-local ismouse1pressed = ismouse1pressed or function() return false end
 local keypress     = keypress  or function() end
 local keyrelease   = keyrelease or function() end
 
@@ -32,16 +29,10 @@ local SETTINGS = {
         Spoof   = {Greenbar = {Enabled = true}, SpongeEffectiveness = {Enabled = true}},
         Instant = {CleanDish = {Enabled = true}, SeatCustomer = {Enabled = true}},
     },
-    Notify = {AdminJoin = {Enabled = true}},
+Notify = {AdminJoin = {Enabled = true}},
 }
 
 local ESP_SETTINGS = {
-    MAX_DIST    = 200,
-    MAX_DIST_SQ = 200 * 200,
-    Dasher          = {Enabled = true,  Color = Color3.new(1, 0, 0)},
-    Critic          = {Enabled = true,  Color = Color3.fromRGB(255, 252, 0)},
-    HealthInspector = {Enabled = true,  Color = Color3.fromRGB(0, 255, 0)},
-    Windows         = {Enabled = true},
     Labels = {
         day = true, companymoney = true, vegstock = true,
         fishstock = true, humanfleshstock = true, ricestock = true,
@@ -53,9 +44,6 @@ local TIMINGS = {
     staticPrompts = 5,
     cooking       = 0.05,
     chloroform    = 0.03,
-    npcCache      = 0.5,
-    npcPrompts    = 0.2,
-    espLogic      = 0.2,
     stats         = 0.5,
     labels        = 0.1,
     clock         = 0.1,
@@ -249,7 +237,6 @@ end
 
 local ScreenGuiEnabled = getOffset(raw, "Offsets", "GuiObject",       "ScreenGui_Enabled") or 0x4cc
 local HoldDuration     = getOffset(raw, "Offsets", "ProximityPrompt", "HoldDuration")      or 0x138
-local PromptEnabled    = getOffset(raw, "Offsets", "ProximityPrompt", "Enabled")           or 0x14e
 
 local dayLabel, companyMoneyLabel, vegLabel, fishLabel, humanFleshLabel, riceLabel, dishLabel, reviewLabel
 local Vegetables   = GameData.Ingredients.IngredientsStorage.Vegetables
@@ -448,169 +435,6 @@ scheduler:addLoop("clock", TIMINGS.clock, function()
     if norm == "5:05AM" then _clockWarned = {} end
 end)
 
-local STATE = {ACTIVE = 1, DESTROYED = 2}
-
-local Entity = {}
-Entity.__index = Entity
-
-function Entity.new(instance, typeName, color)
-    local text = Drawing.new("Text")
-    text.Text    = typeName
-    text.Size    = 14
-    text.Color   = color or Color3.new(1, 1, 1)
-    text.Outline = true
-    text.Visible = false
-    return setmetatable({
-        Instance = instance,
-        Head     = instance:FindFirstChild("Head"),
-        Text     = text,
-        Type     = typeName,
-        TypeKey  = typeName:gsub(" ", ""),
-        State    = STATE.ACTIVE,
-    }, Entity)
-end
-
-function Entity:Update(pos, onScreen)
-    if self.State == STATE.DESTROYED then return end
-    self.Text.Visible = onScreen
-    if onScreen then self.Text.Position = pos end
-end
-
-function Entity:Destroy()
-    if self.State == STATE.DESTROYED then return end
-    self.State = STATE.DESTROYED
-    pcall(function() self.Text:Remove() end)
-end
-
-function Entity:Hide()
-    if self.Text then self.Text.Visible = false end
-end
-
-function Entity:SetColor(color)
-    if self.Text then self.Text.Color = color end
-end
-
-local Manager = {Entities = {}}
-
-function Manager:Add(id, entity) self.Entities[id] = entity end
-
-function Manager:Remove(id)
-    local ent = self.Entities[id]
-    if not ent then return end
-    ent:Destroy()
-    self.Entities[id] = nil
-end
-
-local npcRegistry = {}
-
-local _knownAddrs = {}
-
-scheduler:addLoop("npcScan", 0.5, function()
-    local dest = workspace:FindFirstChild("NpcDestination")
-    if not dest then return end
-    local folder = dest:FindFirstChild("SpawnedNPCs")
-    if not folder then return end
-
-    local seen = {}
-    for _, npc in ipairs(folder:GetChildren()) do
-        local addr = npc.Address
-        if not addr then continue end
-        seen[addr] = true
-        if not _knownAddrs[addr] then
-            _knownAddrs[addr] = true
-            npcRegistry[addr] = {
-                inst     = npc,
-                head     = npc:FindFirstChild("Head"),
-                torso    = npc:FindFirstChild("Torso"),
-                humanoid = npc:FindFirstChild("Humanoid"),
-            }
-        end
-    end
-
-    for addr in pairs(_knownAddrs) do
-        if not seen[addr] then
-            Manager:Remove(addr)
-            npcRegistry[addr] = nil
-            _knownAddrs[addr] = nil
-        end
-    end
-end)
-
-scheduler:addLoop("npcLogic", 0.2, function()
-    if not isrbxactive() then return end
-    local toRemove = {}
-
-    for addr, cached in pairs(npcRegistry) do
-        local npc = cached.inst
-        if not npc or not npc.Parent then
-            table.insert(toRemove, addr)
-            continue
-        end
-
-        if not (cached.head  and cached.head.Parent)  then cached.head     = npc:FindFirstChild("Head")     end
-        if not (cached.torso and cached.torso.Parent) then cached.torso    = npc:FindFirstChild("Torso")    end
-        if not cached.humanoid                         then cached.humanoid = npc:FindFirstChild("Humanoid") end
-
-        local humanoid = cached.humanoid
-        if humanoid and type(humanoid.Health) == "number" and humanoid.Health <= 0 then
-            table.insert(toRemove, addr)
-            continue
-        end
-
-        local torso = cached.torso
-        if torso and torso.Position then
-            local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            local close = not root or not root.Position or (torso.Position - root.Position).Magnitude < 60
-            if close then
-                local state = npc:GetAttribute("CurrentState")
-                if state == "WaitingInLine" then
-                    local wp = torso:FindFirstChild("WaitProximityPrompt")
-                    if wp and wp.Address then
-                        pcall(memory_write, "float", wp.Address + HoldDuration, 0)
-                    end
-                end
-                local dp = torso:FindFirstChild("CatchDasherPrompt")
-                if dp and dp.Address then
-                    pcall(memory_write, "float", dp.Address + HoldDuration, 0)
-                end
-            end
-        end
-
-        local isDasher = cached.torso and cached.torso:FindFirstChild("CatchDasherPrompt") ~= nil
-
-        local function syncEntity(condition, typeName, color)
-            local ent = Manager.Entities[addr]
-            if condition then
-                if not ent then
-                    Manager:Add(addr, Entity.new(npc, typeName, color))
-                end
-            else
-                if ent and ent.Type == typeName then
-                    Manager:Remove(addr)
-                end
-            end
-        end
-
-        if isDasher then
-    if not Manager.Entities[addr] then
-        -- track dasher by addr without creating a drawing
-        local _ent = {Type = "Dasher", State = STATE.ACTIVE}
-_ent.Hide = function() end
-_ent.Destroy = function() _ent.State = STATE.DESTROYED end
-Manager.Entities[addr] = _ent
-    end
-else
-    Manager:Remove(addr)
-end
-    end
-
-    for _, addr in ipairs(toRemove) do
-        Manager:Remove(addr)
-        npcRegistry[addr] = nil
-        _knownAddrs[addr] = nil
-    end
-end)
-
 local WASH_KEYS = {Q=0x51, E=0x45, R=0x52, F=0x46}
 
 scheduler:addLoop("washing", 0.1, function()
@@ -647,8 +471,6 @@ pcall(function()
 end)
 
 local _alertDrawings = {}
-local _dasherBar = nil
-local _dasherBarText = nil
 
 local function showScreenAlert(message, color, key)
     if _alertDrawings[key] then
@@ -714,47 +536,6 @@ scheduler:addLoop("cleanup", 60, function()
     _notifiedNpcs = {}
 end)
 
-scheduler:addLoop("dasherBar", 0.3, function()
-    local count = 0
-    for addr, ent in pairs(Manager.Entities) do
-        if ent.Type == "Dasher" and ent.State == STATE.ACTIVE then
-            count += 1
-        end
-    end
-    local vp = workspace.CurrentCamera.ViewportSize
-    local cx = vp.X / 2
-    local cy = vp.Y / 2 + 60
-    if count > 0 then
-        local label = count == 1 and "dasher" or (tostring(count) .. " dashers")
-        if not _dasherBarText then
-            _dasherBarText = Drawing.new("Text")
-            _dasherBarText.Size = 16
-            _dasherBarText.Color = Color3.new(1, 1, 1)
-            _dasherBarText.Outline = true
-            _dasherBarText.Center = true
-            _dasherBarText.Visible = true
-        end
-        _dasherBarText.Text = label
-        _dasherBarText.Position = Vector2.new(cx, cy + 6)
-        local bounds = _dasherBarText.TextBounds
-        local padX, padY = 16, 8
-        if not _dasherBar then
-            _dasherBar = Drawing.new("Square")
-            _dasherBar.Filled = true
-            _dasherBar.Color = Color3.new(0, 0, 0)
-            _dasherBar.Transparency = 0.6
-            _dasherBar.Visible = true
-        end
-        local barW = math.max(bounds.X + padX * 2, 100)
-        _dasherBar.Size = Vector2.new(barW, bounds.Y + padY * 2)
-        _dasherBar.Position = Vector2.new(cx - bounds.X / 2 - padX, cy + 6 - padY)
-        _dasherBarText.Visible = true
-        _dasherBar.Visible = true
-    else
-        if _dasherBarText then _dasherBarText.Visible = false end
-        if _dasherBar then _dasherBar.Visible = false end
-    end
-end)
 table.insert(Connections, UserInputService.InputBegan:Connect(function(inp, gp)
     if gp then return end
     if inp.KeyCode == Enum.KeyCode.X then
@@ -777,8 +558,6 @@ if getgenv then
         for name in pairs(scheduler._render) do scheduler:remove(name) end
         for _, c in ipairs(Connections) do pcall(function() c:Disconnect() end) end
         pcall(function() Windows:Delete() end)
-        pcall(function() if _dasherBar then _dasherBar:Remove() end end)
-        pcall(function() if _dasherBarText then _dasherBarText:Remove() end end)
         for _, d in pairs(_alertDrawings or {}) do pcall(function() d:Remove() end) end
     end
 end
