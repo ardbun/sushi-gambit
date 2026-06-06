@@ -286,7 +286,7 @@ local function applyStaticPrompts()
         pcall(function()
             local obj = game
             for _, k in ipairs(path) do obj = obj[k] end
-            pcall(memory_write, "float", obj.Address + HoldDuration, 0)
+            memory_write("float", obj.Address + HoldDuration, 0)
         end)
     end
 end
@@ -535,6 +535,27 @@ end)
 
 scheduler:addLoop("cleanup", 60, function()
     _notifiedNpcs = {}
+end)
+
+scheduler:addLoop("npcPrompts", 0.2, function()
+    local dest = workspace:FindFirstChild("NpcDestination")
+    local folder = dest and dest:FindFirstChild("SpawnedNPCs")
+    if not folder then return end
+    for _, npc in ipairs(folder:GetChildren()) do
+        local torso = npc:FindFirstChild("Torso")
+        if not torso or not torso.Position then continue end
+        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local close = not root or not root.Position or (torso.Position - root.Position).Magnitude < 60
+        if close then
+            local state = npc:GetAttribute("CurrentState")
+            if state == "WaitingInLine" then
+                local wp = torso:FindFirstChild("WaitProximityPrompt")
+                if wp and wp.Address then
+                    memory_write("float", wp.Address + HoldDuration, 0)
+                end
+            end
+        end
+    end
 end)
 
 table.insert(Connections, UserInputService.InputBegan:Connect(function(inp, gp)
