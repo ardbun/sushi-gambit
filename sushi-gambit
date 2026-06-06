@@ -16,6 +16,7 @@ local PlayerStats = LocalPlayer:WaitForChild("PlayerStats")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 local memory_read  = memory_read  or function() return 0 end
+local memory_write = memory_write or function() end
 local keypress     = keypress  or function() end
 local keyrelease   = keyrelease or function() end
 
