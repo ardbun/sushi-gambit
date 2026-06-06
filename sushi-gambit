@@ -72,10 +72,8 @@ function scheduler:remove(name)
     self._render[name] = nil
 end
 local Connections = {}
-local CurrentLoop = "idle"
 table.insert(Connections, RunService.Heartbeat:Connect(function(dt)
     for name, job in pairs(scheduler._loops) do
-        CurrentLoop = name
         job.timer += dt
         if job.timer >= job.interval then
             job.timer -= job.interval
@@ -83,7 +81,6 @@ table.insert(Connections, RunService.Heartbeat:Connect(function(dt)
             if not ok then warn("scheduler job '" .. name .. "' errored: " .. tostring(err)) end
         end
     end
-    CurrentLoop = "idle"
 end))
 
 table.insert(Connections, RunService.RenderStepped:Connect(function()
@@ -604,15 +601,18 @@ local WASH_KEYS = {Q=0x51, E=0x45, R=0x52, F=0x46}
 scheduler:addLoop("washing", 0.1, function()
     if not SETTINGS.Auto.Washing.Enabled then return end
     local gui = PlayerGui:FindFirstChild("DishWashingGui")
-    if not gui or memory_read("byte", gui.Address + ScreenGuiEnabled) ~= 1 then return end
-    local sink = workspace:FindFirstChild("Kitchen") and workspace.Kitchen:FindFirstChild("TheSink")
-    if not sink or sink.DirtyDishAmount.Value == 0 or sink.Occupied.Value then return end
-    for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
-        if v.Name == "KeyTemplate" then
-            local key = WASH_KEYS[v:GetAttribute("Key")]
-            if key then keypress(key) keyrelease(key) end
+    if not gui then return end
+    task.spawn(function()
+        if memory_read("byte", gui.Address + ScreenGuiEnabled) ~= 1 then return end
+        local sink = workspace:FindFirstChild("Kitchen") and workspace.Kitchen:FindFirstChild("TheSink")
+        if not sink or sink.DirtyDishAmount.Value == 0 or sink.Occupied.Value then return end
+        for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
+            if v.Name == "KeyTemplate" then
+                local key = WASH_KEYS[v:GetAttribute("Key")]
+                if key then keypress(key) keyrelease(key) end
+            end
         end
-    end
+    end)
 end)
 
 scheduler:addLoop("chloroRelease", 0.02, function()
@@ -621,16 +621,30 @@ scheduler:addLoop("chloroRelease", 0.02, function()
     _chloroKeyHeld = false
 end)
 
-scheduler:addLoop("debugLoop", 5, function()
-    print("last loop:", CurrentLoop)
-end)
-
 local _visibleEntities = {}
+
+local _dasherBar = Drawing.new("Square")
+_dasherBar.Filled = true
+_dasherBar.Color = Color3.new(1, 0, 0)
+_dasherBar.Visible = false
+_dasherBar.Transparency = 0.5
+
+local _dasherText = Drawing.new("Text")
+_dasherText.Size = 20
+_dasherText.Color = Color3.new(1, 1, 1)
+_dasherText.Outline = true
+_dasherText.Center = true
+_dasherText.Visible = false
+
+local _pulseTimer = 0
+local _pulseDir = 1
+local _dasherCount = 0
 
 scheduler:addLoop("espLogic", 0.2, function()
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     local rootPos = root and root.Position
-    table.clear(_visibleEntities)
+    _dasherCount = 0
+
     for id, entity in pairs(Manager.Entities) do
         if entity.State == STATE.DESTROYED then Manager.Entities[id] = nil continue end
         local cached = npcRegistry[id]
@@ -640,16 +654,36 @@ scheduler:addLoop("espLogic", 0.2, function()
         local hum = cached.humanoid
         if hum and hum.Health and hum.Health <= 0 then entity:Hide() continue end
         if rootPos and (head.Position - rootPos).Magnitude > ESP_SETTINGS.MAX_DIST then entity:Hide() continue end
-        entity:SetColor(ESP_SETTINGS[entity.TypeKey] and ESP_SETTINGS[entity.TypeKey].Color or Color3.new(1,1,1))
-        table.insert(_visibleEntities, {entity = entity, head = head})
+        entity:Hide()
+        local cached2 = npcRegistry[id]
+        local npc = cached2 and cached2.inst
+        local state = npc and npc:GetAttribute("CurrentState")
+        if state == "DiningAndDashing" or state == "Dashing" then
+            _dasherCount += 1
+        end
     end
 end)
 
 scheduler:addRender("espDraw", function()
-    for _, entry in ipairs(_visibleEntities) do
-        if not entry.head or not entry.head.Parent then continue end
-        local pos, onScreen = WorldToScreen(entry.head.Position + Vector3.new(0, 1.5, 0))
-        entry.entity:Update(pos, onScreen)
+    local vp = workspace.CurrentCamera.ViewportSize
+    local barW = 300
+    local barH = 30
+    local bx = (vp.X - barW) / 2
+    local by = 20
+
+    if _dasherCount > 0 then
+    _dasherBar.Size = Vector2.new(barW, barH)
+    _dasherBar.Position = Vector2.new(bx, by)
+    _dasherBar.Transparency = 0.5
+    _dasherBar.Visible = true
+        _dasherText.Text = "dasher x" .. _dasherCount
+        _dasherText.Position = Vector2.new(vp.X / 2, by + 7)
+        _dasherText.Visible = true
+    else
+        _pulseTimer = 0
+        _pulseDir = 1
+        _dasherBar.Visible = false
+        _dasherText.Visible = false
     end
 end)
 
@@ -701,7 +735,8 @@ scheduler:addLoop("npcAlerts", 0.5, function()
     for _, npc in ipairs(folder:GetChildren()) do
         local addr = npc.Address
         if not addr then continue end
-        local isCritic = npc:GetAttribute("Critic") == true
+        local state = npc:GetAttribute("CurrentState")
+local isCritic = npc:GetAttribute("Critic") == true and state ~= "Leaving" and state ~= "Left" and state ~= "Done"
         local isInspector = npc:GetAttribute("Behavior") == "Inspector"
 
         if isCritic then criticSeen = true end
