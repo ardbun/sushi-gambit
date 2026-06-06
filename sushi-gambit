@@ -1,3 +1,9 @@
+pcall(function()
+    if getgenv and getgenv().SushiGambitCleanup then
+        getgenv().SushiGambitCleanup()
+    end
+end)
+task.wait(0.1)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
@@ -50,7 +56,7 @@ local TIMINGS = {
     npcCache      = 0.5,
     npcPrompts    = 0.2,
     espLogic      = 0.2,
-    stats         = 0.1,
+    stats         = 0.5,
     labels        = 0.1,
     clock         = 0.1,
 }
@@ -292,7 +298,7 @@ local function applyStaticPrompts()
         pcall(function()
             local obj = game
             for _, k in ipairs(path) do obj = obj[k] end
-            memory_write("float", obj.Address + HoldDuration, 0)
+            pcall(memory_write, "float", obj.Address + HoldDuration, 0)
         end)
     end
 end
@@ -304,7 +310,8 @@ scheduler:addLoop("cooking", TIMINGS.cooking, function()
     if not SETTINGS.Auto.Cooking.Enabled then return end
     local gui = PlayerGui:FindFirstChild("MakeSushiMinigame")
     if not gui then return end
-    if memory_read("byte", gui.Address + ScreenGuiEnabled) ~= 1 then return end
+    local ok, val = pcall(memory_read, "byte", gui.Address + ScreenGuiEnabled)
+    if not ok or val ~= 1 then return end
     local bar = gui.MainFrame:FindFirstChild("CuttingBarFrame")
     if not bar then return end
     local slider = bar.CutBar.Slider.AbsolutePosition
@@ -332,27 +339,27 @@ local Stats = LocalPlayer:WaitForChild("Stats")
 
 scheduler:addLoop("statSpoof", TIMINGS.stats, function()
     if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
-        if PlayerStats:FindFirstChild("EffectiveCookingLevel") then PlayerStats.EffectiveCookingLevel.Value = 1000 end
-        if PlayerStats:FindFirstChild("NoIngredientUseChance") then PlayerStats.NoIngredientUseChance.Value = 1 end
+        if PlayerStats:FindFirstChild("EffectiveCookingLevel") and PlayerStats.EffectiveCookingLevel.Value ~= 1000 then PlayerStats.EffectiveCookingLevel.Value = 1000 end
+        if PlayerStats:FindFirstChild("NoIngredientUseChance") and PlayerStats.NoIngredientUseChance.Value ~= 1 then PlayerStats.NoIngredientUseChance.Value = 1 end
     end
     if SETTINGS.Cheat.Instant.CleanDish.Enabled then
-        if PlayerStats:FindFirstChild("EffectiveCleaningLevel") then PlayerStats.EffectiveCleaningLevel.Value = 9999 end
+        if PlayerStats:FindFirstChild("EffectiveCleaningLevel") and PlayerStats.EffectiveCleaningLevel.Value ~= 9999 then PlayerStats.EffectiveCleaningLevel.Value = 9999 end
     end
     if SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled then
-        if PlayerStats:FindFirstChild("SpongeEffectiveness") then PlayerStats.SpongeEffectiveness.Value = 9999 end
+        if PlayerStats:FindFirstChild("SpongeEffectiveness") and PlayerStats.SpongeEffectiveness.Value ~= 9999 then PlayerStats.SpongeEffectiveness.Value = 9999 end
     end
-    if PlayerStats:FindFirstChild("StaminaUsageMultiplier") then PlayerStats.StaminaUsageMultiplier.Value = -1 end
-    if PlayerStats:FindFirstChild("StaminaGainMultiplier") then PlayerStats.StaminaGainMultiplier.Value = 100 end
-    if PlayerStats:FindFirstChild("StaminaUsageMultiplierNonHarvestRelated") then PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0 end
-    if Stats:FindFirstChild("Stamina") then Stats.Stamina.Value = 100 end
-    if PlayerStats:FindFirstChild("WalkSpeed") then PlayerStats.WalkSpeed.Value = 24 end
-    if PlayerStats:FindFirstChild("SprintSpeed") then PlayerStats.SprintSpeed.Value = 36 end
-    if PlayerStats:FindFirstChild("SushiValueMultiplier") then PlayerStats.SushiValueMultiplier.Value = 15 end
-    if PlayerStats:FindFirstChild("EffectiveServiceLevel") then PlayerStats.EffectiveServiceLevel.Value = 9999 end
-    if PlayerStats:FindFirstChild("ManualSeatingBoost") then PlayerStats.ManualSeatingBoost.Value = 10 end
-    if PlayerStats:FindFirstChild("TipRevenueMultiplier") then PlayerStats.TipRevenueMultiplier.Value = 15 end
-    if PlayerStats:FindFirstChild("PersonalIncomeMultiplier") then PlayerStats.PersonalIncomeMultiplier.Value = 10 end
-    if PlayerStats:FindFirstChild("Charisma") then PlayerStats.Charisma.Value = 10 end
+    if PlayerStats:FindFirstChild("StaminaUsageMultiplier") and PlayerStats.StaminaUsageMultiplier.Value ~= -1 then PlayerStats.StaminaUsageMultiplier.Value = -1 end
+    if PlayerStats:FindFirstChild("StaminaGainMultiplier") and PlayerStats.StaminaGainMultiplier.Value ~= 100 then PlayerStats.StaminaGainMultiplier.Value = 100 end
+    if PlayerStats:FindFirstChild("StaminaUsageMultiplierNonHarvestRelated") and PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value ~= 0 then PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0 end
+    if Stats:FindFirstChild("Stamina") and Stats.Stamina.Value ~= 100 then Stats.Stamina.Value = 100 end
+    if PlayerStats:FindFirstChild("WalkSpeed") and PlayerStats.WalkSpeed.Value ~= 24 then PlayerStats.WalkSpeed.Value = 24 end
+    if PlayerStats:FindFirstChild("SprintSpeed") and PlayerStats.SprintSpeed.Value ~= 36 then PlayerStats.SprintSpeed.Value = 36 end
+    if PlayerStats:FindFirstChild("SushiValueMultiplier") and PlayerStats.SushiValueMultiplier.Value ~= 15 then PlayerStats.SushiValueMultiplier.Value = 15 end
+    if PlayerStats:FindFirstChild("EffectiveServiceLevel") and PlayerStats.EffectiveServiceLevel.Value ~= 9999 then PlayerStats.EffectiveServiceLevel.Value = 9999 end
+    if PlayerStats:FindFirstChild("ManualSeatingBoost") and PlayerStats.ManualSeatingBoost.Value ~= 10 then PlayerStats.ManualSeatingBoost.Value = 10 end
+    if PlayerStats:FindFirstChild("TipRevenueMultiplier") and PlayerStats.TipRevenueMultiplier.Value ~= 15 then PlayerStats.TipRevenueMultiplier.Value = 15 end
+    if PlayerStats:FindFirstChild("PersonalIncomeMultiplier") and PlayerStats.PersonalIncomeMultiplier.Value ~= 10 then PlayerStats.PersonalIncomeMultiplier.Value = 10 end
+    if PlayerStats:FindFirstChild("Charisma") and PlayerStats.Charisma.Value ~= 10 then PlayerStats.Charisma.Value = 10 end
 end)
 
 local _lastLabels = {}
@@ -561,12 +568,12 @@ end
                 if state == "WaitingInLine" then
                     local wp = torso:FindFirstChild("WaitProximityPrompt")
                     if wp and wp.Address then
-                        memory_write("float", wp.Address + HoldDuration, 0)
+                        pcall(memory_write, "float", wp.Address + HoldDuration, 0)
                     end
                 end
                 local dp = torso:FindFirstChild("CatchDasherPrompt")
                 if dp and dp.Address then
-                    memory_write("float", dp.Address + HoldDuration, 0)
+                    pcall(memory_write, "float", dp.Address + HoldDuration, 0)
                 end
             end
         end
@@ -602,8 +609,8 @@ scheduler:addLoop("washing", 0.1, function()
     if not SETTINGS.Auto.Washing.Enabled then return end
     local gui = PlayerGui:FindFirstChild("DishWashingGui")
     if not gui then return end
-    task.spawn(function()
-        if memory_read("byte", gui.Address + ScreenGuiEnabled) ~= 1 then return end
+        local ok, val = pcall(memory_read, "byte", gui.Address + ScreenGuiEnabled)
+    if not ok or val ~= 1 then return end
         local sink = workspace:FindFirstChild("Kitchen") and workspace.Kitchen:FindFirstChild("TheSink")
         if not sink or sink.DirtyDishAmount.Value == 0 or sink.Occupied.Value then return end
         for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
@@ -613,7 +620,6 @@ scheduler:addLoop("washing", 0.1, function()
             end
         end
     end)
-end)
 
 scheduler:addLoop("chloroRelease", 0.02, function()
     if not _chloroKeyHeld then return end
