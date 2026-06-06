@@ -449,7 +449,10 @@ scheduler:addLoop("washing", 0.1, function()
         for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
             if v.Name == "KeyTemplate" then
                 local key = WASH_KEYS[v:GetAttribute("Key")]
-                if key then keypress(key) keyrelease(key) end
+                if key then
+    keypress(key) keyrelease(key)
+    keypress(key) keyrelease(key)
+end
             end
         end
     end)
