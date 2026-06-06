@@ -592,10 +592,16 @@ scheduler:addLoop("npcLogic", 0.2, function()
         end
 
         if isDasher then
-            syncEntity(ESP_SETTINGS.Dasher.Enabled, "Dasher", ESP_SETTINGS.Dasher.Color)
-        else
-            Manager:Remove(addr)
-        end
+    if not Manager.Entities[addr] then
+        -- track dasher by addr without creating a drawing
+        local _ent = {Type = "Dasher", State = STATE.ACTIVE}
+_ent.Hide = function() end
+_ent.Destroy = function() _ent.State = STATE.DESTROYED end
+Manager.Entities[addr] = _ent
+    end
+else
+    Manager:Remove(addr)
+end
     end
 
     for _, addr in ipairs(toRemove) do
@@ -623,12 +629,6 @@ scheduler:addLoop("washing", 0.1, function()
         end
     end)
 
-scheduler:addLoop("chloroRelease", 0.02, function()
-    if not _chloroKeyHeld then return end
-    keyrelease(0x51)
-    _chloroKeyHeld = false
-end)
-
 local Admins = {105479622,65095440,1425697210,126961971,127528152,319065798,2754844524,125440222,1783725423}
 
 pcall(function()
@@ -642,6 +642,8 @@ pcall(function()
 end)
 
 local _alertDrawings = {}
+local _dasherBar = nil
+local _dasherBarText = nil
 
 local function showScreenAlert(message, color, key)
     if _alertDrawings[key] then
@@ -706,6 +708,48 @@ end)
 scheduler:addLoop("cleanup", 60, function()
     _notifiedNpcs = {}
 end)
+
+scheduler:addLoop("dasherBar", 0.3, function()
+    local count = 0
+    for addr, ent in pairs(Manager.Entities) do
+        if ent.Type == "Dasher" and ent.State == STATE.ACTIVE then
+            count += 1
+        end
+    end
+    local vp = workspace.CurrentCamera.ViewportSize
+    local cx = vp.X / 2
+    local cy = vp.Y / 2 + 60
+    if count > 0 then
+        local label = count == 1 and "dasher" or (tostring(count) .. " dashers")
+        if not _dasherBarText then
+            _dasherBarText = Drawing.new("Text")
+            _dasherBarText.Size = 16
+            _dasherBarText.Color = Color3.new(1, 1, 1)
+            _dasherBarText.Outline = true
+            _dasherBarText.Center = true
+            _dasherBarText.Visible = true
+        end
+        _dasherBarText.Text = label
+        _dasherBarText.Position = Vector2.new(cx, cy + 6)
+        local bounds = _dasherBarText.TextBounds
+        local padX, padY = 16, 8
+        if not _dasherBar then
+            _dasherBar = Drawing.new("Square")
+            _dasherBar.Filled = true
+            _dasherBar.Color = Color3.new(0, 0, 0)
+            _dasherBar.Transparency = 0.6
+            _dasherBar.Visible = true
+        end
+        local barW = math.max(bounds.X + padX * 2, 100)
+        _dasherBar.Size = Vector2.new(barW, bounds.Y + padY * 2)
+        _dasherBar.Position = Vector2.new(cx - bounds.X / 2 - padX, cy + 6 - padY)
+        _dasherBarText.Visible = true
+        _dasherBar.Visible = true
+    else
+        if _dasherBarText then _dasherBarText.Visible = false end
+        if _dasherBar then _dasherBar.Visible = false end
+    end
+end)
 table.insert(Connections, UserInputService.InputBegan:Connect(function(inp, gp)
     if gp then return end
     if inp.KeyCode == Enum.KeyCode.X then
@@ -728,6 +772,8 @@ if getgenv then
         for name in pairs(scheduler._render) do scheduler:remove(name) end
         for _, c in ipairs(Connections) do pcall(function() c:Disconnect() end) end
         pcall(function() Windows:Delete() end)
+        pcall(function() if _dasherBar then _dasherBar:Remove() end end)
+        pcall(function() if _dasherBarText then _dasherBarText:Remove() end end)
         for _, d in pairs(_alertDrawings or {}) do pcall(function() d:Remove() end) end
     end
 end
