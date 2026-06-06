@@ -328,10 +328,11 @@ scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
         return
     end
     local char = LocalPlayer.Character
-    local tool = char and char:FindFirstChild("Chloroform Spray")
-    if not tool then return end
-    keypress(0x51)
-    _chloroKeyHeld = true
+local tool = char and char:FindFirstChild("Chloroform Spray")
+if not tool then return end
+if not tool:FindFirstChild("ChloroformChallenge", true) then return end
+keypress(0x51)
+_chloroKeyHeld = true
 end)
 
 local Stats = LocalPlayer:WaitForChild("Stats")
