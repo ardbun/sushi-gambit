@@ -538,26 +538,24 @@ end)
 
 scheduler:addLoop("npcLogic", 0.2, function()
     if not isrbxactive() then return end
+    local toRemove = {}
 
     for addr, cached in pairs(npcRegistry) do
         local npc = cached.inst
         if not npc or not npc.Parent then
-            Manager:Remove(addr)
-            npcRegistry[addr] = nil
+            table.insert(toRemove, addr)
             continue
         end
 
-        if not (cached.head   and cached.head.Parent)   then cached.head     = npc:FindFirstChild("Head")     end
-        if not (cached.torso  and cached.torso.Parent)  then cached.torso    = npc:FindFirstChild("Torso")    end
-        if not cached.humanoid                           then cached.humanoid = npc:FindFirstChild("Humanoid") end
+        if not (cached.head  and cached.head.Parent)  then cached.head     = npc:FindFirstChild("Head")     end
+        if not (cached.torso and cached.torso.Parent) then cached.torso    = npc:FindFirstChild("Torso")    end
+        if not cached.humanoid                         then cached.humanoid = npc:FindFirstChild("Humanoid") end
 
-       local humanoid = cached.humanoid
-if humanoid and type(humanoid.Health) == "number" and humanoid.Health <= 0 then
-    Manager:Remove(addr)
-    npcRegistry[addr] = nil
-    _knownAddrs[addr] = nil
-    continue
-end
+        local humanoid = cached.humanoid
+        if humanoid and type(humanoid.Health) == "number" and humanoid.Health <= 0 then
+            table.insert(toRemove, addr)
+            continue
+        end
 
         local torso = cached.torso
         if torso and torso.Position then
@@ -579,8 +577,6 @@ end
         end
 
         local isDasher = cached.torso and cached.torso:FindFirstChild("CatchDasherPrompt") ~= nil
-        local isCritic = npc:GetAttribute("Critic") == true
-        local isInspector = npc:GetAttribute("Behavior") == "Inspector"
 
         local function syncEntity(condition, typeName, color)
             local ent = Manager.Entities[addr]
@@ -596,10 +592,16 @@ end
         end
 
         if isDasher then
-    syncEntity(ESP_SETTINGS.Dasher.Enabled, "Dasher", ESP_SETTINGS.Dasher.Color)
-else
-    Manager:Remove(addr)
-end
+            syncEntity(ESP_SETTINGS.Dasher.Enabled, "Dasher", ESP_SETTINGS.Dasher.Color)
+        else
+            Manager:Remove(addr)
+        end
+    end
+
+    for _, addr in ipairs(toRemove) do
+        Manager:Remove(addr)
+        npcRegistry[addr] = nil
+        _knownAddrs[addr] = nil
     end
 end)
 
@@ -717,7 +719,7 @@ local function showScreenAlert(message, color, key)
     text.Color = color or Color3.new(1, 1, 1)
     text.Outline = true
     text.Center = true
-    text.Position = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, 150)
+    text.Position = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, 140)
     text.Visible = true
     _alertDrawings[key] = text
 end
