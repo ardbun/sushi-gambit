@@ -468,15 +468,44 @@ scheduler:addLoop("chloroRelease", 0.02, function()
     keyrelease(0x51)
     _chloroKeyHeld = false
 end)
-local Admins = {105479622,65095440,1425697210,126961971,127528152,319065798,2754844524,125440222,1783725423}
+local GroupId = 33171215
+local MinRank = 245
+
+local function GetRankInGroup(UserId, GroupId)
+    local url = "https://groups.roblox.com/v2/users/" .. UserId .. "/groups/roles"
+    local success, response = pcall(game.HttpGet, game, url)
+    if not success then return 0, "Unknown" end
+    
+    local data = game:GetService("HttpService"):JSONDecode(response)
+    for _, group in pairs(data.data) do
+        if group.group.id == GroupId then
+            return group.role.rank, group.role.name
+        end
+    end
+    return 0, "Unknown"
+end
+
+local KnownStaff = {}
+
+local function CheckStaff(player)
+    task.spawn(function()
+        local rank, roleName = GetRankInGroup(player.UserId, GroupId)
+        if rank >= MinRank and not KnownStaff[player.UserId] then
+            KnownStaff[player.UserId] = true
+            if SETTINGS.Notify.AdminJoin.Enabled then
+                notify(player.Name .. " (" .. roleName .. ") joined!", "STAFF ALERT", 8)
+            end
+            print("[STAFF] " .. player.Name .. " | " .. roleName .. " (Rank " .. rank .. ")")
+        end
+    end)
+end
 
 pcall(function()
     if Players and Players.PlayerAdded then
-        table.insert(Connections, Players.PlayerAdded:Connect(function(plr)
-            if table.find(Admins, plr.UserId) and SETTINGS.Notify.AdminJoin.Enabled then
-                notify("Admin Joined: " .. plr.Name, "ADMIN ALERT", 8)
-            end
-        end))
+        for _, player in pairs(game.Players:GetPlayers()) do
+            CheckStaff(player)
+        end
+        table.insert(Connections, Players.PlayerAdded:Connect(CheckStaff))
     end
 end)
 
