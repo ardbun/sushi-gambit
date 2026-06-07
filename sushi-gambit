@@ -348,6 +348,12 @@ scheduler:addLoop("statSpoof", TIMINGS.stats, function()
     if PlayerStats:FindFirstChild("TipRevenueMultiplier") and PlayerStats.TipRevenueMultiplier.Value ~= 15 then PlayerStats.TipRevenueMultiplier.Value = 15 end
     if PlayerStats:FindFirstChild("PersonalIncomeMultiplier") and PlayerStats.PersonalIncomeMultiplier.Value ~= 10 then PlayerStats.PersonalIncomeMultiplier.Value = 10 end
     if PlayerStats:FindFirstChild("Charisma") and PlayerStats.Charisma.Value ~= 10 then PlayerStats.Charisma.Value = 10 end
+    if GameData:FindFirstChild("PatienceMultiplier") and GameData.PatienceMultiplier.Value ~= 3 then GameData.PatienceMultiplier.Value = 3 end
+    if GameData:FindFirstChild("TipChanceMultiplier") and GameData.TipChanceMultiplier.Value ~= 5 then GameData.TipChanceMultiplier.Value = 5 end
+    if GameData:FindFirstChild("MaxLineSize") and GameData.MaxLineSize.Value ~= 10 then GameData.MaxLineSize.Value = 10 end
+    if GameData:FindFirstChild("ConveyorSpeedValue") and GameData.ConveyorSpeedValue.Value ~= 4 then GameData.ConveyorSpeedValue.Value = 4 end
+    if GameData:FindFirstChild("SpoilageRate") and GameData.SpoilageRate.Value ~= 0.3 then GameData.SpoilageRate.Value = 0.3 end
+    if GameData:FindFirstChild("MaxStockMultiplier") and GameData.MaxStockMultiplier.Value ~= 1.5 then GameData.MaxStockMultiplier.Value = 1.5 end
 end)
 
 local _lastLabels = {}
