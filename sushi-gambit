@@ -472,6 +472,7 @@ local GroupId = 33171215
 local MinRank = 245
 
 local function GetRankInGroup(UserId, GroupId)
+    if not UserId then return 0, "Unknown" end
     local url = "https://groups.roblox.com/v2/users/" .. UserId .. "/groups/roles"
     local success, response = pcall(game.HttpGet, game, url)
     if not success then return 0, "Unknown" end
@@ -489,9 +490,11 @@ local KnownStaff = {}
 
 local function CheckStaff(player)
     task.spawn(function()
-        local rank, roleName = GetRankInGroup(player.UserId, GroupId)
-        if rank >= MinRank and not KnownStaff[player.UserId] then
-            KnownStaff[player.UserId] = true
+        local userId = player.UserId
+        if not userId then return end
+        local rank, roleName = GetRankInGroup(userId, GroupId)
+        if rank >= MinRank and not KnownStaff[userId] then
+            KnownStaff[userId] = true
             if SETTINGS.Notify.AdminJoin.Enabled then
                 notify(player.Name .. " (" .. roleName .. ") joined!", "STAFF ALERT", 8)
             end
