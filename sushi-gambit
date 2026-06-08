@@ -292,6 +292,25 @@ local function applyStaticPrompts()
 end
 
 applyStaticPrompts()
+
+scheduler:addLoop("dasherPrompt", 0.5, function()
+    local folder = workspace:FindFirstChild("NpcDestination")
+    if not folder then return end
+    folder = folder:FindFirstChild("SpawnedNPCs")
+    if not folder then return end
+    for _, npc in ipairs(folder:GetChildren()) do
+        local torso = npc:FindFirstChild("Torso")
+        if torso then
+            local prompt = torso:FindFirstChild("CatchDasherPrompt")
+            if prompt and prompt.Address then
+                pcall(function()
+                    memory_write("float", prompt.Address + HoldDuration, 0)
+                end)
+            end
+        end
+    end
+end)
+
 scheduler:addLoop("staticPrompts", TIMINGS.staticPrompts, applyStaticPrompts)
 
 scheduler:addLoop("cooking", TIMINGS.cooking, function()
@@ -448,12 +467,23 @@ scheduler:addLoop("washing", 0.1, function()
     if not SETTINGS.Auto.Washing.Enabled then return end
     local gui = PlayerGui:FindFirstChild("DishWashingGui")
     if not gui or memory_read("byte", gui.Address + ScreenGuiEnabled) ~= 1 then return end
+    
     local sink = workspace:FindFirstChild("Kitchen") and workspace.Kitchen:FindFirstChild("TheSink")
     if not sink or sink.DirtyDishAmount.Value == 0 or sink.Occupied.Value then return end
+    
+    local prompt = sink:FindFirstChild("ProximityPrompt")
+    if prompt and prompt.Address then
+        memory_write("byte", prompt.Address + 0x14e, 0)
+    end
+    
     for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
         if v.Name == "KeyTemplate" then
             local key = WASH_KEYS[v:GetAttribute("Key")]
-            if key then keypress(key) keyrelease(key) end
+            if key then
+                keypress(key)
+                keyrelease(key)
+                task.wait(0.05)
+            end
         end
     end
 end)
