@@ -236,8 +236,9 @@ local function getOffset(tbl, ...)
     return tonumber(cur, 16)
 end
 
-local ScreenGuiEnabled = getOffset(raw, "Offsets", "GuiObject",       "ScreenGui_Enabled") or 0x4cc
-local HoldDuration     = getOffset(raw, "Offsets", "ProximityPrompt", "HoldDuration")      or 0x138
+local ScreenGuiEnabled = getOffset(raw, "Offsets", "GuiObject", "ScreenGui_Enabled") or 0x4cc
+local HoldDuration     = getOffset(raw, "Offsets", "ProximityPrompt", "HoldDuration") or 0x138
+local PromptEnabled    = getOffset(raw, "Offsets", "ProximityPrompt", "Enabled") or 0x14e
 
 local dayLabel, companyMoneyLabel, vegLabel, fishLabel, humanFleshLabel, riceLabel, dishLabel, reviewLabel
 local Vegetables   = GameData.Ingredients.IngredientsStorage.Vegetables
@@ -260,13 +261,13 @@ createLabels()
 
 UI.AddTab("Sushi Gambit", function(tab)
     local MainSec = tab:Section("Main", "Left", {"auto"})
-
     if MainSec.page == 0 then
         MainSec:Toggle('auto_cooking', 'auto cook', function(value)
             notify("auto cooking: " .. tostring(value), "", 3)
             SETTINGS.Auto.Cooking.Enabled = value
         end)
     end
+
     local PlayerTab = tab:Section("Player", "Left")
     PlayerTab:SliderInt('player_walkspeed', 'Walk Speed', 12, 20, 20, function(value)
         PlayerStats.WalkSpeed.Value = value
@@ -370,7 +371,6 @@ scheduler:addLoop("statSpoof", TIMINGS.stats, function()
     if GameData:FindFirstChild("PatienceMultiplier") and GameData.PatienceMultiplier.Value ~= 3 then GameData.PatienceMultiplier.Value = 3 end
     if GameData:FindFirstChild("TipChanceMultiplier") and GameData.TipChanceMultiplier.Value ~= 5 then GameData.TipChanceMultiplier.Value = 5 end
     if GameData:FindFirstChild("MaxLineSize") and GameData.MaxLineSize.Value ~= 10 then GameData.MaxLineSize.Value = 10 end
-    if GameData:FindFirstChild("ConveyorSpeedValue") and GameData.ConveyorSpeedValue.Value ~= 4 then GameData.ConveyorSpeedValue.Value = 4 end
     if GameData:FindFirstChild("SpoilageRate") and GameData.SpoilageRate.Value ~= 0.3 then GameData.SpoilageRate.Value = 0.3 end
     if GameData:FindFirstChild("MaxStockMultiplier") and GameData.MaxStockMultiplier.Value ~= 1.5 then GameData.MaxStockMultiplier.Value = 1.5 end
 end)
