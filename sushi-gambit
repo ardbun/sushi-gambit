@@ -422,7 +422,7 @@ if not Vegetables or not AssortedFish or not HumanFlesh or not Rice then
     end
 if reviewLabel then
     local rs = GameData:FindFirstChild("CurrentReviewScore")
-    if rs then
+    if rs and typeof(rs.Value) == "number" then
         local t = string.format("rating: %.2f", rs.Value)
         if _lastLabels.review ~= t then _lastLabels.review = t reviewLabel:SetText(t) end
     end
