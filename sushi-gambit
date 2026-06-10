@@ -345,43 +345,34 @@ end)
 local Stats = LocalPlayer:WaitForChild("Stats")
 
 scheduler:addLoop("statSpoof", TIMINGS.stats, function()
-    setgc({
-        -- greenbar
-        EffectiveCookingLevel = SETTINGS.Cheat.Spoof.Greenbar.Enabled and 1000 or nil,
-        NoIngredientUseChance = SETTINGS.Cheat.Spoof.Greenbar.Enabled and 1 or nil,
-
-        -- cleaning
-        EffectiveCleaningLevel = SETTINGS.Cheat.Instant.CleanDish.Enabled and 9999 or nil,
-        SpongeEffectiveness = SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled and 9999 or nil,
-
-        -- stamina
-        StaminaUsageMultiplier = -1,
-        StaminaGainMultiplier = 100,
-        StaminaUsageMultiplierNonHarvestRelated = 0,
-        Stamina = 100,
-
-        -- movement
-        WalkSpeed = 24,
-        SprintSpeed = 36,
-
-        -- money
-        SushiValueMultiplier = 15,
-        TipRevenueMultiplier = 15,
-        PersonalIncomeMultiplier = 10,
-        ManualSeatingBoost = 10,
-
-        -- service
-        EffectiveServiceLevel = 9999,
-        Charisma = 10,
-
-        -- gamedata
-        PatienceMultiplier = 3,
-        TipChanceMultiplier = 5,
-        MaxLineSize = 10,
-        ConveyorSpeedValue = 4,
-        SpoilageRate = 0.3,
-        MaxStockMultiplier = 1.5,
-    })
+    if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
+        if PlayerStats:FindFirstChild("EffectiveCookingLevel") and PlayerStats.EffectiveCookingLevel.Value ~= 1000 then PlayerStats.EffectiveCookingLevel.Value = 1000 end
+        if PlayerStats:FindFirstChild("NoIngredientUseChance") and PlayerStats.NoIngredientUseChance.Value ~= 1 then PlayerStats.NoIngredientUseChance.Value = 1 end
+    end
+    if SETTINGS.Cheat.Instant.CleanDish.Enabled then
+        if PlayerStats:FindFirstChild("EffectiveCleaningLevel") and PlayerStats.EffectiveCleaningLevel.Value ~= 9999 then PlayerStats.EffectiveCleaningLevel.Value = 9999 end
+    end
+    if SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled then
+        if PlayerStats:FindFirstChild("SpongeEffectiveness") and PlayerStats.SpongeEffectiveness.Value ~= 9999 then PlayerStats.SpongeEffectiveness.Value = 9999 end
+    end
+    if PlayerStats:FindFirstChild("StaminaUsageMultiplier") and PlayerStats.StaminaUsageMultiplier.Value ~= -1 then PlayerStats.StaminaUsageMultiplier.Value = -1 end
+    if PlayerStats:FindFirstChild("StaminaGainMultiplier") and PlayerStats.StaminaGainMultiplier.Value ~= 100 then PlayerStats.StaminaGainMultiplier.Value = 100 end
+    if PlayerStats:FindFirstChild("StaminaUsageMultiplierNonHarvestRelated") and PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value ~= 0 then PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0 end
+    if Stats:FindFirstChild("Stamina") and Stats.Stamina.Value ~= 100 then Stats.Stamina.Value = 100 end
+    if PlayerStats:FindFirstChild("WalkSpeed") and PlayerStats.WalkSpeed.Value ~= 24 then PlayerStats.WalkSpeed.Value = 24 end
+    if PlayerStats:FindFirstChild("SprintSpeed") and PlayerStats.SprintSpeed.Value ~= 36 then PlayerStats.SprintSpeed.Value = 36 end
+    if PlayerStats:FindFirstChild("SushiValueMultiplier") and PlayerStats.SushiValueMultiplier.Value ~= 15 then PlayerStats.SushiValueMultiplier.Value = 15 end
+    if PlayerStats:FindFirstChild("EffectiveServiceLevel") and PlayerStats.EffectiveServiceLevel.Value ~= 9999 then PlayerStats.EffectiveServiceLevel.Value = 9999 end
+    if PlayerStats:FindFirstChild("ManualSeatingBoost") and PlayerStats.ManualSeatingBoost.Value ~= 10 then PlayerStats.ManualSeatingBoost.Value = 10 end
+    if PlayerStats:FindFirstChild("TipRevenueMultiplier") and PlayerStats.TipRevenueMultiplier.Value ~= 15 then PlayerStats.TipRevenueMultiplier.Value = 15 end
+    if PlayerStats:FindFirstChild("PersonalIncomeMultiplier") and PlayerStats.PersonalIncomeMultiplier.Value ~= 10 then PlayerStats.PersonalIncomeMultiplier.Value = 10 end
+    if PlayerStats:FindFirstChild("Charisma") and PlayerStats.Charisma.Value ~= 10 then PlayerStats.Charisma.Value = 10 end
+    if GameData:FindFirstChild("PatienceMultiplier") and GameData.PatienceMultiplier.Value ~= 3 then GameData.PatienceMultiplier.Value = 3 end
+    if GameData:FindFirstChild("TipChanceMultiplier") and GameData.TipChanceMultiplier.Value ~= 5 then GameData.TipChanceMultiplier.Value = 5 end
+    if GameData:FindFirstChild("MaxLineSize") and GameData.MaxLineSize.Value ~= 10 then GameData.MaxLineSize.Value = 10 end
+    if GameData:FindFirstChild("ConveyorSpeedValue") and GameData.ConveyorSpeedValue.Value ~= 4 then GameData.ConveyorSpeedValue.Value = 4 end
+    if GameData:FindFirstChild("SpoilageRate") and GameData.SpoilageRate.Value ~= 0.3 then GameData.SpoilageRate.Value = 0.3 end
+    if GameData:FindFirstChild("MaxStockMultiplier") and GameData.MaxStockMultiplier.Value ~= 1.5 then GameData.MaxStockMultiplier.Value = 1.5 end
 end)
 
 local _lastLabels = {}
@@ -476,17 +467,23 @@ scheduler:addLoop("washing", 0.1, function()
     if not SETTINGS.Auto.Washing.Enabled then return end
     local gui = PlayerGui:FindFirstChild("DishWashingGui")
     if not gui or memory_read("byte", gui.Address + ScreenGuiEnabled) ~= 1 then return end
-
+    
     local sink = workspace:FindFirstChild("Kitchen") and workspace.Kitchen:FindFirstChild("TheSink")
     if not sink or sink.DirtyDishAmount.Value == 0 or sink.Occupied.Value then return end
-
-    local cache = getgc({"ProximityPrompt", "HoldDuration"})
-    applygc(cache, "HoldDuration", 0)
-
+    
+    local prompt = sink:FindFirstChild("ProximityPrompt")
+    if prompt and prompt.Address then
+        memory_write("byte", prompt.Address + 0x14e, 0)
+    end
+    
     for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
         if v.Name == "KeyTemplate" then
             local key = WASH_KEYS[v:GetAttribute("Key")]
-            if key then keypress(key) keyrelease(key) end
+            if key then
+                keypress(key)
+                keyrelease(key)
+                task.wait(0.05)
+            end
         end
     end
 end)
