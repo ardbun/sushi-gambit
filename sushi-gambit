@@ -330,23 +330,19 @@ scheduler:addLoop("cooking", TIMINGS.cooking, function()
 end)
 
 local _chloroKeyHeld = false
-scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
-    if not SETTINGS.Auto.ChloroformSpys.Enabled then
-        if _chloroKeyHeld then keyrelease(0x51) _chloroKeyHeld = false end
-        return
+
+task.spawn(function()
+    while true do
+        if SETTINGS.Auto.ChloroformSpys.Enabled then
+            local char = LocalPlayer.Character
+            local tool = char and char:FindFirstChild("Chloroform Spray")
+            if tool and tool:FindFirstChild("ChloroformChallenge", true) then
+                keypress(0x51)
+                keyrelease(0x51)
+            end
+        end
+        task.wait(0.01)
     end
-    local char = LocalPlayer.Character
-    local tool = char and char:FindFirstChild("Chloroform Spray")
-    if not tool then
-        if _chloroKeyHeld then keyrelease(0x51) _chloroKeyHeld = false end
-        return
-    end
-    if not tool:FindFirstChild("ChloroformChallenge", true) then
-        if _chloroKeyHeld then keyrelease(0x51) _chloroKeyHeld = false end
-        return
-    end
-    keypress(0x51)
-    _chloroKeyHeld = true
 end)
 
 local Stats = LocalPlayer:WaitForChild("Stats")
