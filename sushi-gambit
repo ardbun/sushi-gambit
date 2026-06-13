@@ -475,16 +475,18 @@ scheduler:addLoop("washing", 0.1, function()
         memory_write("byte", prompt.Address + 0x14e, 0)
     end
     
-    for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
-        if v.Name == "KeyTemplate" then
-            local key = WASH_KEYS[v:GetAttribute("Key")]
-            if key then
-                keypress(key)
-                keyrelease(key)
-                task.wait(0.05)
+    task.spawn(function()
+        for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
+            if v.Name == "KeyTemplate" then
+                local key = WASH_KEYS[v:GetAttribute("Key")]
+                if key then
+                    keypress(key)
+                    keyrelease(key)
+                    task.wait(0.05)
+                end
             end
         end
-    end
+    end)
 end)
 
 scheduler:addLoop("chloroRelease", 0.02, function()
