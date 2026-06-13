@@ -332,23 +332,26 @@ end)
 task.spawn(function()
     while true do
         if SETTINGS.Auto.ChloroformSpys.Enabled then
-            local char = LocalPlayer.Character
-            local tool = char and char:FindFirstChild("Chloroform Spray")
-            if tool then
-                local challenge = tool:FindFirstChild("ChloroformChallenge", true)
-                if challenge then
-                    local label = challenge.ButtonToHitFrame.Container:FindFirstChild("TextLabel")
-                    if label then
-                        if label.Text == "Q" then
-                            keypress(0x51) keyrelease(0x51)
-                        elseif label.Text == "E" then
-                            keypress(0x45) keyrelease(0x45)
-                        end
+            local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local Tool = char:FindFirstChild("Chloroform Spray")
+
+            if Tool then
+                local HitTextLabel = Tool.ChloroformChallenge.ButtonToHitFrame.Container:FindFirstChild("TextLabel")
+
+                if HitTextLabel then
+                    local key = HitTextLabel.Text
+
+                    if key == "Q" then
+                        keypress(0x51)
+                        keyrelease(0x51)
+                    elseif key == "E" then
+                        keypress(0x45)
+                        keyrelease(0x45)
                     end
                 end
             end
         end
-        task.wait(0.01)
+        task.wait(.01)
     end
 end)
 
