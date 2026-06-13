@@ -330,30 +330,18 @@ scheduler:addLoop("cooking", TIMINGS.cooking, function()
 end)
 
 local _chloroKeyHeld = false
-
-task.spawn(function()
-    while true do
-        if SETTINGS.Auto.ChloroformSpys.Enabled then
-            local char = LocalPlayer.Character
-            local tool = char and char:FindFirstChild("Chloroform Spray")
-            if tool then
-                local challenge = tool:FindFirstChild("ChloroformChallenge", true)
-                if challenge then
-                    local label = challenge.ButtonToHitFrame.Container:FindFirstChild("TextLabel")
-                    if label then
-                        if label.Text == "Q" then
-                            keypress(0x51) keyrelease(0x51)
-                        elseif label.Text == "E" then
-                            keypress(0x45) keyrelease(0x45)
-                        end
-                    end
-                end
-            end
-        end
-        task.wait(0.01)
+scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
+    if not SETTINGS.Auto.ChloroformSpys.Enabled then
+        if _chloroKeyHeld then keyrelease(0x51) _chloroKeyHeld = false end
+        return
     end
+    local char = LocalPlayer.Character
+local tool = char and char:FindFirstChild("Chloroform Spray")
+if not tool then return end
+if not tool:FindFirstChild("ChloroformChallenge", true) then return end
+keypress(0x51)
+_chloroKeyHeld = true
 end)
-
 local Stats = LocalPlayer:WaitForChild("Stats")
 
 scheduler:addLoop("statSpoof", TIMINGS.stats, function()
@@ -476,23 +464,24 @@ local WASH_KEYS = {Q=0x51, E=0x45, R=0x52, F=0x46}
 
 scheduler:addLoop("washing", 0.1, function()
     if not SETTINGS.Auto.Washing.Enabled then return end
-    if not PlayerGui:FindFirstChild("DishWashingGui") then return end
-    local sink = workspace.Kitchen:FindFirstChild("TheSink")
-    local amount = sink and sink.DirtyDishAmount.Value
-    if not amount or amount == 0 then return end
-    local Visible = memory_read("byte", PlayerGui.DishWashingGui.Address + ScreenGuiEnabled)
-    if Visible ~= 1 then return end
-    local prompt = sink:FindFirstChild("ProximityPrompt", true)
+    local gui = PlayerGui:FindFirstChild("DishWashingGui")
+    if not gui or memory_read("byte", gui.Address + ScreenGuiEnabled) ~= 1 then return end
+    
+    local sink = workspace:FindFirstChild("Kitchen") and workspace.Kitchen:FindFirstChild("TheSink")
+    if not sink or sink.DirtyDishAmount.Value == 0 or sink.Occupied.Value then return end
+    
+    local prompt = sink:FindFirstChild("ProximityPrompt")
     if prompt and prompt.Address then
-        memory_write("byte", prompt.Address + PromptEnabled, 0)
+        memory_write("byte", prompt.Address + 0x14e, 0)
     end
-    for _, v in pairs(PlayerGui.DishWashingGui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
-        if v:IsA("Frame") and v.Name == "KeyTemplate" then
-            local key = v:GetAttribute("Key")
-            local vk = WASH_KEYS[key]
-            if vk then
-                keypress(vk)
-                keyrelease(vk)
+    
+    for _, v in ipairs(gui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
+        if v.Name == "KeyTemplate" then
+            local key = WASH_KEYS[v:GetAttribute("Key")]
+            if key then
+                keypress(key)
+                keyrelease(key)
+                task.wait(0.05)
             end
         end
     end
