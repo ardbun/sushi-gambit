@@ -357,7 +357,6 @@ local Stats = LocalPlayer:WaitForChild("Stats")
 scheduler:addLoop("statSpoof", TIMINGS.stats, function()
     if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
         if PlayerStats:FindFirstChild("EffectiveCookingLevel") and PlayerStats.EffectiveCookingLevel.Value ~= 1000 then PlayerStats.EffectiveCookingLevel.Value = 1000 end
-        if PlayerStats:FindFirstChild("NoIngredientUseChance") and PlayerStats.NoIngredientUseChance.Value ~= 1 then PlayerStats.NoIngredientUseChance.Value = 1 end
     end
     if SETTINGS.Cheat.Instant.CleanDish.Enabled then
         if PlayerStats:FindFirstChild("EffectiveCleaningLevel") and PlayerStats.EffectiveCleaningLevel.Value ~= 9999 then PlayerStats.EffectiveCleaningLevel.Value = 9999 end
