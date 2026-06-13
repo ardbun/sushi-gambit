@@ -329,18 +329,27 @@ scheduler:addLoop("cooking", TIMINGS.cooking, function()
     end
 end)
 
-local _chloroKeyHeld = false
-scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
-    if not SETTINGS.Auto.ChloroformSpys.Enabled then
-        if _chloroKeyHeld then keyrelease(0x51) _chloroKeyHeld = false end
-        return
+task.spawn(function()
+    while true do
+        if SETTINGS.Auto.ChloroformSpys.Enabled then
+            local char = LocalPlayer.Character
+            local tool = char and char:FindFirstChild("Chloroform Spray")
+            if tool then
+                local challenge = tool:FindFirstChild("ChloroformChallenge", true)
+                if challenge then
+                    local label = challenge.ButtonToHitFrame.Container:FindFirstChild("TextLabel")
+                    if label then
+                        if label.Text == "Q" then
+                            keypress(0x51) keyrelease(0x51)
+                        elseif label.Text == "E" then
+                            keypress(0x45) keyrelease(0x45)
+                        end
+                    end
+                end
+            end
+        end
+        task.wait(0.01)
     end
-    local char = LocalPlayer.Character
-local tool = char and char:FindFirstChild("Chloroform Spray")
-if not tool then return end
-if not tool:FindFirstChild("ChloroformChallenge", true) then return end
-keypress(0x51)
-_chloroKeyHeld = true
 end)
 
 local Stats = LocalPlayer:WaitForChild("Stats")
@@ -487,11 +496,6 @@ scheduler:addLoop("washing", 0.1, function()
     end
 end)
 
-scheduler:addLoop("chloroRelease", 0.02, function()
-    if not _chloroKeyHeld then return end
-    keyrelease(0x51)
-    _chloroKeyHeld = false
-end)
 local GroupId = 33171215
 local MinRank = 245
 
