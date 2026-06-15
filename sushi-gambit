@@ -329,30 +329,27 @@ scheduler:addLoop("cooking", TIMINGS.cooking, function()
     end
 end)
 
-task.spawn(function()
-    while true do
-        if SETTINGS.Auto.ChloroformSpys.Enabled then
-            local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-            local Tool = char:FindFirstChild("Chloroform Spray")
-
-            if Tool then
-                local HitTextLabel = Tool.ChloroformChallenge.ButtonToHitFrame.Container:FindFirstChild("TextLabel")
-
-                if HitTextLabel then
-                    local key = HitTextLabel.Text
-
-                    if key == "Q" then
-                        keypress(0x51)
-                        keyrelease(0x51)
-                    elseif key == "E" then
-                        keypress(0x45)
-                        keyrelease(0x45)
-                    end
-                end
-            end
+local _chloroKeyHeld = false
+scheduler:addLoop("chloroform", 0.03, function()
+    if not SETTINGS.Auto.ChloroformSpys.Enabled then
+        if _chloroKeyHeld then 
+            keyrelease(0x51) 
+            _chloroKeyHeld = false 
         end
-        task.wait(.01)
+        return
     end
+    local char = LocalPlayer.Character
+    local tool = char and char:FindFirstChild("Chloroform Spray")
+    if not tool then return end
+    if not tool:FindFirstChild("ChloroformChallenge", true) then return end
+    keypress(0x51)
+    _chloroKeyHeld = true
+end)
+
+scheduler:addLoop("chloroRelease", 0.02, function()
+    if not _chloroKeyHeld then return end
+    keyrelease(0x51)
+    _chloroKeyHeld = false
 end)
 
 local Stats = LocalPlayer:WaitForChild("Stats")
