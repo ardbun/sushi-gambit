@@ -420,14 +420,15 @@ if not Vegetables or not AssortedFish or not HumanFlesh or not Rice then
         local t = "rice: " .. Rice.Stock.Value .. "/" .. Rice.MaxStock.Value
         if _lastLabels.rice ~= t then _lastLabels.rice = t riceLabel:SetText(t) end
     end
-    if dishLabel then
-        local sink = workspace.Kitchen:FindFirstChild("TheSink")
-        local t = "dishes: " .. tostring(sink and sink.CleanDishAmount and sink.CleanDishAmount.Value or 0)
-        if _lastLabels.dishes ~= t then 
-            _lastLabels.dishes = t 
-            dishLabel:SetText(t) 
-        end
+   if dishLabel then
+    local kitchen = workspace:FindFirstChild("Kitchen")
+    local sink = kitchen and kitchen:FindFirstChild("TheSink")
+    local t = "dishes: " .. tostring(sink and sink.CleanDishAmount and sink.CleanDishAmount.Value or 0)
+    if _lastLabels.dishes ~= t then 
+        _lastLabels.dishes = t 
+        dishLabel:SetText(t) 
     end
+end
 if reviewLabel then
     local rs = GameData:FindFirstChild("CurrentReviewScore")
     if rs and typeof(rs.Value) == "number" then
