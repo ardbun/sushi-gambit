@@ -551,7 +551,7 @@ local function showScreenAlert(message, color, key)
     text.Color = color or Color3.new(1, 1, 1)
     text.Outline = true
     text.Center = true
-    text.Position = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, 140)
+    text.Position = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, 144)
     text.Visible = true
     _alertDrawings[key] = text
 end
@@ -585,9 +585,9 @@ local isCritic = npc:GetAttribute("Critic") == true and state ~= "Leaving" and s
         if (isCritic or isInspector) and not _notifiedNpcs[addr] then
             _notifiedNpcs[addr] = true
             if isInspector then
-                showScreenAlert("health inspector present", Color3.fromRGB(0, 255, 0), "inspector")
+                showScreenAlert("health inspector", Color3.fromRGB(0, 255, 0), "inspector")
             else
-                showScreenAlert("critic is present", Color3.fromRGB(255, 252, 0), "critic")
+                showScreenAlert("critic", Color3.fromRGB(255, 252, 0), "critic")
             end
         end
 
