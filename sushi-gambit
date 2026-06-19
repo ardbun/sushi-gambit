@@ -23,7 +23,7 @@ local keyrelease   = keyrelease or function() end
 local SETTINGS = {
     Auto = {
         Cooking       = {Enabled = false},
-        Washing       = {Enabled = true},
+        Washing       = {Enabled = false},
         ChloroformSpys = {Enabled = false},
     },
     Cheat = {
