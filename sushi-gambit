@@ -330,6 +330,7 @@ scheduler:addLoop("cooking", TIMINGS.cooking, function()
 end)
 
 local _chloroKeyHeld = false
+
 scheduler:addLoop("chloroform", 0.03, function()
     if not SETTINGS.Auto.ChloroformSpys.Enabled then
         if _chloroKeyHeld then 
@@ -338,12 +339,22 @@ scheduler:addLoop("chloroform", 0.03, function()
         end
         return
     end
+    
     local char = LocalPlayer.Character
     local tool = char and char:FindFirstChild("Chloroform Spray")
-    if not tool then return end
-    if not tool:FindFirstChild("ChloroformChallenge", true) then return end
-    keypress(0x51)
-    _chloroKeyHeld = true
+    
+    if not tool or not tool:FindFirstChild("ChloroformChallenge", true) then
+        if _chloroKeyHeld then
+            keyrelease(0x51)
+            _chloroKeyHeld = false
+        end
+        return
+    end
+    
+    if not _chloroKeyHeld then
+        keypress(0x51)
+        _chloroKeyHeld = true
+    end
 end)
 
 scheduler:addLoop("chloroRelease", 0.02, function()
@@ -660,8 +671,6 @@ table.insert(Connections, UserInputService.InputBegan:Connect(function(inp, gp)
         notify("Auto Wash: " .. (SETTINGS.Auto.Washing.Enabled and "ON" or "OFF"), "Keybind Z", 2)
     end
 end))
-
-SETTINGS.Auto.ChloroformSpys.Enabled = true
 
 notify('script loaded', "", 4)
 
