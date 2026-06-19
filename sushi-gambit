@@ -474,28 +474,50 @@ local WASH_KEYS = {Q=0x51, E=0x45, R=0x52, F=0x46}
 
 scheduler:addLoop("washing", 0.1, function()
     if not SETTINGS.Auto.Washing.Enabled then return end
-    if not PlayerGui:FindFirstChild("DishWashingGui") then return end
-    local sink = workspace.Kitchen:FindFirstChild("TheSink")
-    local amount = sink and sink.DirtyDishAmount.Value
-    if not amount or amount == 0 then return end
-    local Visible = memory_read("byte", PlayerGui.DishWashingGui.Address + ScreenGuiEnabled)
-    if Visible ~= 1 then return end
-    local prompt = sink:FindFirstChild("ProximityPrompt", true)
-    if prompt and prompt.Address then
-        memory_write("byte", prompt.Address + PromptEnabled, 0)
-    end
-    for _, v in pairs(PlayerGui.DishWashingGui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
+    
+    local gui = PlayerGui:FindFirstChild("DishWashingGui")
+    if not gui then return end
+    
+    local kitchen = workspace:FindFirstChild("Kitchen")
+    local sink = kitchen and kitchen:FindFirstChild("TheSink")
+    if not sink then return end
+    
+    local dirty = sink:FindFirstChild("DirtyDishAmount")
+    if not dirty or dirty.Value == 0 then return end
+    
+    local mainFrame = gui:FindFirstChild("MainFrame")
+    if not mainFrame then return end
+    
+    local queueBar = mainFrame:FindFirstChild("QueueBarFrame")
+    if not queueBar then return end
+    
+    local queue = queueBar:FindFirstChild("Queue")
+    if not queue then return end
+    
+    local keysHolder = queue:FindFirstChild("KeysHolder")
+    if not keysHolder then return end
+    
+    local WASH_KEYS = {Q=0x51, E=0x45, R=0x52, F=0x46}
+    
+    for _, v in ipairs(keysHolder:GetChildren()) do
         if v:IsA("Frame") and v.Name == "KeyTemplate" then
-            local key = v:GetAttribute("Key")
-            local vk = WASH_KEYS[key]
-            if vk then
-                keypress(vk)
-                keyrelease(vk)
+            local container = v:FindFirstChild("Container")
+            if container then
+                local label = container:FindFirstChild("TextLabel")
+                if label then
+                    local key = label.Text
+                    local vk = WASH_KEYS[key]
+                    if vk then
+                        keypress(vk)
+                        task.wait(0.05)
+                        keyrelease(vk)
+                        task.wait(0.05)
+                    end
+                end
             end
         end
     end
 end)
-
 local GroupId = 33171215
 local MinRank = 245
 
