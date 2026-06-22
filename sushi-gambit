@@ -4,6 +4,7 @@ pcall(function()
     end
 end)
 task.wait(0.1)
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
@@ -15,22 +16,21 @@ local GameData = ReplicatedStorage:WaitForChild("GameData")
 local PlayerStats = LocalPlayer:WaitForChild("PlayerStats")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
-local memory_read  = memory_read  or function() return 0 end
+local memory_read = memory_read or function() return 0 end
 local memory_write = memory_write or function() end
-local keypress     = keypress  or function() end
-local keyrelease   = keyrelease or function() end
-
+local keypress = keypress or function() end
+local keyrelease = keyrelease or function() end
 local SETTINGS = {
     Auto = {
-        Cooking       = {Enabled = false},
-        Washing       = {Enabled = false},
+        Cooking = {Enabled = false},
+        Washing = {Enabled = false},
         ChloroformSpys = {Enabled = false},
     },
     Cheat = {
-        Spoof   = {Greenbar = {Enabled = true}, SpongeEffectiveness = {Enabled = true}},
+        Spoof = {Greenbar = {Enabled = true}, SpongeEffectiveness = {Enabled = true}},
         Instant = {CleanDish = {Enabled = true}, SeatCustomer = {Enabled = true}},
     },
-Notify = {AdminJoin = {Enabled = true}},
+    Notify = {AdminJoin = {Enabled = true}},
 }
 
 local ESP_SETTINGS = {
@@ -43,11 +43,11 @@ local ESP_SETTINGS = {
 
 local TIMINGS = {
     staticPrompts = 5,
-    cooking       = 0.05,
-    chloroform    = 0.03,
-    stats         = 0.5,
-    labels        = 0.1,
-    clock         = 0.1,
+    cooking = 0.05,
+    chloroform = 0.03,
+    stats = 0.5,
+    labels = 0.1,
+    clock = 0.1,
 }
 
 local scheduler = {_loops = {}, _render = {}}
@@ -63,10 +63,12 @@ function scheduler:addRender(name, fn)
 end
 
 function scheduler:remove(name)
-    self._loops[name]  = nil
+    self._loops[name] = nil
     self._render[name] = nil
 end
+
 local Connections = {}
+
 table.insert(Connections, RunService.Heartbeat:Connect(function(dt)
     for name, job in pairs(scheduler._loops) do
         job.timer += dt
@@ -94,20 +96,20 @@ function Lib.new(titleText, width, height, cornerRadius)
     local w, h = width or 260, height or 130
 
     self.Elements = {}
-    self.Labels   = {}
-    self.Radius   = r
+    self.Labels = {}
+    self.Radius = r
     self.Position = Vector2.new(100, 100)
-    self.Size     = Vector2.new(w, h)
+    self.Size = Vector2.new(w, h)
 
     local bg = Color3.fromRGB(15, 15, 15)
 
     local function newCircle(pos)
         local c = Drawing.new("Circle")
         c.Position = pos
-        c.Radius   = r
-        c.Color    = bg
-        c.Filled   = true
-        c.Visible  = false
+        c.Radius = r
+        c.Color = bg
+        c.Filled = true
+        c.Visible = false
         c.NumSides = 64
         table.insert(self.Elements, c)
         return c
@@ -116,29 +118,29 @@ function Lib.new(titleText, width, height, cornerRadius)
     local function newRect(pos, size)
         local s = Drawing.new("Square")
         s.Position = pos
-        s.Size     = size
-        s.Color    = bg
-        s.Filled   = true
-        s.Visible  = false
+        s.Size = size
+        s.Color = bg
+        s.Filled = true
+        s.Visible = false
         table.insert(self.Elements, s)
         return s
     end
 
-    self.TopLeft     = newCircle(self.Position + Vector2.new(r,     r))
-    self.TopRight    = newCircle(self.Position + Vector2.new(w - r, r))
-    self.BottomLeft  = newCircle(self.Position + Vector2.new(r,     h - r))
+    self.TopLeft = newCircle(self.Position + Vector2.new(r, r))
+    self.TopRight = newCircle(self.Position + Vector2.new(w - r, r))
+    self.BottomLeft = newCircle(self.Position + Vector2.new(r, h - r))
     self.BottomRight = newCircle(self.Position + Vector2.new(w - r, h - r))
-    self.VerticalFill   = newRect(self.Position + Vector2.new(r, 0), Vector2.new(w - 2*r, h))
-    self.HorizontalFill = newRect(self.Position + Vector2.new(0, r), Vector2.new(w, h - 2*r))
+    self.VerticalFill = newRect(self.Position + Vector2.new(r, 0), Vector2.new(w - 2 * r, h))
+    self.HorizontalFill = newRect(self.Position + Vector2.new(0, r), Vector2.new(w, h - 2 * r))
 
     local title = Drawing.new("Text")
-    title.Text    = titleText
-    title.Size    = 12
+    title.Text = titleText
+    title.Size = 12
     title.Position = self.Position + Vector2.new(12, 15)
-    title.Color   = Color3.fromRGB(255, 0, 0)
+    title.Color = Color3.fromRGB(255, 0, 0)
     title.Outline = true
     title.Visible = false
-    self.Title    = title
+    self.Title = title
     table.insert(self.Elements, title)
 
     return self
@@ -146,25 +148,25 @@ end
 
 function Lib:Show(visible)
     for _, v in ipairs(self.Elements) do v.Visible = visible end
-    for _, v in ipairs(self.Labels)   do v.drawing.Visible = visible end
+    for _, v in ipairs(self.Labels) do v.drawing.Visible = visible end
 end
 
 function Lib:Edit(pos, size)
-    pos  = pos  or self.Position
+    pos = pos or self.Position
     size = size or self.Size
     self.Position, self.Size = pos, size
 
     local x, y, w, h, r = pos.X, pos.Y, size.X, size.Y, self.Radius
 
-    self.TopLeft.Position     = Vector2.new(x + r,     y + r)
-    self.TopRight.Position    = Vector2.new(x + w - r, y + r)
-    self.BottomLeft.Position  = Vector2.new(x + r,     y + h - r)
+    self.TopLeft.Position = Vector2.new(x + r, y + r)
+    self.TopRight.Position = Vector2.new(x + w - r, y + r)
+    self.BottomLeft.Position = Vector2.new(x + r, y + h - r)
     self.BottomRight.Position = Vector2.new(x + w - r, y + h - r)
-    self.VerticalFill.Position   = Vector2.new(x + r, y)
-    self.VerticalFill.Size       = Vector2.new(w - 2*r, h)
+    self.VerticalFill.Position = Vector2.new(x + r, y)
+    self.VerticalFill.Size = Vector2.new(w - 2 * r, h)
     self.HorizontalFill.Position = Vector2.new(x, y + r)
-    self.HorizontalFill.Size     = Vector2.new(w, h - 2*r)
-    self.Title.Position          = Vector2.new(x + 12, y + 15)
+    self.HorizontalFill.Size = Vector2.new(w, h - 2 * r)
+    self.Title.Position = Vector2.new(x + 12, y + 15)
 
     for _, entry in ipairs(self.Labels) do
         entry.drawing.Position = pos + entry.relPos
@@ -174,17 +176,18 @@ end
 function Lib:Delete()
     scheduler:remove("windowDrag")
     for _, v in ipairs(self.Elements) do v:Remove() end
-    for _, v in ipairs(self.Labels)   do v.drawing:Remove() end
+    for _, v in ipairs(self.Labels) do v.drawing:Remove() end
     self.Elements = {}
-    self.Labels   = {}
+    self.Labels = {}
 end
 
 local LABEL_START_Y, LABEL_STEP = 32, 20
+
 function Lib:AddLabel(text, color)
     local d = Drawing.new("Text")
-    d.Text    = text or ""
-    d.Size    = 20
-    d.Color   = color or Color3.new(1, 1, 1)
+    d.Text = text or ""
+    d.Size = 20
+    d.Color = color or Color3.new(1, 1, 1)
     d.Outline = true
     d.Visible = true
 
@@ -192,7 +195,7 @@ function Lib:AddLabel(text, color)
     table.insert(self.Labels, entry)
 
     for i, e in ipairs(self.Labels) do
-        e.relPos          = Vector2.new(12, LABEL_START_Y + (i-1)*LABEL_STEP)
+        e.relPos = Vector2.new(12, LABEL_START_Y + (i - 1) * LABEL_STEP)
         e.drawing.Position = self.Position + e.relPos
     end
 
@@ -220,11 +223,12 @@ task.spawn(function()
     raw = ok and result or nil
     fetchDone = true
 end)
+
 local fetchStart = tick()
 repeat task.wait(0.1) until fetchDone or (tick() - fetchStart) > 5
 if not raw then
     warn("Offset fetch failed or timed out, using fallbacks")
-    raw = {Offsets={GuiObject={ScreenGui_Enabled="0x4cc"},ProximityPrompt={HoldDuration="0x138",Enabled="0x14e"}}}
+    raw = {Offsets = {GuiObject = {ScreenGui_Enabled = "0x4cc"}, ProximityPrompt = {HoldDuration = "0x138", Enabled = "0x14e"}}}
 end
 
 local function getOffset(tbl, ...)
@@ -237,24 +241,24 @@ local function getOffset(tbl, ...)
 end
 
 local ScreenGuiEnabled = getOffset(raw, "Offsets", "GuiObject", "ScreenGui_Enabled") or 0x4cc
-local HoldDuration     = getOffset(raw, "Offsets", "ProximityPrompt", "HoldDuration") or 0x138
-local PromptEnabled    = getOffset(raw, "Offsets", "ProximityPrompt", "Enabled") or 0x14e
+local HoldDuration = getOffset(raw, "Offsets", "ProximityPrompt", "HoldDuration") or 0x138
+local PromptEnabled = getOffset(raw, "Offsets", "ProximityPrompt", "Enabled") or 0x14e
 
 local dayLabel, companyMoneyLabel, vegLabel, fishLabel, humanFleshLabel, riceLabel, dishLabel, reviewLabel
-local Vegetables   = GameData.Ingredients.IngredientsStorage.Vegetables
+local Vegetables = GameData.Ingredients.IngredientsStorage.Vegetables
 local AssortedFish = GameData.Ingredients.IngredientsStorage.AssortedFish
-local HumanFlesh   = GameData.Ingredients.IngredientsStorage.HumanFlesh
-local Rice         = GameData.Ingredients.IngredientsStorage.Rice
+local HumanFlesh = GameData.Ingredients.IngredientsStorage.HumanFlesh
+local Rice = GameData.Ingredients.IngredientsStorage.Rice
 
 local function createLabels()
-    if ESP_SETTINGS.Labels.humanfleshstock then humanFleshLabel   = Windows:AddLabel("meat: 0/0")    end
-    if ESP_SETTINGS.Labels.fishstock       then fishLabel         = Windows:AddLabel("fish: 0/0")    end
-    if ESP_SETTINGS.Labels.ricestock       then riceLabel         = Windows:AddLabel("rice: 0/0")    end
-    if ESP_SETTINGS.Labels.vegstock        then vegLabel          = Windows:AddLabel("veggies: 0/0") end
-    if ESP_SETTINGS.Labels.companymoney    then companyMoneyLabel = Windows:AddLabel("money: 0.00")  end
+    if ESP_SETTINGS.Labels.humanfleshstock then humanFleshLabel = Windows:AddLabel("meat: 0/0") end
+    if ESP_SETTINGS.Labels.fishstock then fishLabel = Windows:AddLabel("fish: 0/0") end
+    if ESP_SETTINGS.Labels.ricestock then riceLabel = Windows:AddLabel("rice: 0/0") end
+    if ESP_SETTINGS.Labels.vegstock then vegLabel = Windows:AddLabel("veggies: 0/0") end
+    if ESP_SETTINGS.Labels.companymoney then companyMoneyLabel = Windows:AddLabel("money: 0.00") end
     reviewLabel = Windows:AddLabel("rating: 0.00")
-    if ESP_SETTINGS.Labels.day             then dayLabel          = Windows:AddLabel("day: 0")       end
-    if ESP_SETTINGS.Labels.dishes          then dishLabel         = Windows:AddLabel("dishes: 0")    end
+    if ESP_SETTINGS.Labels.day then dayLabel = Windows:AddLabel("day: 0") end
+    if ESP_SETTINGS.Labels.dishes then dishLabel = Windows:AddLabel("dishes: 0") end
 end
 task.wait(2)
 createLabels()
@@ -277,11 +281,11 @@ end)
 
 local function applyStaticPrompts()
     local paths = {
-        {"Workspace","RestaurantArea","restaurant","Table","computer","ProximityPrompt"},
-        {"Workspace","RestaurantArea","restaurant","mainStuff","conveyors","keypad","PromptPart","ProximityPrompt"},
-        {"Workspace","RestaurantArea","restaurant","FreezerDoor","PromptHitbox","ProximityPrompt"},
-        {"Workspace","Toolbin","PromptHitbox","ProximityPrompt"},
-        {"Workspace","RestaurantArea","restaurant","the waiter stand thingy","Stations","SeatingStation","TriggerPart","SeatCustomersPrompt"},
+        {"Workspace", "RestaurantArea", "restaurant", "Table", "computer", "ProximityPrompt"},
+        {"Workspace", "RestaurantArea", "restaurant", "mainStuff", "conveyors", "keypad", "PromptPart", "ProximityPrompt"},
+        {"Workspace", "RestaurantArea", "restaurant", "FreezerDoor", "PromptHitbox", "ProximityPrompt"},
+        {"Workspace", "Toolbin", "PromptHitbox", "ProximityPrompt"},
+        {"Workspace", "RestaurantArea", "restaurant", "the waiter stand thingy", "Stations", "SeatingStation", "TriggerPart", "SeatCustomersPrompt"},
     }
     for _, path in ipairs(paths) do
         pcall(function()
@@ -323,9 +327,10 @@ scheduler:addLoop("cooking", TIMINGS.cooking, function()
     local bar = gui.MainFrame:FindFirstChild("CuttingBarFrame")
     if not bar then return end
     local slider = bar.CutBar.Slider.AbsolutePosition
-    local green  = bar.CutBar.GreenBar.AbsolutePosition
+    local green = bar.CutBar.GreenBar.AbsolutePosition
     if slider.X >= green.X and slider.X <= green.X + bar.CutBar.GreenBar.AbsoluteSize.X then
-        keypress(0x43) keyrelease(0x43)
+        keypress(0x43)
+        keyrelease(0x43)
     end
 end)
 
@@ -333,16 +338,16 @@ local _chloroKeyHeld = false
 
 scheduler:addLoop("chloroform", 0.03, function()
     if not SETTINGS.Auto.ChloroformSpys.Enabled then
-        if _chloroKeyHeld then 
-            keyrelease(0x51) 
-            _chloroKeyHeld = false 
+        if _chloroKeyHeld then
+            keyrelease(0x51)
+            _chloroKeyHeld = false
         end
         return
     end
-    
+
     local char = LocalPlayer.Character
     local tool = char and char:FindFirstChild("Chloroform Spray")
-    
+
     if not tool or not tool:FindFirstChild("ChloroformChallenge", true) then
         if _chloroKeyHeld then
             keyrelease(0x51)
@@ -350,7 +355,7 @@ scheduler:addLoop("chloroform", 0.03, function()
         end
         return
     end
-    
+
     if not _chloroKeyHeld then
         keypress(0x51)
         _chloroKeyHeld = true
@@ -395,8 +400,9 @@ scheduler:addLoop("statSpoof", TIMINGS.stats, function()
 end)
 
 local _lastLabels = {}
+
 scheduler:addLoop("labels", TIMINGS.labels, function()
-if not Vegetables or not AssortedFish or not HumanFlesh or not Rice then
+    if not Vegetables or not AssortedFish or not HumanFlesh or not Rice then
         local ingr = GameData:FindFirstChild("Ingredients")
         if ingr and ingr:FindFirstChild("IngredientsStorage") then
             local storage = ingr.IngredientsStorage
@@ -431,27 +437,27 @@ if not Vegetables or not AssortedFish or not HumanFlesh or not Rice then
         local t = "rice: " .. Rice.Stock.Value .. "/" .. Rice.MaxStock.Value
         if _lastLabels.rice ~= t then _lastLabels.rice = t riceLabel:SetText(t) end
     end
-   if dishLabel then
-    local kitchen = workspace:FindFirstChild("Kitchen")
-    local sink = kitchen and kitchen:FindFirstChild("TheSink")
-    local t = "dishes: " .. tostring(sink and sink.CleanDishAmount and sink.CleanDishAmount.Value or 0)
-    if _lastLabels.dishes ~= t then 
-        _lastLabels.dishes = t 
-        dishLabel:SetText(t) 
+    if dishLabel then
+        local kitchen = workspace:FindFirstChild("Kitchen")
+        local sink = kitchen and kitchen:FindFirstChild("TheSink")
+        local t = "dishes: " .. tostring(sink and sink.CleanDishAmount and sink.CleanDishAmount.Value or 0)
+        if _lastLabels.dishes ~= t then
+            _lastLabels.dishes = t
+            dishLabel:SetText(t)
+        end
     end
-end
-if reviewLabel then
-    local rs = GameData:FindFirstChild("CurrentReviewScore")
-    if rs and typeof(rs.Value) == "number" then
-        local t = string.format("rating: %.2f", rs.Value)
-        if _lastLabels.review ~= t then _lastLabels.review = t reviewLabel:SetText(t) end
+    if reviewLabel then
+        local rs = GameData:FindFirstChild("CurrentReviewScore")
+        if rs and typeof(rs.Value) == "number" then
+            local t = string.format("rating: %.2f", rs.Value)
+            if _lastLabels.review ~= t then _lastLabels.review = t reviewLabel:SetText(t) end
+        end
     end
-end
 end)
 
-local _clockWarned   = {}
+local _clockWarned = {}
 local _clockLastTime = ""
-local _clockLabel    = nil
+local _clockLabel = nil
 
 task.spawn(function()
     local pg = LocalPlayer:WaitForChild("PlayerGui")
@@ -462,10 +468,10 @@ task.spawn(function()
     _clockLabel = cf:WaitForChild("clockLabel", 30)
 end)
 
-local _clockTargets = {["4:40PM"]=true,["4:45PM"]=true,["4:50PM"]=true,["4:55PM"]=true}
+local _clockTargets = {["4:40PM"] = true, ["4:45PM"] = true, ["4:50PM"] = true, ["4:55PM"] = true}
 
 local function normalizeClock(t)
-    t = t:gsub("%s+",""):gsub("%[",""):gsub("%]",""):gsub("^0","")
+    t = t:gsub("%s+", ""):gsub("%[", ""):gsub("%]", ""):gsub("^0", "")
     return t:upper()
 end
 
@@ -481,29 +487,27 @@ scheduler:addLoop("clock", TIMINGS.clock, function()
     if norm == "5:05AM" then _clockWarned = {} end
 end)
 
-local WASH_KEYS = {Q=0x51, E=0x45, R=0x52, F=0x46}
+local WASH_KEYS = {Q = 0x51, E = 0x45, R = 0x52, F = 0x46}
 
 scheduler:addLoop("washing", 0.1, function()
     if not SETTINGS.Auto.Washing.Enabled then return end
     if not PlayerGui:FindFirstChild("DishWashingGui") then return end
-    
+
     local kitchen = workspace:FindFirstChild("Kitchen")
     local sink = kitchen and kitchen:FindFirstChild("TheSink")
     if not sink then return end
-    
+
     local amount = sink:FindFirstChild("DirtyDishAmount")
     if not amount or amount.Value == 0 then return end
-    
+
     local Visible = memory_read("byte", PlayerGui.DishWashingGui.Address + ScreenGuiEnabled)
     if Visible ~= 1 then return end
-    
+
     local prompt = sink:FindFirstChild("ProximityPrompt", true)
     if prompt and prompt.Address then
         memory_write("byte", prompt.Address + PromptEnabled, 0)
     end
-    
-    local WASH_KEYS = {Q=0x51, E=0x45, R=0x52, F=0x46}
-    
+
     for _, v in pairs(PlayerGui.DishWashingGui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
         if v:IsA("Frame") and v.Name == "KeyTemplate" then
             local container = v:FindFirstChild("Container")
@@ -515,7 +519,6 @@ scheduler:addLoop("washing", 0.1, function()
                     if vk then
                         keypress(vk)
                         keyrelease(vk)
-                        -- REMOVED: task.wait(0.05)
                     end
                 end
             end
@@ -531,7 +534,7 @@ local function GetRankInGroup(UserId, GroupId)
     local url = "https://groups.roblox.com/v2/users/" .. UserId .. "/groups/roles"
     local success, response = pcall(game.HttpGet, game, url)
     if not success then return 0, "Unknown" end
-    
+
     local data = game:GetService("HttpService"):JSONDecode(response)
     for _, group in pairs(data.data) do
         if group.group.id == GroupId then
@@ -604,7 +607,7 @@ scheduler:addLoop("npcAlerts", 0.5, function()
         local addr = npc.Address
         if not addr then continue end
         local state = npc:GetAttribute("CurrentState")
-local isCritic = npc:GetAttribute("Critic") == true and state ~= "Leaving" and state ~= "Left" and state ~= "Done"
+        local isCritic = npc:GetAttribute("Critic") == true and state ~= "Leaving" and state ~= "Left" and state ~= "Done"
         local isInspector = npc:GetAttribute("Behavior") == "Inspector"
 
         if isCritic then criticSeen = true end
@@ -628,19 +631,18 @@ local isCritic = npc:GetAttribute("Critic") == true and state ~= "Leaving" and s
     if not inspectorSeen then removeScreenAlert("inspector") end
 end)
 
-
 scheduler:addLoop("cleanup", 60, function()
     _notifiedNpcs = {}
 end)
 
 scheduler:addLoop("npcPrompts", 0.2, function()
     if not SETTINGS.Cheat.Instant.SeatCustomer.Enabled then return end
-    
+
     local spawned = workspace:FindFirstChild("NpcDestination")
         and workspace.NpcDestination:FindFirstChild("SpawnedNPCs")
-    
+
     if not spawned then return end
-    
+
     for _, npc in ipairs(spawned:GetChildren()) do
         local torso = npc:FindFirstChild("Torso")
         if torso then
@@ -668,7 +670,7 @@ notify('script loaded', "", 4)
 
 if getgenv then
     getgenv().SushiGambitCleanup = function()
-        for name in pairs(scheduler._loops)  do scheduler:remove(name) end
+        for name in pairs(scheduler._loops) do scheduler:remove(name) end
         for name in pairs(scheduler._render) do scheduler:remove(name) end
         for _, c in ipairs(Connections) do pcall(function() c:Disconnect() end) end
         pcall(function() Windows:Delete() end)
