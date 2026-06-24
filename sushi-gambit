@@ -9,7 +9,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
 local GameData = ReplicatedStorage:WaitForChild("GameData")
@@ -20,6 +19,7 @@ local memory_read = memory_read or function() return 0 end
 local memory_write = memory_write or function() end
 local keypress = keypress or function() end
 local keyrelease = keyrelease or function() end
+
 local SETTINGS = {
     Auto = {
         Cooking = {Enabled = false},
@@ -31,6 +31,9 @@ local SETTINGS = {
         Instant = {CleanDish = {Enabled = true}, SeatCustomer = {Enabled = true}},
     },
     Notify = {AdminJoin = {Enabled = true}},
+    PlayerWalkSpeed = 20,
+    StaffGroupId = 33171215,
+    MinStaffRank = 245,
 }
 
 local ESP_SETTINGS = {
@@ -48,45 +51,37 @@ local TIMINGS = {
     stats = 0.5,
     labels = 0.1,
     clock = 0.1,
+    washing = 0.1,
+    npcAlerts = 0.5,
+    npcPrompts = 0.2,
+    cleanup = 60,
 }
 
-local scheduler = {_loops = {}, _render = {}}
+local scheduler = {_loops = {}}
 
 function scheduler:addLoop(name, interval, fn)
     if self._loops[name] then warn("scheduler: overwriting loop '" .. name .. "'") end
     self._loops[name] = {interval = interval, timer = 0, fn = fn}
 end
 
-function scheduler:addRender(name, fn)
-    if self._render[name] then warn("scheduler: overwriting render '" .. name .. "'") end
-    self._render[name] = fn
-end
-
 function scheduler:remove(name)
     self._loops[name] = nil
-    self._render[name] = nil
 end
 
 local Connections = {}
 
 table.insert(Connections, RunService.Heartbeat:Connect(function(dt)
     for name, job in pairs(scheduler._loops) do
-        job.timer += dt
+        job.timer = job.timer + dt
         if job.timer >= job.interval then
-            job.timer -= job.interval
+            job.timer = job.timer - job.interval
             local ok, err = pcall(job.fn)
             if not ok then warn("scheduler job '" .. name .. "' errored: " .. tostring(err)) end
         end
     end
 end))
 
-table.insert(Connections, RunService.RenderStepped:Connect(function()
-    for name, fn in pairs(scheduler._render) do
-        local ok, err = pcall(fn)
-        if not ok then warn("render job '" .. name .. "' errored: " .. tostring(err)) end
-    end
-end))
-
+-- Drawing Window Library
 local Lib = {}
 Lib.__index = Lib
 
@@ -174,7 +169,6 @@ function Lib:Edit(pos, size)
 end
 
 function Lib:Delete()
-    scheduler:remove("windowDrag")
     for _, v in ipairs(self.Elements) do v:Remove() end
     for _, v in ipairs(self.Labels) do v.drawing:Remove() end
     self.Elements = {}
@@ -266,17 +260,31 @@ createLabels()
 UI.AddTab("Sushi Gambit", function(tab)
     local MainSec = tab:Section("Main", "Left", {"auto"})
     if MainSec.page == 0 then
-        MainSec:Toggle('auto_cooking', 'auto cook', function(value)
+        MainSec:Toggle('auto_cooking', 'auto cook', false, function(value)
             notify("auto cooking: " .. tostring(value), "", 3)
             SETTINGS.Auto.Cooking.Enabled = value
         end)
+
+        MainSec:Toggle("auto_wash", "auto wash", false, function(value)
+            SETTINGS.Auto.Washing.Enabled = value
+            notify("auto wash: " .. tostring(value), "", 3)
+        end)
+        local washKb = MainSec:Keybind("auto_wash_key", 0x5A, "toggle")
+        washKb:AddToHotkey("Auto Wash", "auto_wash")
+
+        MainSec:Toggle("auto_chloro", "auto chloroform", false, function(value)
+            SETTINGS.Auto.ChloroformSpys.Enabled = value
+            notify("auto chloroform: " .. tostring(value), "", 3)
+        end)
+        local chloroKb = MainSec:Keybind("auto_chloro_key", 0x58, "toggle")
+        chloroKb:AddToHotkey("Auto Chloroform", "auto_chloro")
     end
 
     local PlayerTab = tab:Section("Player", "Left")
     PlayerTab:SliderInt('player_walkspeed', 'Walk Speed', 12, 20, 20, function(value)
         PlayerStats.WalkSpeed.Value = value
+        SETTINGS.PlayerWalkSpeed = value
     end)
-    PlayerStats.WalkSpeed.Value = 20
 end)
 
 local function applyStaticPrompts()
@@ -336,7 +344,7 @@ end)
 
 local _chloroKeyHeld = false
 
-scheduler:addLoop("chloroform", 0.03, function()
+scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
     if not SETTINGS.Auto.ChloroformSpys.Enabled then
         if _chloroKeyHeld then
             keyrelease(0x51)
@@ -369,6 +377,38 @@ scheduler:addLoop("chloroRelease", 0.02, function()
 end)
 
 local Stats = LocalPlayer:WaitForChild("Stats")
+local RankCache = {}
+
+local function getGroupRank(userId)
+    if RankCache[userId] then
+        return RankCache[userId].rank, RankCache[userId].role
+    end
+
+    local url = "https://groups.roblox.com/v2/users/" .. userId .. "/groups/roles"
+    local success, response = pcall(game.HttpGet, game, url)
+    if not success then
+        RankCache[userId] = {rank = 0, role = "Unknown"}
+        return 0, "Unknown"
+    end
+
+    local ok, data = pcall(function()
+        return HttpService:JSONDecode(response)
+    end)
+
+    if not ok or not data or not data.data then
+        RankCache[userId] = {rank = 0, role = "Unknown"}
+        return 0, "Unknown"
+    end
+
+    for _, group in pairs(data.data) do
+        if group.group and group.group.id == SETTINGS.StaffGroupId then
+            RankCache[userId] = {rank = group.role.rank, role = group.role.name}
+            return group.role.rank, group.role.name
+        end
+    end
+    RankCache[userId] = {rank = 0, role = "Unknown"}
+    return 0, "Unknown"
+end
 
 scheduler:addLoop("statSpoof", TIMINGS.stats, function()
     if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
@@ -384,7 +424,7 @@ scheduler:addLoop("statSpoof", TIMINGS.stats, function()
     if PlayerStats:FindFirstChild("StaminaGainMultiplier") and PlayerStats.StaminaGainMultiplier.Value ~= 100 then PlayerStats.StaminaGainMultiplier.Value = 100 end
     if PlayerStats:FindFirstChild("StaminaUsageMultiplierNonHarvestRelated") and PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value ~= 0 then PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0 end
     if Stats:FindFirstChild("Stamina") and Stats.Stamina.Value ~= 100 then Stats.Stamina.Value = 100 end
-    if PlayerStats:FindFirstChild("WalkSpeed") and PlayerStats.WalkSpeed.Value ~= 24 then PlayerStats.WalkSpeed.Value = 24 end
+    if PlayerStats:FindFirstChild("WalkSpeed") and PlayerStats.WalkSpeed.Value ~= SETTINGS.PlayerWalkSpeed then PlayerStats.WalkSpeed.Value = SETTINGS.PlayerWalkSpeed end
     if PlayerStats:FindFirstChild("SprintSpeed") and PlayerStats.SprintSpeed.Value ~= 36 then PlayerStats.SprintSpeed.Value = 36 end
     if PlayerStats:FindFirstChild("SushiValueMultiplier") and PlayerStats.SushiValueMultiplier.Value ~= 15 then PlayerStats.SushiValueMultiplier.Value = 15 end
     if PlayerStats:FindFirstChild("EffectiveServiceLevel") and PlayerStats.EffectiveServiceLevel.Value ~= 9999 then PlayerStats.EffectiveServiceLevel.Value = 9999 end
@@ -489,7 +529,7 @@ end)
 
 local WASH_KEYS = {Q = 0x51, E = 0x45, R = 0x52, F = 0x46}
 
-scheduler:addLoop("washing", 0.1, function()
+scheduler:addLoop("washing", TIMINGS.washing, function()
     if not SETTINGS.Auto.Washing.Enabled then return end
     if not PlayerGui:FindFirstChild("DishWashingGui") then return end
 
@@ -526,32 +566,14 @@ scheduler:addLoop("washing", 0.1, function()
     end
 end)
 
-local GroupId = 33171215
-local MinRank = 245
-
-local function GetRankInGroup(UserId, GroupId)
-    if not UserId then return 0, "Unknown" end
-    local url = "https://groups.roblox.com/v2/users/" .. UserId .. "/groups/roles"
-    local success, response = pcall(game.HttpGet, game, url)
-    if not success then return 0, "Unknown" end
-
-    local data = game:GetService("HttpService"):JSONDecode(response)
-    for _, group in pairs(data.data) do
-        if group.group.id == GroupId then
-            return group.role.rank, group.role.name
-        end
-    end
-    return 0, "Unknown"
-end
-
 local KnownStaff = {}
 
 local function CheckStaff(player)
     task.spawn(function()
         local userId = player.UserId
         if not userId then return end
-        local rank, roleName = GetRankInGroup(userId, GroupId)
-        if rank >= MinRank and not KnownStaff[userId] then
+        local rank, roleName = getGroupRank(userId)
+        if rank >= SETTINGS.MinStaffRank and not KnownStaff[userId] then
             KnownStaff[userId] = true
             if SETTINGS.Notify.AdminJoin.Enabled then
                 notify(player.Name .. " (" .. roleName .. ") joined!", "STAFF ALERT", 8)
@@ -576,13 +598,17 @@ local function showScreenAlert(message, color, key)
     if _alertDrawings[key] then
         pcall(function() _alertDrawings[key]:Remove() end)
     end
+    
+    local cam = workspace.CurrentCamera
+    if not cam then return end
+    
     local text = Drawing.new("Text")
     text.Text = message
     text.Size = 25
     text.Color = color or Color3.new(1, 1, 1)
     text.Outline = true
     text.Center = true
-    text.Position = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, 144)
+    text.Position = Vector2.new(cam.ViewportSize.X / 2, 144)
     text.Visible = true
     _alertDrawings[key] = text
 end
@@ -596,7 +622,7 @@ end
 
 local _notifiedNpcs = {}
 
-scheduler:addLoop("npcAlerts", 0.5, function()
+scheduler:addLoop("npcAlerts", TIMINGS.npcAlerts, function()
     local dest = workspace:FindFirstChild("NpcDestination")
     local folder = dest and dest:FindFirstChild("SpawnedNPCs")
     if not folder then return end
@@ -605,25 +631,26 @@ scheduler:addLoop("npcAlerts", 0.5, function()
 
     for _, npc in ipairs(folder:GetChildren()) do
         local addr = npc.Address
-        if not addr then continue end
-        local state = npc:GetAttribute("CurrentState")
-        local isCritic = npc:GetAttribute("Critic") == true and state ~= "Leaving" and state ~= "Left" and state ~= "Done"
-        local isInspector = npc:GetAttribute("Behavior") == "Inspector"
+        if addr then
+            local state = npc:GetAttribute("CurrentState")
+            local isCritic = npc:GetAttribute("Critic") == true and state ~= "Leaving" and state ~= "Left" and state ~= "Done"
+            local isInspector = npc:GetAttribute("Behavior") == "Inspector"
 
-        if isCritic then criticSeen = true end
-        if isInspector then inspectorSeen = true end
+            if isCritic then criticSeen = true end
+            if isInspector then inspectorSeen = true end
 
-        if (isCritic or isInspector) and not _notifiedNpcs[addr] then
-            _notifiedNpcs[addr] = true
-            if isInspector then
-                showScreenAlert("health inspector", Color3.fromRGB(0, 255, 0), "inspector")
-            else
-                showScreenAlert("critic", Color3.fromRGB(255, 252, 0), "critic")
+            if (isCritic or isInspector) and not _notifiedNpcs[addr] then
+                _notifiedNpcs[addr] = true
+                if isInspector then
+                    showScreenAlert("health inspector", Color3.fromRGB(0, 255, 0), "inspector")
+                else
+                    showScreenAlert("critic", Color3.fromRGB(255, 252, 0), "critic")
+                end
             end
-        end
 
-        if not (isCritic or isInspector) then
-            _notifiedNpcs[addr] = nil
+            if not (isCritic or isInspector) then
+                _notifiedNpcs[addr] = nil
+            end
         end
     end
 
@@ -631,11 +658,11 @@ scheduler:addLoop("npcAlerts", 0.5, function()
     if not inspectorSeen then removeScreenAlert("inspector") end
 end)
 
-scheduler:addLoop("cleanup", 60, function()
+scheduler:addLoop("cleanup", TIMINGS.cleanup, function()
     _notifiedNpcs = {}
 end)
 
-scheduler:addLoop("npcPrompts", 0.2, function()
+scheduler:addLoop("npcPrompts", TIMINGS.npcPrompts, function()
     if not SETTINGS.Cheat.Instant.SeatCustomer.Enabled then return end
 
     local spawned = workspace:FindFirstChild("NpcDestination")
@@ -648,30 +675,17 @@ scheduler:addLoop("npcPrompts", 0.2, function()
         if torso then
             local prompt = torso:FindFirstChild("WaitProximityPrompt")
             if prompt and prompt.Address then
-                memory_write("float", prompt.Address + 0x138, 0)
+                memory_write("float", prompt.Address + HoldDuration, 0)
             end
         end
     end
 end)
-
-table.insert(Connections, UserInputService.InputBegan:Connect(function(inp, gp)
-    if gp then return end
-    if inp.KeyCode == Enum.KeyCode.X then
-        SETTINGS.Auto.ChloroformSpys.Enabled = not SETTINGS.Auto.ChloroformSpys.Enabled
-        notify("Auto Chloroform: " .. (SETTINGS.Auto.ChloroformSpys.Enabled and "ON" or "OFF"), "Keybind X", 2)
-    end
-    if inp.KeyCode == Enum.KeyCode.Z then
-        SETTINGS.Auto.Washing.Enabled = not SETTINGS.Auto.Washing.Enabled
-        notify("Auto Wash: " .. (SETTINGS.Auto.Washing.Enabled and "ON" or "OFF"), "Keybind Z", 2)
-    end
-end))
 
 notify('script loaded', "", 4)
 
 if getgenv then
     getgenv().SushiGambitCleanup = function()
         for name in pairs(scheduler._loops) do scheduler:remove(name) end
-        for name in pairs(scheduler._render) do scheduler:remove(name) end
         for _, c in ipairs(Connections) do pcall(function() c:Disconnect() end) end
         pcall(function() Windows:Delete() end)
         for _, d in pairs(_alertDrawings or {}) do pcall(function() d:Remove() end) end
