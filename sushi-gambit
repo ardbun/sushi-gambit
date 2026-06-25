@@ -625,9 +625,25 @@ end
 
 scheduler:addLoop("washing", TIMINGS.washing, function()
     if not SETTINGS.Auto.Washing.Enabled then return end
-    
+
+    local gui = PlayerGui:FindFirstChild("DishWashingGui")
+    if not gui or gui.Enabled == false then
+        _keysHolder = nil
+        return
+    end
+
     local keysHolder = getKeysHolder()
     if not keysHolder then return end
+
+    -- Check if there are actually any key templates to press
+    local hasKeys = false
+    for _, v in pairs(keysHolder:GetChildren()) do
+        if v:IsA("Frame") and v.Name == "KeyTemplate" then
+            hasKeys = true
+            break
+        end
+    end
+    if not hasKeys then return end
 
     local kitchen = workspace:FindFirstChild("Kitchen")
     local sink = kitchen and kitchen:FindFirstChild("TheSink")
@@ -635,12 +651,6 @@ scheduler:addLoop("washing", TIMINGS.washing, function()
 
     local amount = sink:FindFirstChild("DirtyDishAmount")
     if not amount or amount.Value == 0 then return end
-
-    local gui = PlayerGui:FindFirstChild("DishWashingGui")
-    if not gui then return end
-
-    local Visible = memory_read("byte", gui.Address + ScreenGuiEnabled)
-    if Visible == 0 then return end
 
     local prompt = sink:FindFirstChild("ProximityPrompt", true)
     if prompt and prompt.Address then
