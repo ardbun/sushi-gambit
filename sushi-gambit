@@ -23,7 +23,6 @@ local iskeypressed = iskeypressed or function() return false end
 
 local SETTINGS = {
     Auto = {
-        Cooking = {Enabled = false},
         Washing = {Enabled = false},
         ChloroformSpys = {Enabled = false},
     },
@@ -47,7 +46,6 @@ local ESP_SETTINGS = {
 
 local TIMINGS = {
     staticPrompts = 5,
-    cooking = 0.05,
     chloroform = 0.03,
     stats = 0.5,
     labels = 0.1,
@@ -57,6 +55,7 @@ local TIMINGS = {
     npcPrompts = 0.2,
     cleanup = 60,
     keybinds = 0.03,
+    rankCacheClear = 1800,
 }
 
 local scheduler = {_loops = {}}
@@ -296,6 +295,41 @@ UI.AddTab("Sushi Gambit", function(tab)
     end)
 end)
 
+-- Cache stat objects with stale checks
+local StatCache = {}
+
+local function getStat(name)
+    local stat = StatCache[name]
+    if not stat or not stat.Parent then
+        stat = PlayerStats:FindFirstChild(name)
+        StatCache[name] = stat
+    end
+    return stat
+end
+
+local function getGameDataStat(name)
+    local stat = StatCache[name]
+    if not stat or not stat.Parent then
+        stat = GameData:FindFirstChild(name)
+        StatCache[name] = stat
+    end
+    return stat
+end
+
+local function getStats()
+    local stats = StatCache.Stats
+    if not stats or not stats.Parent then
+        stats = LocalPlayer:FindFirstChild("Stats")
+        StatCache.Stats = stats
+    end
+    return stats
+end
+
+local function getSpawnedNPCs()
+    local dest = workspace:FindFirstChild("NpcDestination")
+    return dest and dest:FindFirstChild("SpawnedNPCs")
+end
+
 local function applyStaticPrompts()
     local paths = {
         {"Workspace", "RestaurantArea", "restaurant", "Table", "computer", "ProximityPrompt"},
@@ -316,9 +350,7 @@ end
 applyStaticPrompts()
 
 scheduler:addLoop("dasherPrompt", 0.5, function()
-    local folder = workspace:FindFirstChild("NpcDestination")
-    if not folder then return end
-    folder = folder:FindFirstChild("SpawnedNPCs")
+    local folder = getSpawnedNPCs()
     if not folder then return end
     for _, npc in ipairs(folder:GetChildren()) do
         local torso = npc:FindFirstChild("Torso")
@@ -334,22 +366,6 @@ scheduler:addLoop("dasherPrompt", 0.5, function()
 end)
 
 scheduler:addLoop("staticPrompts", TIMINGS.staticPrompts, applyStaticPrompts)
-
-scheduler:addLoop("cooking", TIMINGS.cooking, function()
-    if not SETTINGS.Auto.Cooking.Enabled then return end
-    local gui = PlayerGui:FindFirstChild("MakeSushiMinigame")
-    if not gui then return end
-    local ok, val = pcall(memory_read, "byte", gui.Address + ScreenGuiEnabled)
-    if not ok or val ~= 1 then return end
-    local bar = gui.MainFrame:FindFirstChild("CuttingBarFrame")
-    if not bar then return end
-    local slider = bar.CutBar.Slider.AbsolutePosition
-    local green = bar.CutBar.GreenBar.AbsolutePosition
-    if slider.X >= green.X and slider.X <= green.X + bar.CutBar.GreenBar.AbsoluteSize.X then
-        keypress(0x43)
-        keyrelease(0x43)
-    end
-end)
 
 local _chloroKeyHeld = false
 
@@ -385,7 +401,6 @@ scheduler:addLoop("chloroRelease", 0.02, function()
     _chloroKeyHeld = false
 end)
 
-local Stats = LocalPlayer:WaitForChild("Stats")
 local RankCache = {}
 
 local function getGroupRank(userId)
@@ -421,31 +436,71 @@ end
 
 scheduler:addLoop("statSpoof", TIMINGS.stats, function()
     if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
-        if PlayerStats:FindFirstChild("EffectiveCookingLevel") and PlayerStats.EffectiveCookingLevel.Value ~= 1000 then PlayerStats.EffectiveCookingLevel.Value = 1000 end
+        local stat = getStat("EffectiveCookingLevel")
+        if stat and stat.Value ~= 1000 then stat.Value = 1000 end
     end
     if SETTINGS.Cheat.Instant.CleanDish.Enabled then
-        if PlayerStats:FindFirstChild("EffectiveCleaningLevel") and PlayerStats.EffectiveCleaningLevel.Value ~= 9999 then PlayerStats.EffectiveCleaningLevel.Value = 9999 end
+        local stat = getStat("EffectiveCleaningLevel")
+        if stat and stat.Value ~= 9999 then stat.Value = 9999 end
     end
     if SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled then
-        if PlayerStats:FindFirstChild("SpongeEffectiveness") and PlayerStats.SpongeEffectiveness.Value ~= 9999 then PlayerStats.SpongeEffectiveness.Value = 9999 end
+        local stat = getStat("SpongeEffectiveness")
+        if stat and stat.Value ~= 9999 then stat.Value = 9999 end
     end
-    if PlayerStats:FindFirstChild("StaminaUsageMultiplier") and PlayerStats.StaminaUsageMultiplier.Value ~= -1 then PlayerStats.StaminaUsageMultiplier.Value = -1 end
-    if PlayerStats:FindFirstChild("StaminaGainMultiplier") and PlayerStats.StaminaGainMultiplier.Value ~= 100 then PlayerStats.StaminaGainMultiplier.Value = 100 end
-    if PlayerStats:FindFirstChild("StaminaUsageMultiplierNonHarvestRelated") and PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value ~= 0 then PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0 end
-    if Stats:FindFirstChild("Stamina") and Stats.Stamina.Value ~= 100 then Stats.Stamina.Value = 100 end
-    if PlayerStats:FindFirstChild("WalkSpeed") and PlayerStats.WalkSpeed.Value ~= SETTINGS.PlayerWalkSpeed then PlayerStats.WalkSpeed.Value = SETTINGS.PlayerWalkSpeed end
-    if PlayerStats:FindFirstChild("SprintSpeed") and PlayerStats.SprintSpeed.Value ~= 36 then PlayerStats.SprintSpeed.Value = 36 end
-    if PlayerStats:FindFirstChild("SushiValueMultiplier") and PlayerStats.SushiValueMultiplier.Value ~= 15 then PlayerStats.SushiValueMultiplier.Value = 15 end
-    if PlayerStats:FindFirstChild("EffectiveServiceLevel") and PlayerStats.EffectiveServiceLevel.Value ~= 9999 then PlayerStats.EffectiveServiceLevel.Value = 9999 end
-    if PlayerStats:FindFirstChild("ManualSeatingBoost") and PlayerStats.ManualSeatingBoost.Value ~= 10 then PlayerStats.ManualSeatingBoost.Value = 10 end
-    if PlayerStats:FindFirstChild("TipRevenueMultiplier") and PlayerStats.TipRevenueMultiplier.Value ~= 15 then PlayerStats.TipRevenueMultiplier.Value = 15 end
-    if PlayerStats:FindFirstChild("PersonalIncomeMultiplier") and PlayerStats.PersonalIncomeMultiplier.Value ~= 10 then PlayerStats.PersonalIncomeMultiplier.Value = 10 end
-    if PlayerStats:FindFirstChild("Charisma") and PlayerStats.Charisma.Value ~= 10 then PlayerStats.Charisma.Value = 10 end
-    if GameData:FindFirstChild("PatienceMultiplier") and GameData.PatienceMultiplier.Value ~= 3 then GameData.PatienceMultiplier.Value = 3 end
-    if GameData:FindFirstChild("TipChanceMultiplier") and GameData.TipChanceMultiplier.Value ~= 5 then GameData.TipChanceMultiplier.Value = 5 end
-    if GameData:FindFirstChild("MaxLineSize") and GameData.MaxLineSize.Value ~= 10 then GameData.MaxLineSize.Value = 10 end
-    if GameData:FindFirstChild("SpoilageRate") and GameData.SpoilageRate.Value ~= 0.3 then GameData.SpoilageRate.Value = 0.3 end
-    if GameData:FindFirstChild("MaxStockMultiplier") and GameData.MaxStockMultiplier.Value ~= 1.5 then GameData.MaxStockMultiplier.Value = 1.5 end
+    
+    local stat = getStat("StaminaUsageMultiplier")
+    if stat and stat.Value ~= -1 then stat.Value = -1 end
+    
+    stat = getStat("StaminaGainMultiplier")
+    if stat and stat.Value ~= 100 then stat.Value = 100 end
+    
+    stat = getStat("StaminaUsageMultiplierNonHarvestRelated")
+    if stat and stat.Value ~= 0 then stat.Value = 0 end
+    
+    local stats = getStats()
+    if stats then
+        stat = stats:FindFirstChild("Stamina")
+        if stat and stat.Value ~= 100 then stat.Value = 100 end
+    end
+    
+    stat = getStat("WalkSpeed")
+    if stat and stat.Value ~= SETTINGS.PlayerWalkSpeed then stat.Value = SETTINGS.PlayerWalkSpeed end
+    
+    stat = getStat("SprintSpeed")
+    if stat and stat.Value ~= 36 then stat.Value = 36 end
+    
+    stat = getStat("SushiValueMultiplier")
+    if stat and stat.Value ~= 15 then stat.Value = 15 end
+    
+    stat = getStat("EffectiveServiceLevel")
+    if stat and stat.Value ~= 9999 then stat.Value = 9999 end
+    
+    stat = getStat("ManualSeatingBoost")
+    if stat and stat.Value ~= 10 then stat.Value = 10 end
+    
+    stat = getStat("TipRevenueMultiplier")
+    if stat and stat.Value ~= 15 then stat.Value = 15 end
+    
+    stat = getStat("PersonalIncomeMultiplier")
+    if stat and stat.Value ~= 10 then stat.Value = 10 end
+    
+    stat = getStat("Charisma")
+    if stat and stat.Value ~= 10 then stat.Value = 10 end
+    
+    stat = getGameDataStat("PatienceMultiplier")
+    if stat and stat.Value ~= 3 then stat.Value = 3 end
+    
+    stat = getGameDataStat("TipChanceMultiplier")
+    if stat and stat.Value ~= 5 then stat.Value = 5 end
+    
+    stat = getGameDataStat("MaxLineSize")
+    if stat and stat.Value ~= 10 then stat.Value = 10 end
+    
+    stat = getGameDataStat("SpoilageRate")
+    if stat and stat.Value ~= 0.3 then stat.Value = 0.3 end
+    
+    stat = getGameDataStat("MaxStockMultiplier")
+    if stat and stat.Value ~= 1.5 then stat.Value = 1.5 end
 end)
 
 local _lastLabels = {}
@@ -547,9 +602,32 @@ end)
 
 local WASH_KEYS = {Q = 0x51, E = 0x45, R = 0x52, F = 0x46}
 
+local _keysHolder = nil
+
+local function getKeysHolder()
+    if _keysHolder and _keysHolder.Parent then
+        return _keysHolder
+    end
+    _keysHolder = nil
+
+    local gui = PlayerGui:FindFirstChild("DishWashingGui")
+    if not gui then return nil end
+    local mainFrame = gui:FindFirstChild("MainFrame")
+    if not mainFrame then return nil end
+    local queueBar = mainFrame:FindFirstChild("QueueBarFrame")
+    if not queueBar then return nil end
+    local queue = queueBar:FindFirstChild("Queue")
+    if not queue then return nil end
+
+    _keysHolder = queue:FindFirstChild("KeysHolder")
+    return _keysHolder
+end
+
 scheduler:addLoop("washing", TIMINGS.washing, function()
     if not SETTINGS.Auto.Washing.Enabled then return end
-    if not PlayerGui:FindFirstChild("DishWashingGui") then return end
+    
+    local keysHolder = getKeysHolder()
+    if not keysHolder then return end
 
     local kitchen = workspace:FindFirstChild("Kitchen")
     local sink = kitchen and kitchen:FindFirstChild("TheSink")
@@ -558,7 +636,10 @@ scheduler:addLoop("washing", TIMINGS.washing, function()
     local amount = sink:FindFirstChild("DirtyDishAmount")
     if not amount or amount.Value == 0 then return end
 
-    local Visible = memory_read("byte", PlayerGui.DishWashingGui.Address + ScreenGuiEnabled)
+    local gui = PlayerGui:FindFirstChild("DishWashingGui")
+    if not gui then return end
+
+    local Visible = memory_read("byte", gui.Address + ScreenGuiEnabled)
     if Visible ~= 1 then return end
 
     local prompt = sink:FindFirstChild("ProximityPrompt", true)
@@ -566,7 +647,7 @@ scheduler:addLoop("washing", TIMINGS.washing, function()
         memory_write("byte", prompt.Address + PromptEnabled, 0)
     end
 
-    for _, v in pairs(PlayerGui.DishWashingGui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
+    for _, v in pairs(keysHolder:GetChildren()) do
         if v:IsA("Frame") and v.Name == "KeyTemplate" then
             local container = v:FindFirstChild("Container")
             if container then
@@ -641,8 +722,7 @@ end
 local _notifiedNpcs = {}
 
 scheduler:addLoop("npcAlerts", TIMINGS.npcAlerts, function()
-    local dest = workspace:FindFirstChild("NpcDestination")
-    local folder = dest and dest:FindFirstChild("SpawnedNPCs")
+    local folder = getSpawnedNPCs()
     if not folder then return end
 
     local criticSeen, inspectorSeen = false, false
@@ -683,12 +763,10 @@ end)
 scheduler:addLoop("npcPrompts", TIMINGS.npcPrompts, function()
     if not SETTINGS.Cheat.Instant.SeatCustomer.Enabled then return end
 
-    local spawned = workspace:FindFirstChild("NpcDestination")
-        and workspace.NpcDestination:FindFirstChild("SpawnedNPCs")
+    local folder = getSpawnedNPCs()
+    if not folder then return end
 
-    if not spawned then return end
-
-    for _, npc in ipairs(spawned:GetChildren()) do
+    for _, npc in ipairs(folder:GetChildren()) do
         local torso = npc:FindFirstChild("Torso")
         if torso then
             local prompt = torso:FindFirstChild("WaitProximityPrompt")
@@ -697,6 +775,10 @@ scheduler:addLoop("npcPrompts", TIMINGS.npcPrompts, function()
             end
         end
     end
+end)
+
+scheduler:addLoop("rankCacheClear", TIMINGS.rankCacheClear, function()
+    table.clear(RankCache)
 end)
 
 local KeyState = {
@@ -738,5 +820,8 @@ if getgenv then
         for _, c in ipairs(Connections) do pcall(function() c:Disconnect() end) end
         pcall(function() Windows:Delete() end)
         for _, d in pairs(_alertDrawings or {}) do pcall(function() d:Remove() end) end
+        pcall(function()
+            UI.RemoveTab("Sushi Gambit")
+        end)
     end
 end
