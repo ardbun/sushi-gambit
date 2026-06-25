@@ -640,7 +640,7 @@ scheduler:addLoop("washing", TIMINGS.washing, function()
     if not gui then return end
 
     local Visible = memory_read("byte", gui.Address + ScreenGuiEnabled)
-    if Visible ~= 1 then return end
+    if Visible == 0 then return end
 
     local prompt = sink:FindFirstChild("ProximityPrompt", true)
     if prompt and prompt.Address then
