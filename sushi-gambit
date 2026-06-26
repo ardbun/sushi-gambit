@@ -635,7 +635,7 @@ local function getKeysHolder()
     return _keysHolder
 end
 
-scheduler:addLoop("washing", 0.7, function()
+scheduler:addLoop("washing", 0.1, function()
     if _washingBusy then return end
     if not SETTINGS.Auto.Washing.Enabled then return end
 
@@ -669,7 +669,7 @@ scheduler:addLoop("washing", 0.7, function()
                 if vk then
                     keypress(vk)
                     keyrelease(vk)
-                    task.wait(0.06)
+                    task.wait(0.08)
                 end
             end
         end
