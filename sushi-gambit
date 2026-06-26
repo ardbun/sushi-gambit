@@ -610,6 +610,7 @@ local WASH_KEYS = {
 }
 
 local _keysHolder = nil
+local _washingBusy = false
 
 local function getKeysHolder()
     if _keysHolder and _keysHolder.Parent then
@@ -634,41 +635,51 @@ local function getKeysHolder()
     return _keysHolder
 end
 
-scheduler:addLoop("washing", TIMINGS.washing, function()
-    if not SETTINGS.Auto.Washing.Enabled then
-        return
-    end
+scheduler:addLoop("washing", 0.7, function()
+    if _washingBusy then return end
+    if not SETTINGS.Auto.Washing.Enabled then return end
 
-    local gui = PlayerGui:FindFirstChild("DishWashingGui")
-    if not gui or not gui.Address then
-        _keysHolder = nil
-        return
-    end
+    _washingBusy = true
 
-    local visible = memory_read("byte", gui.Address + ScreenGuiEnabled)
-    if visible ~= 1 then
-        return
-    end
+    local ok, err = pcall(function()
+        local gui = PlayerGui:FindFirstChild("DishWashingGui")
+        if not gui or not gui.Address then
+            _keysHolder = nil
+            return
+        end
 
-    local keysHolder = getKeysHolder()
-    if not keysHolder then
-        return
-    end
+        local visible = memory_read("byte", gui.Address + ScreenGuiEnabled)
+        if visible ~= 1 then
+            _keysHolder = nil
+            return
+        end
 
-    local children = keysHolder:GetChildren()
-    for i = 1, #children do
-        local frame = children[i]
-        if frame:IsA("Frame") and frame.Name == "KeyTemplate" then
-            local key = frame:GetAttribute("Key")
-            local vk = key and WASH_KEYS[key]
+        local keysHolder = getKeysHolder()
+        if not keysHolder then return end
 
-            if vk then
-                keypress(vk)
-                keyrelease(vk)
-                task.wait(0.04)
+        local children = keysHolder:GetChildren()
+
+        for i = 1, #children do
+            local frame = children[i]
+
+            if frame:IsA("Frame") and frame.Name == "KeyTemplate" then
+                local key = frame:GetAttribute("Key")
+                local vk = key and WASH_KEYS[key]
+
+                if vk then
+                    keypress(vk)
+                    keyrelease(vk)
+                    task.wait(0.06)
+                end
             end
         end
+    end)
+
+    if not ok then
+        warn("washing error: " .. tostring(err))
     end
+
+    _washingBusy = false
 end)
 
 local KnownStaff = {}
