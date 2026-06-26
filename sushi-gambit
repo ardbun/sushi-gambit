@@ -5,6 +5,7 @@ local LocalPlayer = Players.LocalPlayer
 local GameData = RS:WaitForChild("GameData")
 local PlayerStats = LocalPlayer:WaitForChild("PlayerStats")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
 local memory_read, memory_write, keypress, keyrelease, iskeypressed = memory_read or function() return 0 end, memory_write or function() end, keypress or function() end, keyrelease or function() end, iskeypressed or function() return false end
 
 local SETTINGS = { Auto = { Washing = {Enabled = false}, ChloroformSpys = {Enabled = false} }, Cheat = { Spoof = {Greenbar = true, SpongeEffectiveness = true}, Instant = {CleanDish = true, SeatCustomer = true} }, Notify = {AdminJoin = true}, PlayerWalkSpeed = 20, StaffGroupId = 33171215, MinStaffRank = 245 }
