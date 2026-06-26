@@ -26,7 +26,6 @@ table.insert(Connections, RunS.Heartbeat:Connect(function(dt)
     end
 end))
 
--- Drawing Window Library (unchanged, too complex to shorten safely)
 local Lib = {}
 Lib.__index = Lib
 function Lib.new(t, w, h, r)
@@ -63,7 +62,6 @@ end
 
 local Windows = Lib.new("Sushi Gambit", 220, 200) Windows:Edit(Vector2.new(1695,845)) Windows:Show(true)
 
--- Offsets
 local raw, fetchDone = nil, false
 task.spawn(function() local ok, r = pcall(function() return Http:JSONDecode(game:HttpGet("https://imtheo.lol/Offsets/OffsetsHex.json")) end) raw, fetchDone = ok and r or nil, true end)
 local fetchStart = tick() repeat task.wait(0.1) until fetchDone or tick()-fetchStart > 5
@@ -71,7 +69,6 @@ if not raw then warn("Offset fetch failed, using fallbacks") raw = {Offsets = {G
 local function getOffset(t, ...) local c = t for _, k in ipairs({...}) do if type(c) ~= "table" or c[k] == nil then return nil end c = c[k] end return tonumber(c,16) end
 local ScreenGuiEnabled, HoldDuration = getOffset(raw,"Offsets","GuiObject","ScreenGui_Enabled") or 0x4cc, getOffset(raw,"Offsets","ProximityPrompt","HoldDuration") or 0x138
 
--- Label setup
 local dayLabel, companyMoneyLabel, vegLabel, fishLabel, humanFleshLabel, riceLabel, dishLabel, reviewLabel
 local Vegetables, AssortedFish, HumanFlesh, Rice
 local function ensureIngredients()
@@ -102,11 +99,8 @@ UI.AddTab("Sushi Gambit", function(tab)
     tab:Section("Player", "Left"):SliderInt("player_walkspeed", "Walk Speed", 12, 20, 20, function(v) PlayerStats.WalkSpeed.Value = v SETTINGS.PlayerWalkSpeed = v end)
 end)
 
--- Helpers
 local function path(root, ...) local o = root for _, n in ipairs({...}) do o = o and o:FindFirstChild(n) end return o end
 local function getSpawnedNPCs() local d = workspace:FindFirstChild("NpcDestination") return d and d:FindFirstChild("SpawnedNPCs") end
-
--- Static prompts (shortened)
 local PROMPT_PATHS = {
     {"Workspace","RestaurantArea","restaurant","Table","computer","ProximityPrompt"},
     {"Workspace","RestaurantArea","restaurant","mainStuff","conveyors","keypad","PromptPart","ProximityPrompt"},
@@ -140,7 +134,6 @@ scheduler:addLoop("dasherPrompt", 0.5, function()
     end
 end)
 
--- Chloroform
 local _chloroKeyHeld = false
 scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
     if not SETTINGS.Auto.ChloroformSpys.Enabled then
@@ -159,7 +152,6 @@ scheduler:addLoop("chloroRelease", 0.02, function()
     if _chloroKeyHeld then keyrelease(0x51) _chloroKeyHeld = false end
 end)
 
--- Staff detection (shortened)
 local RankCache, KnownStaff = {}, {}
 local function getGroupRank(uid)
     if RankCache[uid] then return RankCache[uid].rank, RankCache[uid].role end
@@ -196,7 +188,6 @@ pcall(function()
     end
 end)
 
--- Stat spoofing (shortened)
 local function setStat(container, name, value)
     local stat = container and container:FindFirstChild(name)
     if stat and stat.Value ~= value then stat.Value = value end
@@ -216,7 +207,6 @@ scheduler:addLoop("statSpoof", TIMINGS.stats, function()
     end
 end)
 
--- Labels (shortened)
 local _lastLabels = {}
 local labelConfigs = {
     {label = dayLabel, get = function() return "day: " .. tostring(getValue(GameData:FindFirstChild("CurrentDay"))) end, key = "day"},
@@ -238,7 +228,6 @@ scheduler:addLoop("labels", TIMINGS.labels, function()
     end
 end)
 
--- Clock (unchanged)
 local _clockWarned, _clockLastTime, _clockLabel = {}, "", nil
 task.spawn(function()
     local pg = LocalPlayer:WaitForChild("PlayerGui")
@@ -261,11 +250,10 @@ scheduler:addLoop("clock", TIMINGS.clock, function()
     if norm == "5:05AM" then _clockWarned = {} end
 end)
 
--- Washing (shortened with path helper)
 local WASH_KEYS = {Q=0x51, E=0x45, R=0x52, F=0x46}
 local _keysHolder, _washingBusy = nil, false
-scheduler:addLoop("washing", 0.1, function()
-    if _washingBusy or not SETTINGS.Auto.Washing.Enabled then return end
+scheduler:addLoop("washing", 0.04, function()
+if _washingBusy or not SETTINGS.Auto.Washing.Enabled then return end
     _washingBusy = true
     local ok, err = pcall(function()
         local gui = PlayerGui:FindFirstChild("DishWashingGui")
@@ -281,7 +269,7 @@ scheduler:addLoop("washing", 0.1, function()
             if frame:IsA("Frame") and frame.Name == "KeyTemplate" then
                 local key = frame:GetAttribute("Key")
                 local vk = key and WASH_KEYS[key]
-                if vk then keypress(vk) keyrelease(vk) task.wait(0.08) end
+                if vk then keypress(vk) keyrelease(vk) task.wait(0.035) end
             end
         end
     end)
@@ -289,7 +277,6 @@ scheduler:addLoop("washing", 0.1, function()
     _washingBusy = false
 end)
 
--- Screen alerts (shortened)
 local _alertDrawings, _notifiedNpcs = {}, {}
 local function showScreenAlert(msg, color, key)
     if _alertDrawings[key] then pcall(function() _alertDrawings[key]:Remove() end) end
@@ -339,7 +326,6 @@ scheduler:addLoop("npcPrompts", TIMINGS.npcPrompts, function()
     end
 end)
 
--- Keybinds
 local KeyState = {X=false, Z=false}
 scheduler:addLoop("keybinds", TIMINGS.keybinds, function()
     local xDown, zDown = iskeypressed(0x58), iskeypressed(0x5A)
