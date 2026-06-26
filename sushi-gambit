@@ -629,7 +629,7 @@ local function getKeysHolder()
     _keysHolder = queue:FindFirstChild("KeysHolder")
     return _keysHolder
 end
-
+local _washIndex = 1
 scheduler:addLoop("washing", TIMINGS.washing, function()
     if not SETTINGS.Auto.Washing.Enabled then
         return
@@ -642,9 +642,10 @@ scheduler:addLoop("washing", TIMINGS.washing, function()
     end
 
     local visible = memory_read("byte", gui.Address + ScreenGuiEnabled)
-    if visible ~= 1 then
+if visible ~= 1 then
+    _keysHolder = nil
     return
-    end
+end
 
     local keysHolder = getKeysHolder()
     if not keysHolder then
@@ -652,19 +653,26 @@ scheduler:addLoop("washing", TIMINGS.washing, function()
     end
 
     local children = keysHolder:GetChildren()
-    for i = 1, #children do
-        local frame = children[i]
-        if frame:IsA("Frame") and frame.Name == "KeyTemplate" then
-            local key = frame:GetAttribute("Key")
-            local vk = key and WASH_KEYS[key]
+local pressed = false
 
-            if vk then
-                keypress(vk)
-                keyrelease(vk)
-                task.wait(0.08)
-            end
+for i = 1, #children do
+    local frame = children[i]
+
+    if frame:IsA("Frame") and frame.Name == "KeyTemplate" then
+        local key = frame:GetAttribute("Key")
+        local vk = key and WASH_KEYS[key]
+
+        if vk then
+            keypress(vk)
+            keyrelease(vk)
+            pressed = true
         end
     end
+end
+
+if not pressed then
+    return
+end
 end)
 
 local KnownStaff = {}
