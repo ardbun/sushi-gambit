@@ -50,7 +50,7 @@ local TIMINGS = {
     stats = 0.5,
     labels = 0.1,
     clock = 0.1,
-    washing = 0.7,
+    washing = 0.04,
     npcAlerts = 0.5,
     npcPrompts = 0.2,
     cleanup = 60,
@@ -76,8 +76,12 @@ table.insert(Connections, RunService.Heartbeat:Connect(function(dt)
         job.timer = job.timer + dt
         if job.timer >= job.interval then
             job.timer = job.timer - job.interval
-            local ok, err = pcall(job.fn)
-            if not ok then warn("scheduler job '" .. name .. "' errored: " .. tostring(err)) end
+            task.spawn(function()
+                local ok, err = pcall(job.fn)
+                if not ok then
+                    warn("scheduler job '" .. name .. "' errored: " .. tostring(err))
+                end
+            end)
         end
     end
 end))
@@ -629,7 +633,7 @@ local function getKeysHolder()
     _keysHolder = queue:FindFirstChild("KeysHolder")
     return _keysHolder
 end
-local _washIndex = 1
+
 scheduler:addLoop("washing", TIMINGS.washing, function()
     if not SETTINGS.Auto.Washing.Enabled then
         return
@@ -642,10 +646,9 @@ scheduler:addLoop("washing", TIMINGS.washing, function()
     end
 
     local visible = memory_read("byte", gui.Address + ScreenGuiEnabled)
-if visible ~= 1 then
-    _keysHolder = nil
-    return
-end
+    if visible ~= 1 then
+        return
+    end
 
     local keysHolder = getKeysHolder()
     if not keysHolder then
@@ -653,26 +656,19 @@ end
     end
 
     local children = keysHolder:GetChildren()
-local pressed = false
+    for i = 1, #children do
+        local frame = children[i]
+        if frame:IsA("Frame") and frame.Name == "KeyTemplate" then
+            local key = frame:GetAttribute("Key")
+            local vk = key and WASH_KEYS[key]
 
-for i = 1, #children do
-    local frame = children[i]
-
-    if frame:IsA("Frame") and frame.Name == "KeyTemplate" then
-        local key = frame:GetAttribute("Key")
-        local vk = key and WASH_KEYS[key]
-
-        if vk then
-            keypress(vk)
-            keyrelease(vk)
-            pressed = true
+            if vk then
+                keypress(vk)
+                keyrelease(vk)
+                task.wait(0.04)
+            end
         end
     end
-end
-
-if not pressed then
-    return
-end
 end)
 
 local KnownStaff = {}
