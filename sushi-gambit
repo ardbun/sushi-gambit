@@ -598,24 +598,31 @@ scheduler:addLoop("clock", TIMINGS.clock, function()
     if norm == "5:05AM" then _clockWarned = {} end
 end)
 
-local WASH_KEYS = {Q = 0x51, E = 0x45, R = 0x52, F = 0x46}
+local WASH_KEYS = {
+    Q = 0x51,
+    E = 0x45,
+    R = 0x52,
+    F = 0x46,
+}
 
 local _keysHolder = nil
-local _washArmed = false
-local _lastTemplateCount = 0
 
 local function getKeysHolder()
     if _keysHolder and _keysHolder.Parent then
         return _keysHolder
     end
+
     _keysHolder = nil
 
     local gui = PlayerGui:FindFirstChild("DishWashingGui")
     if not gui then return nil end
+
     local mainFrame = gui:FindFirstChild("MainFrame")
     if not mainFrame then return nil end
+
     local queueBar = mainFrame:FindFirstChild("QueueBarFrame")
     if not queueBar then return nil end
+
     local queue = queueBar:FindFirstChild("Queue")
     if not queue then return nil end
 
@@ -625,17 +632,18 @@ end
 
 scheduler:addLoop("washing", TIMINGS.washing, function()
     if not SETTINGS.Auto.Washing.Enabled then
-        _washArmed = false
-        _lastTemplateCount = 0
         return
     end
 
     local gui = PlayerGui:FindFirstChild("DishWashingGui")
-    if not gui then
+    if not gui or not gui.Address then
         _keysHolder = nil
-        _washArmed = false
-        _lastTemplateCount = 0
         return
+    end
+
+    local visible = memory_read("byte", gui.Address + ScreenGuiEnabled)
+    if visible ~= 1 then
+    return
     end
 
     local keysHolder = getKeysHolder()
@@ -643,53 +651,19 @@ scheduler:addLoop("washing", TIMINGS.washing, function()
         return
     end
 
-    local activeKeys = {}
-    local templateCount = 0
+    local children = keysHolder:GetChildren()
+    for i = 1, #children do
+        local frame = children[i]
+        if frame:IsA("Frame") and frame.Name == "KeyTemplate" then
+            local key = frame:GetAttribute("Key")
+            local vk = key and WASH_KEYS[key]
 
-    for _, v in pairs(keysHolder:GetChildren()) do
-        if v:IsA("Frame") and v.Name == "KeyTemplate" then
-            templateCount = templateCount + 1
-
-            local container = v:FindFirstChild("Container")
-            local label = container and container:FindFirstChild("TextLabel")
-            local key = label and label.Text
-
-            if key and WASH_KEYS[key] then
-                table.insert(activeKeys, key)
+            if vk then
+                keypress(vk)
+                keyrelease(vk)
+                task.wait(0.08)
             end
         end
-    end
-
-    -- Arm when queue resets or sharply drops, meaning a fresh wash cycle started
-    if templateCount == 0 or templateCount < _lastTemplateCount then
-        _washArmed = true
-    end
-
-    _lastTemplateCount = templateCount
-
-    if not _washArmed then
-        return
-    end
-
-    local kitchen = workspace:FindFirstChild("Kitchen")
-    local sink = kitchen and kitchen:FindFirstChild("TheSink")
-    if not sink then
-        return
-    end
-
-    local prompt = sink:FindFirstChild("ProximityPrompt", true)
-    if prompt and prompt.Address then
-        memory_write("byte", prompt.Address + PromptEnabled, 0)
-    end
-
-    for _, key in ipairs(activeKeys) do
-        local vk = WASH_KEYS[key]
-        keypress(vk)
-        keyrelease(vk)
-    end
-
-    if templateCount >= 17 then
-        _washArmed = false
     end
 end)
 
