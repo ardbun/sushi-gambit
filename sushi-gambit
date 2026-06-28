@@ -169,9 +169,77 @@ local function getGroupRank(uid)
 end
 scheduler:addLoop("rankCacheClear", TIMINGS.rankCacheClear, function() table.clear(RankCache) end)
 
+local OffsetCache, UserIdOffset = nil, nil
+
+local function LoadStaffOffsets()
+    if UserIdOffset then return end
+
+    local Http = game:GetService("HttpService")
+
+    local urls = {
+        "https://imtheo.lol/Offsets/Offsets.json",
+        "https://api.codetabs.com/v1/proxy?quest=https://imtheo.lol/Offsets/Offsets.json",
+        "https://imtheo.lol/Offsets/OffsetsHex.json"
+    }
+
+    local data, body
+
+    for _, url in ipairs(urls) do
+        local ok, result = pcall(function()
+            return game:HttpGet(url)
+        end)
+
+        if ok and result and result ~= "" then
+            body = result
+
+            local okJson, decoded = pcall(function()
+                return Http:JSONDecode(result)
+            end)
+
+            if okJson then
+                data = decoded
+            end
+
+            break
+        end
+    end
+
+    if data then
+        if data.Player and data.Player.UserId then
+            UserIdOffset = tonumber(data.Player.UserId)
+        elseif data.Offsets and data.Offsets.Player and data.Offsets.Player.UserId then
+            local v = data.Offsets.Player.UserId
+            UserIdOffset = type(v) == "string" and tonumber(v, 16) or tonumber(v)
+        end
+    end
+
+    if not UserIdOffset and body then
+        local dec = body:match('"Player"%s*:%s*{.-"UserId"%s*:%s*(%d+)')
+        if dec then
+            UserIdOffset = tonumber(dec)
+        else
+            local hex = body:match('"Player"%s*:%s*{.-"UserId"%s*:%s*"0x([%da-fA-F]+)"')
+            if hex then
+                UserIdOffset = tonumber(hex, 16)
+            end
+        end
+    end
+end
+
+local function GetUserId(player)
+    if not UserIdOffset or not player or not player.Address then
+        return nil
+    end
+
+    local ok, uid = pcall(memory_read, "uintptr_t", player.Address + UserIdOffset)
+    return (ok and uid and uid ~= 0) and uid or nil
+end
+
+LoadStaffOffsets()
+
 local function CheckStaff(player)
     task.spawn(function()
-        local uid = player.UserId
+        local uid = GetUserId(player)
         if not uid then return end
         local rank, role = getGroupRank(uid)
         if rank >= SETTINGS.MinStaffRank and not KnownStaff[uid] then
