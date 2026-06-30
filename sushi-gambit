@@ -8,7 +8,7 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 local memory_read, memory_write, keypress, keyrelease, iskeypressed = memory_read or function() return 0 end, memory_write or function() end, keypress or function() end, keyrelease or function() end, iskeypressed or function() return false end
 
-local SETTINGS = { Auto = { Washing = {Enabled = false}, ChloroformSpys = {Enabled = false} }, Cheat = { Spoof = {Greenbar = true, SpongeEffectiveness = true}, Instant = {CleanDish = true, SeatCustomer = true} }, Notify = {AdminJoin = true}, PlayerWalkSpeed = 20, StaffGroupId = 33171215, MinStaffRank = 245 }
+local SETTINGS = { Auto = { Washing = {Enabled = false}, ChloroformSpys = {Enabled = false} }, Cheat = { Spoof = {Greenbar = true, SpongeEffectiveness = true}, Instant = {CleanDish = true, SeatCustomer = true} }, Notify = {AdminJoin = true}, PlayerWalkSpeed = 20, StaffGroupId = 33171215, MinStaffRank = 245, BlackoutComputer = false }
 local ESP_SETTINGS = { Labels = { day = true, companymoney = true, vegstock = true, fishstock = true, humanfleshstock = true, ricestock = true, dishes = true } }
 local TIMINGS = { staticPrompts = 5, chloroform = 0.03, stats = 0.5, labels = 0.1, clock = 0.1, washing = 0.04, npcAlerts = 0.5, npcPrompts = 0.2, cleanup = 60, keybinds = 0.03, rankCacheClear = 1800 }
 
@@ -67,7 +67,9 @@ task.spawn(function() local ok, r = pcall(function() return Http:JSONDecode(game
 local fetchStart = tick() repeat task.wait(0.1) until fetchDone or tick()-fetchStart > 5
 if not raw then warn("Offset fetch failed, using fallbacks") raw = {Offsets = {GuiObject = {ScreenGui_Enabled = "0x4cc"}, ProximityPrompt = {HoldDuration = "0x138", Enabled = "0x14e"}}} end
 local function getOffset(t, ...) local c = t for _, k in ipairs({...}) do if type(c) ~= "table" or c[k] == nil then return nil end c = c[k] end return tonumber(c,16) end
-local ScreenGuiEnabled, HoldDuration = getOffset(raw,"Offsets","GuiObject","ScreenGui_Enabled") or 0x4cc, getOffset(raw,"Offsets","ProximityPrompt","HoldDuration") or 0x138
+local ScreenGuiEnabled = getOffset(raw,"Offsets","GuiObject","ScreenGui_Enabled") or 0x4cc
+local HoldDuration = getOffset(raw,"Offsets","ProximityPrompt","HoldDuration") or 0x138
+local PromptEnabled = getOffset(raw,"Offsets","ProximityPrompt","Enabled") or 0x14e
 
 local dayLabel, companyMoneyLabel, vegLabel, fishLabel, humanFleshLabel, riceLabel, dishLabel, reviewLabel
 local Vegetables, AssortedFish, HumanFlesh, Rice
@@ -97,6 +99,12 @@ task.wait(2) createLabels()
 
 UI.AddTab("Sushi Gambit", function(tab)
     tab:Section("Player", "Left"):SliderInt("player_walkspeed", "Walk Speed", 12, 20, 20, function(v) PlayerStats.WalkSpeed.Value = v SETTINGS.PlayerWalkSpeed = v end)
+
+    local promptSec = tab:Section("Prompts", "Left")
+    promptSec:Toggle("computer_blackout", "Use Computer During Blackout", false, function(v)
+        SETTINGS.BlackoutComputer = v
+        notify("Use Computer During Blackout: " .. tostring(v), "Sushi Gambit", 3)
+    end)
 end)
 
 local function path(root, ...) local o = root for _, n in ipairs({...}) do o = o and o:FindFirstChild(n) end return o end
@@ -119,6 +127,16 @@ local function applyStaticPrompts()
 end
 applyStaticPrompts()
 scheduler:addLoop("staticPrompts", TIMINGS.staticPrompts, applyStaticPrompts)
+
+scheduler:addLoop("computerBlackout", 0.1, function()
+    if not SETTINGS.BlackoutComputer then return end
+    pcall(function()
+        local prompt = workspace.RestaurantArea.restaurant.Table.computer.ProximityPrompt
+        if prompt and prompt.Address then
+            memory_write("byte", prompt.Address + PromptEnabled, 1)
+        end
+    end)
+end)
 
 scheduler:addLoop("dasherPrompt", 0.5, function()
     local folder = getSpawnedNPCs()
