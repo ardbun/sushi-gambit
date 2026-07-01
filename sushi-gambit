@@ -16,7 +16,7 @@ function Windows:Edit(p,s)self.Position,self.Size=p or self.Position,s or self.S
 function Windows:Delete()for _,e in ipairs(self.Elements)do pcall(e.Remove,e)end for _,l in ipairs(self.Labels)do pcall(l.drawing.Remove,l.drawing)end self.Elements,self.Labels={},{}end
 function Windows:AddLabel(t,c)local d=Drawing.new("Text")d.Text=t or"" d.Size=22 d.Color=c or Color3.new(1,1,1)d.Outline=false d.Visible=true d.Font=Drawing.Fonts.System d.Position=self.Position+Vector2.new(12,38+#self.Labels*22)local entry={drawing=d}table.insert(self.Labels,entry)local h={}function h:SetText(t)d.Text=t end function h:Delete()pcall(d.Remove,d)for i,e in ipairs(self.Labels)do if e==entry then table.remove(self.Labels,i)break end end end return h end
 local bg=Drawing.new("Square")bg.Position,bg.Size,bg.Color,bg.Filled,bg.Visible=Windows.Position,Windows.Size,Color3.fromRGB(15,15,15),true,true table.insert(Windows.Elements,bg)
-local title=Drawing.new("Text")title.Text,title.Size,title.Position,title.Color,title.Outline,title.Visible,title.Font="Day",20,Windows.Position+Vector2.new(12,12),Color3.new(1,1,1),false,true,Drawing.Fonts.System table.insert(Windows.Elements,title)
+local title=Drawing.new("Text")title.Text,title.Size,title.Position,title.Color,title.Outline,title.Visible,title.Font="day",20,Windows.Position+Vector2.new(12,12),Color3.new(1,1,1),false,true,Drawing.Fonts.System table.insert(Windows.Elements,title)
 Windows:Show(true)
 local L,last={},{}
 local function lab(k,t,c)L[k]=Windows:AddLabel(t,c)end
