@@ -10,14 +10,13 @@ function scheduler:addLoop(n,i,f)self._loops[n]={interval=i,timer=0,fn=f}end
 function scheduler:remove(n)self._loops[n]=nil end
 function scheduler:clearAll()for n in pairs(self._loops)do self._loops[n]=nil end end
 table.insert(Connections,RunS.Heartbeat:Connect(function(dt)for n,j in pairs(scheduler._loops)do j.timer=j.timer+dt if j.timer>=j.interval then j.timer=j.timer-j.interval task.spawn(function()local ok,err=pcall(j.fn)if not ok then warn("job '"..n.."': "..tostring(err))end end)end end end))
-local Windows={Elements={},Labels={},Position=Vector2.new(1695,845),Size=Vector2.new(195,230)}
+local Windows={Elements={},Labels={},Position=Vector2.new(1695,845),Size=Vector2.new(195,230),Ready=false}
 function Windows:Show(v)for _,e in ipairs(self.Elements)do e.Visible=v end for _,l in ipairs(self.Labels)do l.drawing.Visible=v end end
 function Windows:Edit(p,s)self.Position,self.Size=p or self.Position,s or self.Size end
 function Windows:Delete()for _,e in ipairs(self.Elements)do pcall(e.Remove,e)end for _,l in ipairs(self.Labels)do pcall(l.drawing.Remove,l.drawing)end self.Elements,self.Labels={},{}end
-function Windows:AddLabel(t,c)local d=Drawing.new("Text")d.Text=t or"" d.Size=22 d.Color=c or Color3.new(1,1,1)d.Outline=false d.Visible=true d.Font=Drawing.Fonts.System d.Position=self.Position+Vector2.new(12,38+#self.Labels*22)local entry={drawing=d}table.insert(self.Labels,entry)local h={}function h:SetText(t)d.Text=t end function h:Delete()pcall(d.Remove,d)for i,e in ipairs(self.Labels)do if e==entry then table.remove(self.Labels,i)break end end end return h end
-local bg=Drawing.new("Square")bg.Position,bg.Size,bg.Color,bg.Filled,bg.Visible=Windows.Position,Windows.Size,Color3.fromRGB(15,15,15),true,true table.insert(Windows.Elements,bg)
-local title=Drawing.new("Text")title.Text,title.Size,title.Position,title.Color,title.Outline,title.Visible,title.Font="day",20,Windows.Position+Vector2.new(12,12),Color3.new(1,1,1),false,true,Drawing.Fonts.System table.insert(Windows.Elements,title)
-Windows:Show(true)
+function Windows:AddLabel(t,c)local d=Drawing.new("Text")d.Text=t or"" d.Size=22 d.Color=c or Color3.new(1,1,1)d.Outline=false d.Visible=false d.Font=Drawing.Fonts.System local x,y=math.floor(self.Position.X+12),math.floor(self.Position.Y+38+#self.Labels*22)d.Position=Vector2.new(x,y)local entry={drawing=d}table.insert(self.Labels,entry)local h={}function h:SetText(t)d.Text=t end function h:Delete()pcall(d.Remove,d)for i,e in ipairs(self.Labels)do if e==entry then table.remove(self.Labels,i)break end end end return h end
+local bg=Drawing.new("Square")local bx,by=math.floor(Windows.Position.X),math.floor(Windows.Position.Y)bg.Position,bg.Size,bg.Color,bg.Filled,bg.Visible=Vector2.new(bx,by),Vector2.new(math.floor(Windows.Size.X),math.floor(Windows.Size.Y)),Color3.fromRGB(15,15,15),true,false table.insert(Windows.Elements,bg)
+local title=Drawing.new("Text")local tx,ty=math.floor(Windows.Position.X+12),math.floor(Windows.Position.Y+12)title.Text,title.Size,title.Position,title.Color,title.Outline,title.Visible,title.Font="day",20,Vector2.new(tx,ty),Color3.new(1,1,1),false,false,Drawing.Fonts.System table.insert(Windows.Elements,title)
 local L,last={},{}
 local function lab(k,t,c)L[k]=Windows:AddLabel(t,c)end
 local function ul(k,t)if L[k]and last[k]~=t then last[k]=t L[k]:SetText(t)end end
@@ -55,7 +54,7 @@ scheduler:addLoop("chloroform",TIMINGS.chloroform,function()
 if not SETTINGS.Auto.Chloroform then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
 local char=LocalPlayer.Character if not char then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
 local tool=char:FindFirstChild("Chloroform Spray")if not tool then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
-local gui=PlayerGui:FindFirstChild("ChloroformChallenge")if not gui then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
+local gui = PlayerGui:FindFirstChild("ChloroformGui")if not gui then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
 if gui.Address and mr("byte",gui.Address+ScreenGuiEnabled)~=1 then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
 local bf=gui:FindFirstChild("ButtonToHitFrame",true)if not bf then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
 local cont=bf:FindFirstChild("Container")if not cont then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
@@ -67,7 +66,23 @@ scheduler:addLoop("chloroRelease",0.02,function()if chloroHeld then pcall(functi
 local PStats={StaminaUsageMultiplier=-1,StaminaGainMultiplier=100,StaminaUsageMultiplierNonHarvestRelated=0,WalkSpeed=24,SprintSpeed=36,SushiValueMultiplier=15,EffectiveServiceLevel=9999,ManualSeatingBoost=10,TipRevenueMultiplier=15,PersonalIncomeMultiplier=10,Charisma=10}
 local GStats={PatienceMultiplier=3,TipChanceMultiplier=5,MaxLineSize=10,SpoilageRate=0.3,MaxStockMultiplier=1.5}
 scheduler:addLoop("statSpoof",TIMINGS.stats,function()pcall(function()if SETTINGS.Cheat.Greenbar then set(PlayerStats,"EffectiveCookingLevel",1000)end if SETTINGS.Cheat.CleanDish then set(PlayerStats,"EffectiveCleaningLevel",9999)end if SETTINGS.Cheat.SpongeEffect then set(PlayerStats,"SpongeEffectiveness",9999)end for n,x in pairs(PStats)do set(PlayerStats,n,x)end for n,x in pairs(GStats)do set(GameData,n,x)end local stats=LocalPlayer:FindFirstChild("Stats")if stats then set(stats,"Stamina",100)end end)end)
-scheduler:addLoop("labels",TIMINGS.labels,function()pcall(function()ensureIngredients()ul("meat","meat: "..v(HumanFlesh,"Stock",0).."/"..v(HumanFlesh,"MaxStock",1))ul("fish","fish: "..v(AssortedFish,"Stock",0).."/"..v(AssortedFish,"MaxStock",1))ul("rice","rice: "..v(Rice,"Stock",0).."/"..v(Rice,"MaxStock",1))ul("veg","veggies: "..v(Vegetables,"Stock",0).."/"..v(Vegetables,"MaxStock",1))ul("money",("money: %.2f"):format(v(GameData,"CompanyMoney",0)))local rs=GameData:FindFirstChild("CurrentReviewScore")ul("review",rs and ("rating: %.2f"):format(rs.Value)or"rating: 0.00")local sink=c(workspace,"Kitchen","TheSink")ul("dishes","dishes: "..v(sink,"CleanDishAmount",0))local day=GameData:FindFirstChild("CurrentDay")if day then title.Text="day "..tostring(day.Value)end end)end)
+local dataReady=false
+scheduler:addLoop("labels",TIMINGS.labels,function()pcall(function()
+ensureIngredients()
+if not dataReady and Vegetables and AssortedFish and HumanFlesh and Rice then
+dataReady=true
+Windows:Show(true)
+end
+if not dataReady then return end
+ul("meat","meat: "..v(HumanFlesh,"Stock",0).."/"..v(HumanFlesh,"MaxStock",1))
+ul("fish","fish: "..v(AssortedFish,"Stock",0).."/"..v(AssortedFish,"MaxStock",1))
+ul("veg","veggies: "..v(Vegetables,"Stock",0).."/"..v(Vegetables,"MaxStock",1))
+ul("rice","rice: "..v(Rice,"Stock",0).."/"..v(Rice,"MaxStock",1))
+ul("money",("money: %.2f"):format(v(GameData,"CompanyMoney",0)))
+local rs=GameData:FindFirstChild("CurrentReviewScore")ul("review",rs and ("rating: %.2f"):format(rs.Value)or"rating: 0.00")
+local sink=c(workspace,"Kitchen","TheSink")ul("dishes","dishes: "..v(sink,"CleanDishAmount",0))
+local day=GameData:FindFirstChild("CurrentDay")if day then title.Text="day "..tostring(day.Value)end
+end)end)
 local clockWarned,clockLastTime,clockLabel={},"",nil
 scheduler:addLoop("clock",TIMINGS.clock,function()if not clockLabel then local pg=LocalPlayer:FindFirstChild("PlayerGui")if pg then local cg=pg:FindFirstChild("clockGui")if cg then local cf=cg:FindFirstChild("clockFrame")if cf then clockLabel=cf:FindFirstChild("clockLabel")end end end if not clockLabel then return end end pcall(function()local t=(clockLabel.Text or""):gsub("%s+",""):gsub("%[",""):gsub("%]",""):gsub("^0",""):upper()if t==clockLastTime then return end clockLastTime=t if({["4:40PM"]=true,["4:45PM"]=true,["4:50PM"]=true,["4:55PM"]=true})[t]and not clockWarned[t]then clockWarned[t]=true nt("remove sun tat","reminder",5)end if t=="5:05AM"then clockWarned={}end end)end)
 local WASH_KEYS={Q=0x51,E=0x45,R=0x52,F=0x46}
@@ -81,7 +96,7 @@ scheduler:addLoop("rankCacheClear",TIMINGS.rankCache,function()RankCache={}end)
 local function CheckStaff(p)if not p or not p.Parent then return end local uid=p.UserId if not uid or KnownStaff[uid]then return end local rank,role=0,"Unknown"if RankCache[uid]then rank,role=RankCache[uid].rank,RankCache[uid].role else rank,role=getGroupRank(uid)RankCache[uid]={rank=rank,role=role}end if rank>=SETTINGS.Staff.MinRank and not KnownStaff[uid]then KnownStaff[uid]=true if SETTINGS.Staff.Notify then nt(p.Name.." ("..role..") joined!","STAFF ALERT",8)end print("[STAFF] "..p.Name.." | "..role.." (Rank "..rank..")")if SETTINGS.Staff.Kick then p:Kick("Staff-only access.")end end end
 scheduler:addLoop("staffPoll",TIMINGS.staffPoll,function()for _,p in pairs(Players:GetPlayers())do CheckStaff(p)end end)for _,p in pairs(Players:GetPlayers())do CheckStaff(p)end
 local alertDrawings,notifiedNpcs={},{}
-local function showAlert(m,c,k)if alertDrawings[k]then pcall(alertDrawings[k].Remove,alertDrawings[k])end local t=Drawing.new("Text")t.Text=m t.Size=28 t.Color=c or Color3.new(1,1,1)t.Outline=false t.Center=true t.Font=Drawing.Fonts.SystemBold local cam=workspace.CurrentCamera t.Position=cam and Vector2.new(cam.ViewportSize.X/2,144)or Vector2.new(960,144)t.Visible=true alertDrawings[k]=t end
+local function showAlert(m,c,k)if alertDrawings[k]then pcall(alertDrawings[k].Remove,alertDrawings[k])end local t=Drawing.new("Text")t.Text=m t.Size=28 t.Color=c or Color3.new(1,1,1)t.Outline=true t.Center=true t.Font=Drawing.Fonts.SystemBold local cam=workspace.CurrentCamera local x,y=cam and math.floor(cam.ViewportSize.X/2)or 960,144 t.Position=Vector2.new(x,y)t.Visible=true alertDrawings[k]=t end
 local function removeAlert(k)if alertDrawings[k]then pcall(alertDrawings[k].Remove,alertDrawings[k])alertDrawings[k]=nil end end
 scheduler:addLoop("npcAlerts",TIMINGS.npcAlerts,function()local f=c(workspace,"NpcDestination","SpawnedNPCs")if not f then return end local cSeen,iSeen=false,false each(f,function(n)local a=n.Address if a then local s=n:GetAttribute("CurrentState")local isC=n:GetAttribute("Critic")==true and s~="Leaving"and s~="Left"and s~="Done"local isI=n:GetAttribute("Behavior")=="Inspector"if isC then cSeen=true end if isI then iSeen=true end if(isC or isI)and not notifiedNpcs[a]then notifiedNpcs[a]=true if isI then showAlert("health inspector",Color3.fromRGB(0,255,0),"inspector")else showAlert("critic",Color3.fromRGB(255,252,0),"critic")end end if not(isC or isI)then notifiedNpcs[a]=nil end end end)if not cSeen then removeAlert("critic")end if not iSeen then removeAlert("inspector")end end)
 scheduler:addLoop("npcPrompts",TIMINGS.npcPrompts,function()if not SETTINGS.Cheat.SeatCustomer then return end each(c(workspace,"NpcDestination","SpawnedNPCs"),function(n)local t=n:FindFirstChild("Torso")if t then local p=t:FindFirstChild("WaitProximityPrompt")if p and p.Address then pcall(function()mw("float",p.Address+HoldDuration,0)end)end end end)end)
