@@ -4,14 +4,14 @@ local LocalPlayer=Players.LocalPlayer
 local GameData,PlayerStats,PlayerGui=RS:WaitForChild("GameData"),LocalPlayer:WaitForChild("PlayerStats"),LocalPlayer:WaitForChild("PlayerGui")
 local mr,mw,kp,kr,ikp=memory_read or function()return 0 end,memory_write or function()end,keypress or function()end,keyrelease or function()end,iskeypressed or function()return false end
 local FONT=Drawing.Fonts.SystemBold
-local SETTINGS={Auto={Washing=false,Chloroform=false},Cheat={CleanDish=true,SeatCustomer=true,Greenbar=true,SpongeEffect=true},Staff={GroupId=33171215,MinRank=245,Notify=true}}
+local SETTINGS={Auto={Washing={Enabled=false},Chloroform={Enabled=false}},Cheat={CleanDish=true,SeatCustomer=true,Greenbar=true,SpongeEffect=true},Staff={GroupId=33171215,MinRank=245,Notify=true}}
 local TIMINGS={staticPrompts=5,chloroform=0.05,stats=0.5,labels=0.1,clock=0.1,washing=0.04,npcAlerts=0.5,npcPrompts=0.2,cleanup=60,keybinds=0.03,rankCache=1800,staffPoll=2}
 local scheduler,Connections={_loops={}},{}
 function scheduler:addLoop(n,i,f)self._loops[n]={interval=i,timer=0,fn=f}end
 function scheduler:remove(n)self._loops[n]=nil end
 function scheduler:clearAll()for n in pairs(self._loops)do self._loops[n]=nil end end
 local function runLoop(n,j)local ok,err=pcall(j.fn)if not ok then warn("job '"..n.."': "..tostring(err))end end
-table.insert(Connections,RunS.Heartbeat:Connect(function(dt)for n,j in pairs(scheduler._loops)do j.timer=j.timer+dt if j.timer>=j.interval then j.timer=j.timer-j.interval runLoop(n,j)end end end))
+table.insert(Connections,RunS.Heartbeat:Connect(function(dt)for n,j in pairs(scheduler._loops)do j.timer=j.timer+dt if j.timer>=j.interval then j.timer=j.timer-j.interval task.spawn(function()runLoop(n,j)end)end end end))
 local Windows={Elements={},Labels={},Position=Vector2.new(1695,845),Size=Vector2.new(195,230),Ready=false}
 function Windows:Show(v)for _,e in ipairs(self.Elements)do e.Visible=v end for _,l in ipairs(self.Labels)do l.drawing.Visible=v end end
 function Windows:Edit(p,s)self.Position,self.Size=p or self.Position,s or self.Size
@@ -56,21 +56,17 @@ local function applyStaticPrompts()for _,p in ipairs(PROMPT_PATHS)do local o=gam
 applyStaticPrompts()scheduler:addLoop("staticPrompts",TIMINGS.staticPrompts,applyStaticPrompts)
 scheduler:addLoop("dasherPrompt",0.5,function()each(c(workspace,"NpcDestination","SpawnedNPCs"),function(n)local t=n:FindFirstChild("Torso")if t then local p=t:FindFirstChild("CatchDasherPrompt")if p and p.Address then pcall(function()mw("float",p.Address+HoldDuration,0)end)end end end)end)
 local chloroHeld=false
-local chloroKey=0
-local keyMap={Q=0x51,E=0x45,R=0x52,F=0x46}
 scheduler:addLoop("chloroform",TIMINGS.chloroform,function()
-if not SETTINGS.Auto.Chloroform then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
-local char=LocalPlayer.Character if not char then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
-local tool=char:FindFirstChild("Chloroform Spray")if not tool then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
-local gui=PlayerGui:FindFirstChild("ChloroformChallenge")if not gui then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
-if gui.Address and mr("byte",gui.Address+ScreenGuiEnabled)~=1 then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
-local bf=gui:FindFirstChild("ButtonToHitFrame",true)if not bf then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
-local cont=bf:FindFirstChild("Container")if not cont then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
-local lbl=cont:FindFirstChild("TextLabel")if not lbl or not lbl.Text then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
-local vk=keyMap[lbl.Text:upper():gsub("%s+","")]if not vk then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
-if not chloroHeld then pcall(function()kp(vk)end)chloroHeld=true chloroKey=vk end
+if not SETTINGS.Auto.Chloroform.Enabled then
+if chloroHeld then pcall(function()kr(0x51)end)chloroHeld=false end
+return end
+local char=LocalPlayer.Character
+if char and char:FindFirstChild("Chloroform Spray")then
+if not chloroHeld then pcall(function()kp(0x51)end)chloroHeld=true end
+else
+if chloroHeld then pcall(function()kr(0x51)end)chloroHeld=false end
+end
 end)
-scheduler:addLoop("chloroRelease",0.02,function()if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end end)
 local PStats={StaminaUsageMultiplier=-1,StaminaGainMultiplier=100,StaminaUsageMultiplierNonHarvestRelated=0,WalkSpeed=24,SprintSpeed=36,SushiValueMultiplier=15,EffectiveServiceLevel=9999,ManualSeatingBoost=10,TipRevenueMultiplier=15,PersonalIncomeMultiplier=10,Charisma=10}
 local GStats={PatienceMultiplier=3,TipChanceMultiplier=5,MaxLineSize=10,SpoilageRate=0.3,MaxStockMultiplier=1.5}
 scheduler:addLoop("statSpoof",TIMINGS.stats,function()pcall(function()if SETTINGS.Cheat.Greenbar then set(PlayerStats,"EffectiveCookingLevel",1000)end if SETTINGS.Cheat.CleanDish then set(PlayerStats,"EffectiveCleaningLevel",9999)end if SETTINGS.Cheat.SpongeEffect then set(PlayerStats,"SpongeEffectiveness",9999)end for n,x in pairs(PStats)do set(PlayerStats,n,x)end for n,x in pairs(GStats)do set(GameData,n,x)end local stats=LocalPlayer:FindFirstChild("Stats")if stats then set(stats,"Stamina",100)end end)end)
@@ -94,10 +90,30 @@ end)end)
 local clockWarned,clockLastTime,clockLabel={},"",nil
 scheduler:addLoop("clock",TIMINGS.clock,function()if not clockLabel then local pg=LocalPlayer:FindFirstChild("PlayerGui")if pg then local cg=pg:FindFirstChild("clockGui")if cg then local cf=cg:FindFirstChild("clockFrame")if cf then clockLabel=cf:FindFirstChild("clockLabel")end end end if not clockLabel then return end end pcall(function()local t=(clockLabel.Text or""):gsub("%s+",""):gsub("%[",""):gsub("%]",""):gsub("^0",""):upper()if t==clockLastTime then return end clockLastTime=t if({["4:40PM"]=true,["4:45PM"]=true,["4:50PM"]=true,["4:55PM"]=true})[t]and not clockWarned[t]then clockWarned[t]=true nt("remove sun tat","reminder",5)end if t=="5:05AM"then clockWarned={}end end)end)
 local WASH_KEYS={Q=0x51,E=0x45,R=0x52,F=0x46}
-local WashBusy,LastWash,WashDelay=false,0,0.1
-local function shouldWash()if WashBusy then return false end if not SETTINGS.Auto.Washing then return false end if isrbxactive and not isrbxactive()then return false end local gui=PlayerGui:FindFirstChild("DishWashingGui")if not gui or not gui.Address then return false end if mr("byte",gui.Address+ScreenGuiEnabled)~=1 then return false end local sink=workspace:FindFirstChild("Kitchen")and workspace.Kitchen:FindFirstChild("TheSink")if sink and sink:FindFirstChild("DirtyDishAmount")and sink.DirtyDishAmount.Value<=0 then return false end return gui end
-local function washTick()local gui=shouldWash()if not gui then return end if tick()-LastWash<WashDelay then return end WashBusy=true LastWash=tick()local ok,err=pcall(function()local keys=c(gui,"MainFrame","QueueBarFrame","Queue","KeysHolder")if keys then local children=keys:GetChildren()for i=1,#children do local v=children[i]if v:IsA("Frame")and v.Name=="KeyTemplate"then local l=c(v,"Container","TextLabel")if l then local key=l.Text:upper():gsub("%s+","")local vk=WASH_KEYS[key]if vk then pcall(function()kp(vk)task.wait(0.05)kr(vk)end)end end end end end end)if not ok then warn("wash error: "..tostring(err))end WashBusy=false end
-scheduler:addLoop("washing",TIMINGS.washing,washTick)
+local _keysHolder,_washingBusy=nil,false
+local function path(root,...)local o=root for _,n in ipairs({...})do o=o and o:FindFirstChild(n)end return o end
+scheduler:addLoop("washing",TIMINGS.washing,function()
+if _washingBusy or not SETTINGS.Auto.Washing.Enabled then return end
+_washingBusy=true
+local ok,err=pcall(function()
+local gui=PlayerGui:FindFirstChild("DishWashingGui")
+if not gui or not gui.Address then _keysHolder=nil return end
+local visible=mr("byte",gui.Address+ScreenGuiEnabled)
+if visible~=1 then _keysHolder=nil return end
+local keysHolder=_keysHolder and _keysHolder.Parent and _keysHolder or path(PlayerGui,"DishWashingGui","MainFrame","QueueBarFrame","Queue","KeysHolder")
+_keysHolder=keysHolder
+if not keysHolder then return end
+for _,v in ipairs(keysHolder:GetChildren())do
+if v:IsA("Frame")and v.Name=="KeyTemplate"then
+local key=v:GetAttribute("Key")
+local vk=key and WASH_KEYS[key]
+if vk then kp(vk)kr(vk) task.wait(0.035) end
+end
+end
+end)
+if not ok then warn("washing error: "..tostring(err))end
+_washingBusy=false
+end)
 local RankCache,KnownStaff={},{}
 local function getGroupRank(uid)local s,r=pcall(game.HttpGet,game,"https://groups.roblox.com/v2/users/"..uid.."/groups/roles")if not s or r==""then return 0,"Unknown"end local ok,d=pcall(Http.JSONDecode,Http,r)if not ok or not d or not d.data then return 0,"Unknown"end for _,g in pairs(d.data)do if g.group and g.group.id==SETTINGS.Staff.GroupId then return g.role.rank,g.role.name end end return 0,"Unknown"end
 scheduler:addLoop("rankCacheClear",TIMINGS.rankCache,function()RankCache={}end)
@@ -110,6 +126,6 @@ scheduler:addLoop("npcAlerts",TIMINGS.npcAlerts,function()local f=c(workspace,"N
 scheduler:addLoop("npcPrompts",TIMINGS.npcPrompts,function()if not SETTINGS.Cheat.SeatCustomer then return end each(c(workspace,"NpcDestination","SpawnedNPCs"),function(n)local t=n:FindFirstChild("Torso")if t then local p=t:FindFirstChild("WaitProximityPrompt")if p and p.Address then pcall(function()mw("float",p.Address+HoldDuration,0)end)end end end)end)
 scheduler:addLoop("cleanup",TIMINGS.cleanup,function()notifiedNpcs={}end)
 local KeyState={X=false,Z=false}
-scheduler:addLoop("keybinds",TIMINGS.keybinds,function()local xDown,zDown=ikp(0x58),ikp(0x5A)if xDown and not KeyState.X then KeyState.X=true SETTINGS.Auto.Chloroform=not SETTINGS.Auto.Chloroform nt("Chloroform: "..(SETTINGS.Auto.Chloroform and"ON"or"OFF"),"X",2)end if zDown and not KeyState.Z then KeyState.Z=true SETTINGS.Auto.Washing=not SETTINGS.Auto.Washing nt("Auto Wash: "..(SETTINGS.Auto.Washing and"ON"or"OFF"),"Z",2)end if not xDown then KeyState.X=false end if not zDown then KeyState.Z=false end end)
+scheduler:addLoop("keybinds",TIMINGS.keybinds,function()local xDown,zDown=ikp(0x58),ikp(0x5A)if xDown and not KeyState.X then KeyState.X=true SETTINGS.Auto.Chloroform.Enabled=not SETTINGS.Auto.Chloroform.Enabled nt("Chloroform: "..(SETTINGS.Auto.Chloroform.Enabled and"ON"or"OFF"),"X",2)end if zDown and not KeyState.Z then KeyState.Z=true SETTINGS.Auto.Washing.Enabled=not SETTINGS.Auto.Washing.Enabled nt("Auto Wash: "..(SETTINGS.Auto.Washing.Enabled and"ON"or"OFF"),"Z",2)end if not xDown then KeyState.X=false end if not zDown then KeyState.Z=false end end)
 nt('loaded',"",4)
 if getgenv then getgenv().SushiGambitCleanup=function()scheduler:clearAll()for _,c in ipairs(Connections)do pcall(c.Disconnect,c)end pcall(Windows.Delete,Windows)for _,d in pairs(alertDrawings or{})do pcall(d.Remove,d)end KnownStaff,RankCache,notifiedNpcs,alertDrawings={},{},{},{}print("Cleanup complete")end end
