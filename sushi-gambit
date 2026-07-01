@@ -5,7 +5,7 @@ local GameData,PlayerStats,PlayerGui=RS:WaitForChild("GameData"),LocalPlayer:Wai
 local mr,mw,kp,kr,ikp=memory_read or function()return 0 end,memory_write or function()end,keypress or function()end,keyrelease or function()end,iskeypressed or function()return false end
 local FONT=Drawing.Fonts.SystemBold
 local SETTINGS={Auto={Washing={Enabled=false},Chloroform={Enabled=false}},Cheat={CleanDish=true,SeatCustomer=true,Greenbar=true,SpongeEffect=true},Staff={GroupId=33171215,MinRank=245,Notify=true}}
-local TIMINGS={staticPrompts=5,chloroform=0.05,stats=0.5,labels=0.1,clock=0.1,washing=0.04,npcAlerts=0.5,npcPrompts=0.2,cleanup=60,keybinds=0.03,rankCache=1800,staffPoll=2}
+local TIMINGS={staticPrompts=5,chloroform=0.03,stats=0.5,labels=0.1,clock=0.1,washing=0.04,npcAlerts=0.5,npcPrompts=0.2,cleanup=60,keybinds=0.03,rankCache=1800,staffPoll=2}
 local scheduler,Connections={_loops={}},{}
 function scheduler:addLoop(n,i,f)self._loops[n]={interval=i,timer=0,fn=f}end
 function scheduler:remove(n)self._loops[n]=nil end
@@ -48,7 +48,7 @@ task.spawn(function()local ok,r=pcall(function()return Http:JSONDecode(game:Http
 local fetchStart=tick()repeat task.wait(0.1)until fetchDone or tick()-fetchStart>5
 if not raw then raw={Offsets={GuiObject={ScreenGui_Enabled="0x4cc"},ProximityPrompt={HoldDuration="0x138"}}}end
 local function getOffset(t,...)for _,k in ipairs({...})do if type(t)~="table"then return nil end t=t[k]end return t and tonumber(t,16)end
-local ScreenGuiEnabled,HoldDuration=getOffset(raw,"Offsets","GuiObject","ScreenGui_Enabled")or 0x4cc,getOffset(raw,"Offsets","ProximityPrompt","HoldDuration")or 0x138
+local ScreenGuiEnabled,HoldDuration,PromptEnabled=getOffset(raw,"Offsets","GuiObject","ScreenGui_Enabled")or 0x4cc,getOffset(raw,"Offsets","ProximityPrompt","HoldDuration")or 0x138,getOffset(raw,"Offsets","ProximityPrompt","Enabled")or 0x14e
 local Vegetables,AssortedFish,HumanFlesh,Rice
 local function ensureIngredients()if Vegetables and AssortedFish and HumanFlesh and Rice then return end local ing=c(GameData,"Ingredients","IngredientsStorage")if ing then Vegetables,AssortedFish,HumanFlesh,Rice=ing:FindFirstChild("Vegetables"),ing:FindFirstChild("AssortedFish"),ing:FindFirstChild("HumanFlesh"),ing:FindFirstChild("Rice")end end
 local PROMPT_PATHS={{"Workspace","RestaurantArea","restaurant","Table","computer","ProximityPrompt"},{"Workspace","RestaurantArea","restaurant","mainStuff","conveyors","keypad","PromptPart","ProximityPrompt"},{"Workspace","RestaurantArea","restaurant","FreezerDoor","PromptHitbox","ProximityPrompt"},{"Workspace","Toolbin","PromptHitbox","ProximityPrompt"},{"Workspace","RestaurantArea","restaurant","the waiter stand thingy","Stations","SeatingStation","TriggerPart","SeatCustomersPrompt"}}
@@ -58,13 +58,18 @@ scheduler:addLoop("dasherPrompt",0.5,function()each(c(workspace,"NpcDestination"
 local chloroHeld=false
 scheduler:addLoop("chloroform",TIMINGS.chloroform,function()
 if not SETTINGS.Auto.Chloroform.Enabled then
-if chloroHeld then pcall(function()kr(0x51)end)chloroHeld=false end
+if chloroHeld then pcall(function()kr(0x51)end) chloroHeld=false end
 return end
 local char=LocalPlayer.Character
 if char and char:FindFirstChild("Chloroform Spray")then
-if not chloroHeld then pcall(function()kp(0x51)end)chloroHeld=true end
+local gui=PlayerGui:FindFirstChild("ChloroformGui")
+if gui and gui.Address and mr("byte",gui.Address+ScreenGuiEnabled)==1 then
+pcall(function()kp(0x51) task.wait(0.01) kr(0x51) end)
 else
-if chloroHeld then pcall(function()kr(0x51)end)chloroHeld=false end
+if chloroHeld then pcall(function()kr(0x51)end) chloroHeld=false end
+end
+else
+if chloroHeld then pcall(function()kr(0x51)end) chloroHeld=false end
 end
 end)
 local PStats={StaminaUsageMultiplier=-1,StaminaGainMultiplier=100,StaminaUsageMultiplierNonHarvestRelated=0,WalkSpeed=24,SprintSpeed=36,SushiValueMultiplier=15,EffectiveServiceLevel=9999,ManualSeatingBoost=10,TipRevenueMultiplier=15,PersonalIncomeMultiplier=10,Charisma=10}
@@ -127,5 +132,6 @@ scheduler:addLoop("npcPrompts",TIMINGS.npcPrompts,function()if not SETTINGS.Chea
 scheduler:addLoop("cleanup",TIMINGS.cleanup,function()notifiedNpcs={}end)
 local KeyState={X=false,Z=false}
 scheduler:addLoop("keybinds",TIMINGS.keybinds,function()local xDown,zDown=ikp(0x58),ikp(0x5A)if xDown and not KeyState.X then KeyState.X=true SETTINGS.Auto.Chloroform.Enabled=not SETTINGS.Auto.Chloroform.Enabled nt("Chloroform: "..(SETTINGS.Auto.Chloroform.Enabled and"ON"or"OFF"),"X",2)end if zDown and not KeyState.Z then KeyState.Z=true SETTINGS.Auto.Washing.Enabled=not SETTINGS.Auto.Washing.Enabled nt("Auto Wash: "..(SETTINGS.Auto.Washing.Enabled and"ON"or"OFF"),"Z",2)end if not xDown then KeyState.X=false end if not zDown then KeyState.Z=false end end)
+task.spawn(function()while true do local comp=workspace:FindFirstChild("RestaurantArea") if comp then comp=comp:FindFirstChild("restaurant") if comp then comp=comp:FindFirstChild("Table") if comp then comp=comp:FindFirstChild("computer") if comp then comp=comp:FindFirstChild("ProximityPrompt") if comp and comp.Address then pcall(function()mw("byte",comp.Address+PromptEnabled,1)end)end end end end end task.wait(0.1)end end)
 nt('loaded',"",4)
 if getgenv then getgenv().SushiGambitCleanup=function()scheduler:clearAll()for _,c in ipairs(Connections)do pcall(c.Disconnect,c)end pcall(Windows.Delete,Windows)for _,d in pairs(alertDrawings or{})do pcall(d.Remove,d)end KnownStaff,RankCache,notifiedNpcs,alertDrawings={},{},{},{}print("Cleanup complete")end end
