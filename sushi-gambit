@@ -1,646 +1,92 @@
-pcall(function()
-    if getgenv and getgenv().SushiGambitCleanup then
-        getgenv().SushiGambitCleanup()
-    end
-end)
-task.wait(0.1)
-
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-
-local LocalPlayer = Players.LocalPlayer
-local GameData = ReplicatedStorage:WaitForChild("GameData")
-local PlayerStats = LocalPlayer:WaitForChild("PlayerStats")
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-
-local memory_read = memory_read or function() return 0 end
-local memory_write = memory_write or function() end
-local keypress = keypress or function() end
-local keyrelease = keyrelease or function() end
-local SETTINGS = {
-    Auto = {
-        Washing = {Enabled = false},
-        ChloroformSpys = {Enabled = false},
-    },
-    Cheat = {
-        Spoof = {Greenbar = {Enabled = true}, SpongeEffectiveness = {Enabled = true}},
-        Instant = {CleanDish = {Enabled = true}, SeatCustomer = {Enabled = true}},
-    },
-    Notify = {AdminJoin = {Enabled = true}},
-}
-
-local ESP_SETTINGS = {
-    Labels = {
-        day = true, companymoney = true, vegstock = true,
-        fishstock = true, humanfleshstock = true, ricestock = true,
-        dishes = true,
-    },
-}
-
-local TIMINGS = {
-    staticPrompts = 5,
-    cooking = 0.05,
-    chloroform = 0.03,
-    stats = 0.5,
-    labels = 0.1,
-    clock = 0.1,
-}
-
-local scheduler = {_loops = {}, _render = {}}
-
-function scheduler:addLoop(name, interval, fn)
-    if self._loops[name] then warn("scheduler: overwriting loop '" .. name .. "'") end
-    self._loops[name] = {interval = interval, timer = 0, fn = fn}
-end
-
-function scheduler:addRender(name, fn)
-    if self._render[name] then warn("scheduler: overwriting render '" .. name .. "'") end
-    self._render[name] = fn
-end
-
-function scheduler:remove(name)
-    self._loops[name] = nil
-    self._render[name] = nil
-end
-
-local Connections = {}
-
-table.insert(Connections, RunService.Heartbeat:Connect(function(dt)
-    for name, job in pairs(scheduler._loops) do
-        job.timer += dt
-        if job.timer >= job.interval then
-            job.timer -= job.interval
-            local ok, err = pcall(job.fn)
-            if not ok then warn("scheduler job '" .. name .. "' errored: " .. tostring(err)) end
-        end
-    end
-end))
-
-table.insert(Connections, RunService.RenderStepped:Connect(function()
-    for name, fn in pairs(scheduler._render) do
-        local ok, err = pcall(fn)
-        if not ok then warn("render job '" .. name .. "' errored: " .. tostring(err)) end
-    end
-end))
-
-local Lib = {}
-Lib.__index = Lib
-
-function Lib.new(titleText, width, height, cornerRadius)
-    local self = setmetatable({}, Lib)
-    local r = cornerRadius or 10
-    local w, h = width or 260, height or 130
-
-    self.Elements = {}
-    self.Labels = {}
-    self.Radius = r
-    self.Position = Vector2.new(100, 100)
-    self.Size = Vector2.new(w, h)
-
-    local bg = Color3.fromRGB(15, 15, 15)
-
-    local function newCircle(pos)
-        local c = Drawing.new("Circle")
-        c.Position = pos
-        c.Radius = r
-        c.Color = bg
-        c.Filled = true
-        c.Visible = false
-        c.NumSides = 64
-        table.insert(self.Elements, c)
-        return c
-    end
-
-    local function newRect(pos, size)
-        local s = Drawing.new("Square")
-        s.Position = pos
-        s.Size = size
-        s.Color = bg
-        s.Filled = true
-        s.Visible = false
-        table.insert(self.Elements, s)
-        return s
-    end
-
-    self.TopLeft = newCircle(self.Position + Vector2.new(r, r))
-    self.TopRight = newCircle(self.Position + Vector2.new(w - r, r))
-    self.BottomLeft = newCircle(self.Position + Vector2.new(r, h - r))
-    self.BottomRight = newCircle(self.Position + Vector2.new(w - r, h - r))
-    self.VerticalFill = newRect(self.Position + Vector2.new(r, 0), Vector2.new(w - 2 * r, h))
-    self.HorizontalFill = newRect(self.Position + Vector2.new(0, r), Vector2.new(w, h - 2 * r))
-
-    local title = Drawing.new("Text")
-    title.Text = titleText
-    title.Size = 12
-    title.Position = self.Position + Vector2.new(12, 15)
-    title.Color = Color3.fromRGB(255, 0, 0)
-    title.Outline = true
-    title.Visible = false
-    self.Title = title
-    table.insert(self.Elements, title)
-
-    return self
-end
-
-function Lib:Show(visible)
-    for _, v in ipairs(self.Elements) do v.Visible = visible end
-    for _, v in ipairs(self.Labels) do v.drawing.Visible = visible end
-end
-
-function Lib:Edit(pos, size)
-    pos = pos or self.Position
-    size = size or self.Size
-    self.Position, self.Size = pos, size
-
-    local x, y, w, h, r = pos.X, pos.Y, size.X, size.Y, self.Radius
-
-    self.TopLeft.Position = Vector2.new(x + r, y + r)
-    self.TopRight.Position = Vector2.new(x + w - r, y + r)
-    self.BottomLeft.Position = Vector2.new(x + r, y + h - r)
-    self.BottomRight.Position = Vector2.new(x + w - r, y + h - r)
-    self.VerticalFill.Position = Vector2.new(x + r, y)
-    self.VerticalFill.Size = Vector2.new(w - 2 * r, h)
-    self.HorizontalFill.Position = Vector2.new(x, y + r)
-    self.HorizontalFill.Size = Vector2.new(w, h - 2 * r)
-    self.Title.Position = Vector2.new(x + 12, y + 15)
-
-    for _, entry in ipairs(self.Labels) do
-        entry.drawing.Position = pos + entry.relPos
-    end
-end
-
-function Lib:Delete()
-    scheduler:remove("windowDrag")
-    for _, v in ipairs(self.Elements) do v:Remove() end
-    for _, v in ipairs(self.Labels) do v.drawing:Remove() end
-    self.Elements = {}
-    self.Labels = {}
-end
-
-local LABEL_START_Y, LABEL_STEP = 32, 20
-
-function Lib:AddLabel(text, color)
-    local d = Drawing.new("Text")
-    d.Text = text or ""
-    d.Size = 20
-    d.Color = color or Color3.new(1, 1, 1)
-    d.Outline = true
-    d.Visible = true
-
-    local entry = {drawing = d, relPos = Vector2.new(12, 0)}
-    table.insert(self.Labels, entry)
-
-    for i, e in ipairs(self.Labels) do
-        e.relPos = Vector2.new(12, LABEL_START_Y + (i - 1) * LABEL_STEP)
-        e.drawing.Position = self.Position + e.relPos
-    end
-
-    local handle = {}
-    function handle:SetText(t) d.Text = t end
-    function handle:Delete()
-        d:Remove()
-        for i, e in ipairs(self.Labels) do
-            if e == entry then table.remove(self.Labels, i) break end
-        end
-    end
-    return handle
-end
-
-local Windows = Lib.new("Sushi Gambit", 220, 200)
-Windows:Edit(Vector2.new(1695, 845))
+pcall(function() if getgenv and getgenv().SushiGambitCleanup then getgenv().SushiGambitCleanup() end end)task.wait(0.1)
+local Players,RS,Http,RunS=game:GetService("Players"),game:GetService("ReplicatedStorage"),game:GetService("HttpService"),game:GetService("RunService")
+local LocalPlayer=Players.LocalPlayer
+local GameData,PlayerStats,PlayerGui=RS:WaitForChild("GameData"),LocalPlayer:WaitForChild("PlayerStats"),LocalPlayer:WaitForChild("PlayerGui")
+local mr,mw,kp,kr,ikp=memory_read or function()return 0 end,memory_write or function()end,keypress or function()end,keyrelease or function()end,iskeypressed or function()return false end
+local SETTINGS={Auto={Washing=false,Chloroform=false},Cheat={CleanDish=true,SeatCustomer=true,Greenbar=true,SpongeEffect=true},Staff={GroupId=33171215,MinRank=245,Notify=true,Kick=false}}
+local TIMINGS={staticPrompts=5,chloroform=0.05,stats=0.5,labels=0.1,clock=0.1,washing=0.04,npcAlerts=0.5,npcPrompts=0.2,cleanup=60,keybinds=0.03,rankCache=1800,staffPoll=2}
+local scheduler,Connections={_loops={}},{}
+function scheduler:addLoop(n,i,f)self._loops[n]={interval=i,timer=0,fn=f}end
+function scheduler:remove(n)self._loops[n]=nil end
+function scheduler:clearAll()for n in pairs(self._loops)do self._loops[n]=nil end end
+table.insert(Connections,RunS.Heartbeat:Connect(function(dt)for n,j in pairs(scheduler._loops)do j.timer=j.timer+dt if j.timer>=j.interval then j.timer=j.timer-j.interval task.spawn(function()local ok,err=pcall(j.fn)if not ok then warn("job '"..n.."': "..tostring(err))end end)end end end))
+local Windows={Elements={},Labels={},Position=Vector2.new(1695,845),Size=Vector2.new(195,230)}
+function Windows:Show(v)for _,e in ipairs(self.Elements)do e.Visible=v end for _,l in ipairs(self.Labels)do l.drawing.Visible=v end end
+function Windows:Edit(p,s)self.Position,self.Size=p or self.Position,s or self.Size end
+function Windows:Delete()for _,e in ipairs(self.Elements)do pcall(e.Remove,e)end for _,l in ipairs(self.Labels)do pcall(l.drawing.Remove,l.drawing)end self.Elements,self.Labels={},{}end
+function Windows:AddLabel(t,c)local d=Drawing.new("Text")d.Text=t or"" d.Size=22 d.Color=c or Color3.new(1,1,1)d.Outline=false d.Visible=true d.Font=Drawing.Fonts.System d.Position=self.Position+Vector2.new(12,38+#self.Labels*22)local entry={drawing=d}table.insert(self.Labels,entry)local h={}function h:SetText(t)d.Text=t end function h:Delete()pcall(d.Remove,d)for i,e in ipairs(self.Labels)do if e==entry then table.remove(self.Labels,i)break end end end return h end
+local bg=Drawing.new("Square")bg.Position,bg.Size,bg.Color,bg.Filled,bg.Visible=Windows.Position,Windows.Size,Color3.fromRGB(15,15,15),true,true table.insert(Windows.Elements,bg)
+local title=Drawing.new("Text")title.Text,title.Size,title.Position,title.Color,title.Outline,title.Visible,title.Font="Day",20,Windows.Position+Vector2.new(12,12),Color3.new(1,1,1),false,true,Drawing.Fonts.System table.insert(Windows.Elements,title)
 Windows:Show(true)
-
-local raw = nil
-local fetchDone = false
+local L,last={},{}
+local function lab(k,t,c)L[k]=Windows:AddLabel(t,c)end
+local function ul(k,t)if L[k]and last[k]~=t then last[k]=t L[k]:SetText(t)end end
 task.spawn(function()
-    local ok, result = pcall(function()
-        return HttpService:JSONDecode(game:HttpGet("https://imtheo.lol/Offsets/OffsetsHex.json"))
-    end)
-    raw = ok and result or nil
-    fetchDone = true
+lab("meat","meat: 0/0",Color3.fromRGB(255,50,50))
+lab("fish","fish: 0/0",Color3.fromRGB(50,150,255))
+lab("veg","veggies: 0/0",Color3.fromRGB(255,200,50))
+lab("rice","rice: 0/0",Color3.new(1,1,1))
+local s=Windows:AddLabel("",Color3.new(1,1,1))s:SetText("")
+lab("money","money: 0.00",Color3.fromRGB(50,255,50))
+lab("review","rating: 0.00",Color3.new(1,1,1))
+lab("dishes","dishes: 0",Color3.new(1,1,1))
 end)
-
-local fetchStart = tick()
-repeat task.wait(0.1) until fetchDone or (tick() - fetchStart) > 5
-if not raw then
-    warn("Offset fetch failed or timed out, using fallbacks")
-    raw = {Offsets = {GuiObject = {ScreenGui_Enabled = "0x4cc"}, ProximityPrompt = {HoldDuration = "0x138", Enabled = "0x14e"}}}
-end
-
-local function getOffset(tbl, ...)
-    local cur = tbl
-    for _, k in ipairs({...}) do
-        if type(cur) ~= "table" or cur[k] == nil then return nil end
-        cur = cur[k]
-    end
-    return tonumber(cur, 16)
-end
-
-local ScreenGuiEnabled = getOffset(raw, "Offsets", "GuiObject", "ScreenGui_Enabled") or 0x4cc
-local HoldDuration = getOffset(raw, "Offsets", "ProximityPrompt", "HoldDuration") or 0x138
-local PromptEnabled = getOffset(raw, "Offsets", "ProximityPrompt", "Enabled") or 0x14e
-
-local dayLabel, companyMoneyLabel, vegLabel, fishLabel, humanFleshLabel, riceLabel, dishLabel, reviewLabel
-local Vegetables = GameData.Ingredients.IngredientsStorage.Vegetables
-local AssortedFish = GameData.Ingredients.IngredientsStorage.AssortedFish
-local HumanFlesh = GameData.Ingredients.IngredientsStorage.HumanFlesh
-local Rice = GameData.Ingredients.IngredientsStorage.Rice
-
-local function createLabels()
-    if ESP_SETTINGS.Labels.humanfleshstock then humanFleshLabel = Windows:AddLabel("meat: 0/0") end
-    if ESP_SETTINGS.Labels.fishstock then fishLabel = Windows:AddLabel("fish: 0/0") end
-    if ESP_SETTINGS.Labels.ricestock then riceLabel = Windows:AddLabel("rice: 0/0") end
-    if ESP_SETTINGS.Labels.vegstock then vegLabel = Windows:AddLabel("veggies: 0/0") end
-    if ESP_SETTINGS.Labels.companymoney then companyMoneyLabel = Windows:AddLabel("money: 0.00") end
-    reviewLabel = Windows:AddLabel("rating: 0.00")
-    if ESP_SETTINGS.Labels.day then dayLabel = Windows:AddLabel("day: 0") end
-    if ESP_SETTINGS.Labels.dishes then dishLabel = Windows:AddLabel("dishes: 0") end
-end
-task.wait(2)
-createLabels()
-
-local function applyStaticPrompts()
-    local paths = {
-        {"Workspace", "RestaurantArea", "restaurant", "Table", "computer", "ProximityPrompt"},
-        {"Workspace", "RestaurantArea", "restaurant", "mainStuff", "conveyors", "keypad", "PromptPart", "ProximityPrompt"},
-        {"Workspace", "RestaurantArea", "restaurant", "FreezerDoor", "PromptHitbox", "ProximityPrompt"},
-        {"Workspace", "Toolbin", "PromptHitbox", "ProximityPrompt"},
-        {"Workspace", "RestaurantArea", "restaurant", "the waiter stand thingy", "Stations", "SeatingStation", "TriggerPart", "SeatCustomersPrompt"},
-    }
-    for _, path in ipairs(paths) do
-        pcall(function()
-            local obj = game
-            for _, k in ipairs(path) do obj = obj[k] end
-            memory_write("float", obj.Address + HoldDuration, 0)
-        end)
-    end
-end
-
-applyStaticPrompts()
-
-scheduler:addLoop("dasherPrompt", 0.5, function()
-    local folder = workspace:FindFirstChild("NpcDestination")
-    if not folder then return end
-    folder = folder:FindFirstChild("SpawnedNPCs")
-    if not folder then return end
-    for _, npc in ipairs(folder:GetChildren()) do
-        local torso = npc:FindFirstChild("Torso")
-        if torso then
-            local prompt = torso:FindFirstChild("CatchDasherPrompt")
-            if prompt and prompt.Address then
-                pcall(function()
-                    memory_write("float", prompt.Address + HoldDuration, 0)
-                end)
-            end
-        end
-    end
+local function c(o,...)for _,n in ipairs({...})do o=o and o:FindFirstChild(n)end return o end
+local function v(o,n,d)o=o and o:FindFirstChild(n);return o and o.Value or d or 0 end
+local function set(o,n,x)o=o and o:FindFirstChild(n);if o then pcall(function()o.Value=x end)end end
+local function each(o,f)if o then for _,x in ipairs(o:GetChildren())do f(x)end end end
+local function nt(m,t,d)pcall(function()notify(m,t or"",d or 3)end)end
+local raw,fetchDone=nil,false
+task.spawn(function()local ok,r=pcall(function()return Http:JSONDecode(game:HttpGet("https://imtheo.lol/Offsets/OffsetsHex.json"))end)raw,fetchDone=ok and r or nil,true end)
+local fetchStart=tick()repeat task.wait(0.1)until fetchDone or tick()-fetchStart>5
+if not raw then raw={Offsets={GuiObject={ScreenGui_Enabled="0x4cc"},ProximityPrompt={HoldDuration="0x138"}}}end
+local function getOffset(t,...)for _,k in ipairs({...})do if type(t)~="table"then return nil end t=t[k]end return t and tonumber(t,16)end
+local ScreenGuiEnabled,HoldDuration=getOffset(raw,"Offsets","GuiObject","ScreenGui_Enabled")or 0x4cc,getOffset(raw,"Offsets","ProximityPrompt","HoldDuration")or 0x138
+local Vegetables,AssortedFish,HumanFlesh,Rice
+local function ensureIngredients()if Vegetables and AssortedFish and HumanFlesh and Rice then return end local ing=c(GameData,"Ingredients","IngredientsStorage")if ing then Vegetables,AssortedFish,HumanFlesh,Rice=ing:FindFirstChild("Vegetables"),ing:FindFirstChild("AssortedFish"),ing:FindFirstChild("HumanFlesh"),ing:FindFirstChild("Rice")end end
+local PROMPT_PATHS={{"Workspace","RestaurantArea","restaurant","Table","computer","ProximityPrompt"},{"Workspace","RestaurantArea","restaurant","mainStuff","conveyors","keypad","PromptPart","ProximityPrompt"},{"Workspace","RestaurantArea","restaurant","FreezerDoor","PromptHitbox","ProximityPrompt"},{"Workspace","Toolbin","PromptHitbox","ProximityPrompt"},{"Workspace","RestaurantArea","restaurant","the waiter stand thingy","Stations","SeatingStation","TriggerPart","SeatCustomersPrompt"}}
+local function applyStaticPrompts()for _,p in ipairs(PROMPT_PATHS)do local o=game for _,k in ipairs(p)do o=o and o:FindFirstChild(k)end if o and o.Address then pcall(function()mw("float",o.Address+HoldDuration,0)end)end end end
+applyStaticPrompts()scheduler:addLoop("staticPrompts",TIMINGS.staticPrompts,applyStaticPrompts)
+scheduler:addLoop("dasherPrompt",0.5,function()each(c(workspace,"NpcDestination","SpawnedNPCs"),function(n)local t=n:FindFirstChild("Torso")if t then local p=t:FindFirstChild("CatchDasherPrompt")if p and p.Address then pcall(function()mw("float",p.Address+HoldDuration,0)end)end end end)end)
+local chloroHeld=false
+local chloroKey=0
+local keyMap={Q=0x51,E=0x45,R=0x52,F=0x46}
+scheduler:addLoop("chloroform",TIMINGS.chloroform,function()
+if not SETTINGS.Auto.Chloroform then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
+local char=LocalPlayer.Character if not char then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
+local tool=char:FindFirstChild("Chloroform Spray")if not tool then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
+local gui=PlayerGui:FindFirstChild("ChloroformChallenge")if not gui then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
+if gui.Address and mr("byte",gui.Address+ScreenGuiEnabled)~=1 then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
+local bf=gui:FindFirstChild("ButtonToHitFrame",true)if not bf then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
+local cont=bf:FindFirstChild("Container")if not cont then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
+local lbl=cont:FindFirstChild("TextLabel")if not lbl or not lbl.Text then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
+local vk=keyMap[lbl.Text:upper():gsub("%s+","")]if not vk then if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end return end
+if not chloroHeld then pcall(function()kp(vk)end)chloroHeld=true chloroKey=vk end
 end)
-
-scheduler:addLoop("staticPrompts", TIMINGS.staticPrompts, applyStaticPrompts)
-
-local _chloroKeyHeld = false
-
-scheduler:addLoop("chloroform", 0.03, function()
-    if not SETTINGS.Auto.ChloroformSpys.Enabled then
-        if _chloroKeyHeld then
-            keyrelease(0x51)
-            _chloroKeyHeld = false
-        end
-        return
-    end
-
-    local char = LocalPlayer.Character
-    local tool = char and char:FindFirstChild("Chloroform Spray")
-
-    if not tool or not tool:FindFirstChild("ChloroformChallenge", true) then
-        if _chloroKeyHeld then
-            keyrelease(0x51)
-            _chloroKeyHeld = false
-        end
-        return
-    end
-
-    if not _chloroKeyHeld then
-        keypress(0x51)
-        _chloroKeyHeld = true
-    end
-end)
-
-scheduler:addLoop("chloroRelease", 0.02, function()
-    if not _chloroKeyHeld then return end
-    keyrelease(0x51)
-    _chloroKeyHeld = false
-end)
-
-local Stats = LocalPlayer:WaitForChild("Stats")
-
-scheduler:addLoop("statSpoof", TIMINGS.stats, function()
-    if SETTINGS.Cheat.Spoof.Greenbar.Enabled then
-        if PlayerStats:FindFirstChild("EffectiveCookingLevel") and PlayerStats.EffectiveCookingLevel.Value ~= 1000 then PlayerStats.EffectiveCookingLevel.Value = 1000 end
-    end
-    if SETTINGS.Cheat.Instant.CleanDish.Enabled then
-        if PlayerStats:FindFirstChild("EffectiveCleaningLevel") and PlayerStats.EffectiveCleaningLevel.Value ~= 9999 then PlayerStats.EffectiveCleaningLevel.Value = 9999 end
-    end
-    if SETTINGS.Cheat.Spoof.SpongeEffectiveness.Enabled then
-        if PlayerStats:FindFirstChild("SpongeEffectiveness") and PlayerStats.SpongeEffectiveness.Value ~= 9999 then PlayerStats.SpongeEffectiveness.Value = 9999 end
-    end
-    if PlayerStats:FindFirstChild("StaminaUsageMultiplier") and PlayerStats.StaminaUsageMultiplier.Value ~= -1 then PlayerStats.StaminaUsageMultiplier.Value = -1 end
-    if PlayerStats:FindFirstChild("StaminaGainMultiplier") and PlayerStats.StaminaGainMultiplier.Value ~= 100 then PlayerStats.StaminaGainMultiplier.Value = 100 end
-    if PlayerStats:FindFirstChild("StaminaUsageMultiplierNonHarvestRelated") and PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value ~= 0 then PlayerStats.StaminaUsageMultiplierNonHarvestRelated.Value = 0 end
-    if Stats:FindFirstChild("Stamina") and Stats.Stamina.Value ~= 100 then Stats.Stamina.Value = 100 end
-    if PlayerStats:FindFirstChild("WalkSpeed") and PlayerStats.WalkSpeed.Value ~= 24 then PlayerStats.WalkSpeed.Value = 24 end
-    if PlayerStats:FindFirstChild("SprintSpeed") and PlayerStats.SprintSpeed.Value ~= 36 then PlayerStats.SprintSpeed.Value = 36 end
-    if PlayerStats:FindFirstChild("SushiValueMultiplier") and PlayerStats.SushiValueMultiplier.Value ~= 15 then PlayerStats.SushiValueMultiplier.Value = 15 end
-    if PlayerStats:FindFirstChild("EffectiveServiceLevel") and PlayerStats.EffectiveServiceLevel.Value ~= 9999 then PlayerStats.EffectiveServiceLevel.Value = 9999 end
-    if PlayerStats:FindFirstChild("ManualSeatingBoost") and PlayerStats.ManualSeatingBoost.Value ~= 10 then PlayerStats.ManualSeatingBoost.Value = 10 end
-    if PlayerStats:FindFirstChild("TipRevenueMultiplier") and PlayerStats.TipRevenueMultiplier.Value ~= 15 then PlayerStats.TipRevenueMultiplier.Value = 15 end
-    if PlayerStats:FindFirstChild("PersonalIncomeMultiplier") and PlayerStats.PersonalIncomeMultiplier.Value ~= 10 then PlayerStats.PersonalIncomeMultiplier.Value = 10 end
-    if PlayerStats:FindFirstChild("Charisma") and PlayerStats.Charisma.Value ~= 10 then PlayerStats.Charisma.Value = 10 end
-    if GameData:FindFirstChild("PatienceMultiplier") and GameData.PatienceMultiplier.Value ~= 3 then GameData.PatienceMultiplier.Value = 3 end
-    if GameData:FindFirstChild("TipChanceMultiplier") and GameData.TipChanceMultiplier.Value ~= 5 then GameData.TipChanceMultiplier.Value = 5 end
-    if GameData:FindFirstChild("MaxLineSize") and GameData.MaxLineSize.Value ~= 10 then GameData.MaxLineSize.Value = 10 end
-    if GameData:FindFirstChild("SpoilageRate") and GameData.SpoilageRate.Value ~= 0.3 then GameData.SpoilageRate.Value = 0.3 end
-    if GameData:FindFirstChild("MaxStockMultiplier") and GameData.MaxStockMultiplier.Value ~= 1.5 then GameData.MaxStockMultiplier.Value = 1.5 end
-end)
-
-local _lastLabels = {}
-
-scheduler:addLoop("labels", TIMINGS.labels, function()
-    if not Vegetables or not AssortedFish or not HumanFlesh or not Rice then
-        local ingr = GameData:FindFirstChild("Ingredients")
-        if ingr and ingr:FindFirstChild("IngredientsStorage") then
-            local storage = ingr.IngredientsStorage
-            Vegetables = storage:FindFirstChild("Vegetables")
-            AssortedFish = storage:FindFirstChild("AssortedFish")
-            HumanFlesh = storage:FindFirstChild("HumanFlesh")
-            Rice = storage:FindFirstChild("Rice")
-        end
-        if not Vegetables then return end
-    end
-    if dayLabel then
-        local t = "day: " .. tostring(GameData.CurrentDay.Value)
-        if _lastLabels.day ~= t then _lastLabels.day = t dayLabel:SetText(t) end
-    end
-    if companyMoneyLabel then
-        local t = "money: " .. string.format("%.2f", GameData.CompanyMoney.Value)
-        if _lastLabels.money ~= t then _lastLabels.money = t companyMoneyLabel:SetText(t) end
-    end
-    if vegLabel then
-        local t = "veggies: " .. Vegetables.Stock.Value .. "/" .. Vegetables.MaxStock.Value
-        if _lastLabels.veg ~= t then _lastLabels.veg = t vegLabel:SetText(t) end
-    end
-    if fishLabel then
-        local t = "fish: " .. AssortedFish.Stock.Value .. "/" .. AssortedFish.MaxStock.Value
-        if _lastLabels.fish ~= t then _lastLabels.fish = t fishLabel:SetText(t) end
-    end
-    if humanFleshLabel then
-        local t = "meat: " .. HumanFlesh.Stock.Value .. "/" .. HumanFlesh.MaxStock.Value
-        if _lastLabels.meat ~= t then _lastLabels.meat = t humanFleshLabel:SetText(t) end
-    end
-    if riceLabel then
-        local t = "rice: " .. Rice.Stock.Value .. "/" .. Rice.MaxStock.Value
-        if _lastLabels.rice ~= t then _lastLabels.rice = t riceLabel:SetText(t) end
-    end
-    if dishLabel then
-        local kitchen = workspace:FindFirstChild("Kitchen")
-        local sink = kitchen and kitchen:FindFirstChild("TheSink")
-        local t = "dishes: " .. tostring(sink and sink.CleanDishAmount and sink.CleanDishAmount.Value or 0)
-        if _lastLabels.dishes ~= t then
-            _lastLabels.dishes = t
-            dishLabel:SetText(t)
-        end
-    end
-    if reviewLabel then
-        local rs = GameData:FindFirstChild("CurrentReviewScore")
-        if rs and typeof(rs.Value) == "number" then
-            local t = string.format("rating: %.2f", rs.Value)
-            if _lastLabels.review ~= t then _lastLabels.review = t reviewLabel:SetText(t) end
-        end
-    end
-end)
-
-local _clockWarned = {}
-local _clockLastTime = ""
-local _clockLabel = nil
-
-task.spawn(function()
-    local pg = LocalPlayer:WaitForChild("PlayerGui")
-    local cg = pg:WaitForChild("clockGui", 30)
-    if not cg then return end
-    local cf = cg:WaitForChild("clockFrame", 30)
-    if not cf then return end
-    _clockLabel = cf:WaitForChild("clockLabel", 30)
-end)
-
-local _clockTargets = {["4:40PM"] = true, ["4:45PM"] = true, ["4:50PM"] = true, ["4:55PM"] = true}
-
-local function normalizeClock(t)
-    t = t:gsub("%s+", ""):gsub("%[", ""):gsub("%]", ""):gsub("^0", "")
-    return t:upper()
-end
-
-scheduler:addLoop("clock", TIMINGS.clock, function()
-    if not _clockLabel then return end
-    local norm = normalizeClock(_clockLabel.Text or "")
-    if norm == _clockLastTime then return end
-    _clockLastTime = norm
-    if _clockTargets[norm] and not _clockWarned[norm] then
-        _clockWarned[norm] = true
-        notify("remove sun tat", "reminder", 5)
-    end
-    if norm == "5:05AM" then _clockWarned = {} end
-end)
-
-local WASH_KEYS = {Q = 0x51, E = 0x45, R = 0x52, F = 0x46}
-
-scheduler:addLoop("washing", 0.1, function()
-    if not SETTINGS.Auto.Washing.Enabled then return end
-    if not PlayerGui:FindFirstChild("DishWashingGui") then return end
-
-    local kitchen = workspace:FindFirstChild("Kitchen")
-    local sink = kitchen and kitchen:FindFirstChild("TheSink")
-    if not sink then return end
-
-    local amount = sink:FindFirstChild("DirtyDishAmount")
-    if not amount or amount.Value == 0 then return end
-
-    local Visible = memory_read("byte", PlayerGui.DishWashingGui.Address + ScreenGuiEnabled)
-    if Visible ~= 1 then return end
-
-    local prompt = sink:FindFirstChild("ProximityPrompt", true)
-    if prompt and prompt.Address then
-        memory_write("byte", prompt.Address + PromptEnabled, 0)
-    end
-
-    for _, v in pairs(PlayerGui.DishWashingGui.MainFrame.QueueBarFrame.Queue.KeysHolder:GetChildren()) do
-        if v:IsA("Frame") and v.Name == "KeyTemplate" then
-            local container = v:FindFirstChild("Container")
-            if container then
-                local label = container:FindFirstChild("TextLabel")
-                if label then
-                    local key = label.Text
-                    local vk = WASH_KEYS[key]
-                    if vk then
-                        keypress(vk)
-                        keyrelease(vk)
-                    end
-                end
-            end
-        end
-    end
-end)
-
-local GroupId = 33171215
-local MinRank = 245
-
-local function GetRankInGroup(UserId, GroupId)
-    if not UserId then return 0, "Unknown" end
-    local url = "https://groups.roblox.com/v2/users/" .. UserId .. "/groups/roles"
-    local success, response = pcall(game.HttpGet, game, url)
-    if not success then return 0, "Unknown" end
-
-    local data = game:GetService("HttpService"):JSONDecode(response)
-    for _, group in pairs(data.data) do
-        if group.group.id == GroupId then
-            return group.role.rank, group.role.name
-        end
-    end
-    return 0, "Unknown"
-end
-
-local KnownStaff = {}
-
-local function CheckStaff(player)
-    task.spawn(function()
-        local userId = player.UserId
-        if not userId then return end
-        local rank, roleName = GetRankInGroup(userId, GroupId)
-        if rank >= MinRank and not KnownStaff[userId] then
-            KnownStaff[userId] = true
-            if SETTINGS.Notify.AdminJoin.Enabled then
-                notify(player.Name .. " (" .. roleName .. ") joined!", "STAFF ALERT", 8)
-            end
-            print("[STAFF] " .. player.Name .. " | " .. roleName .. " (Rank " .. rank .. ")")
-        end
-    end)
-end
-
-pcall(function()
-    if Players and Players.PlayerAdded then
-        for _, player in pairs(game.Players:GetPlayers()) do
-            CheckStaff(player)
-        end
-        table.insert(Connections, Players.PlayerAdded:Connect(CheckStaff))
-    end
-end)
-
-local _alertDrawings = {}
-
-local function showScreenAlert(message, color, key)
-    if _alertDrawings[key] then
-        pcall(function() _alertDrawings[key]:Remove() end)
-    end
-    local text = Drawing.new("Text")
-    text.Text = message
-    text.Size = 25
-    text.Color = color or Color3.new(1, 1, 1)
-    text.Outline = true
-    text.Center = true
-    text.Position = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, 144)
-    text.Visible = true
-    _alertDrawings[key] = text
-end
-
-local function removeScreenAlert(key)
-    if _alertDrawings[key] then
-        pcall(function() _alertDrawings[key]:Remove() end)
-        _alertDrawings[key] = nil
-    end
-end
-
-local _notifiedNpcs = {}
-
-scheduler:addLoop("npcAlerts", 0.5, function()
-    local dest = workspace:FindFirstChild("NpcDestination")
-    local folder = dest and dest:FindFirstChild("SpawnedNPCs")
-    if not folder then return end
-
-    local criticSeen, inspectorSeen = false, false
-
-    for _, npc in ipairs(folder:GetChildren()) do
-        local addr = npc.Address
-        if not addr then continue end
-        local state = npc:GetAttribute("CurrentState")
-        local isCritic = npc:GetAttribute("Critic") == true and state ~= "Leaving" and state ~= "Left" and state ~= "Done"
-        local isInspector = npc:GetAttribute("Behavior") == "Inspector"
-
-        if isCritic then criticSeen = true end
-        if isInspector then inspectorSeen = true end
-
-        if (isCritic or isInspector) and not _notifiedNpcs[addr] then
-            _notifiedNpcs[addr] = true
-            if isInspector then
-                showScreenAlert("health inspector", Color3.fromRGB(0, 255, 0), "inspector")
-            else
-                showScreenAlert("critic", Color3.fromRGB(255, 252, 0), "critic")
-            end
-        end
-
-        if not (isCritic or isInspector) then
-            _notifiedNpcs[addr] = nil
-        end
-    end
-
-    if not criticSeen then removeScreenAlert("critic") end
-    if not inspectorSeen then removeScreenAlert("inspector") end
-end)
-
-scheduler:addLoop("cleanup", 60, function()
-    _notifiedNpcs = {}
-end)
-
-scheduler:addLoop("npcPrompts", 0.2, function()
-    if not SETTINGS.Cheat.Instant.SeatCustomer.Enabled then return end
-
-    local spawned = workspace:FindFirstChild("NpcDestination")
-        and workspace.NpcDestination:FindFirstChild("SpawnedNPCs")
-
-    if not spawned then return end
-
-    for _, npc in ipairs(spawned:GetChildren()) do
-        local torso = npc:FindFirstChild("Torso")
-        if torso then
-            local prompt = torso:FindFirstChild("WaitProximityPrompt")
-            if prompt and prompt.Address then
-                memory_write("float", prompt.Address + 0x138, 0)
-            end
-        end
-    end
-end)
-
-table.insert(Connections, UserInputService.InputBegan:Connect(function(inp, gp)
-    if gp then return end
-    if inp.KeyCode == Enum.KeyCode.X then
-        SETTINGS.Auto.ChloroformSpys.Enabled = not SETTINGS.Auto.ChloroformSpys.Enabled
-        notify("Auto Chloroform: " .. (SETTINGS.Auto.ChloroformSpys.Enabled and "ON" or "OFF"), "Keybind X", 2)
-    end
-    if inp.KeyCode == Enum.KeyCode.Z then
-        SETTINGS.Auto.Washing.Enabled = not SETTINGS.Auto.Washing.Enabled
-        notify("Auto Wash: " .. (SETTINGS.Auto.Washing.Enabled and "ON" or "OFF"), "Keybind Z", 2)
-    end
-end))
-
-notify('script loaded', "", 4)
-
-if getgenv then
-    getgenv().SushiGambitCleanup = function()
-        for name in pairs(scheduler._loops) do scheduler:remove(name) end
-        for name in pairs(scheduler._render) do scheduler:remove(name) end
-        for _, c in ipairs(Connections) do pcall(function() c:Disconnect() end) end
-        pcall(function() Windows:Delete() end)
-        for _, d in pairs(_alertDrawings or {}) do pcall(function() d:Remove() end) end
-    end
-end
+scheduler:addLoop("chloroRelease",0.02,function()if chloroHeld then pcall(function()kr(chloroKey)end)chloroHeld=false chloroKey=0 end end)
+local PStats={StaminaUsageMultiplier=-1,StaminaGainMultiplier=100,StaminaUsageMultiplierNonHarvestRelated=0,WalkSpeed=24,SprintSpeed=36,SushiValueMultiplier=15,EffectiveServiceLevel=9999,ManualSeatingBoost=10,TipRevenueMultiplier=15,PersonalIncomeMultiplier=10,Charisma=10}
+local GStats={PatienceMultiplier=3,TipChanceMultiplier=5,MaxLineSize=10,SpoilageRate=0.3,MaxStockMultiplier=1.5}
+scheduler:addLoop("statSpoof",TIMINGS.stats,function()pcall(function()if SETTINGS.Cheat.Greenbar then set(PlayerStats,"EffectiveCookingLevel",1000)end if SETTINGS.Cheat.CleanDish then set(PlayerStats,"EffectiveCleaningLevel",9999)end if SETTINGS.Cheat.SpongeEffect then set(PlayerStats,"SpongeEffectiveness",9999)end for n,x in pairs(PStats)do set(PlayerStats,n,x)end for n,x in pairs(GStats)do set(GameData,n,x)end local stats=LocalPlayer:FindFirstChild("Stats")if stats then set(stats,"Stamina",100)end end)end)
+scheduler:addLoop("labels",TIMINGS.labels,function()pcall(function()ensureIngredients()ul("meat","meat: "..v(HumanFlesh,"Stock",0).."/"..v(HumanFlesh,"MaxStock",1))ul("fish","fish: "..v(AssortedFish,"Stock",0).."/"..v(AssortedFish,"MaxStock",1))ul("rice","rice: "..v(Rice,"Stock",0).."/"..v(Rice,"MaxStock",1))ul("veg","veggies: "..v(Vegetables,"Stock",0).."/"..v(Vegetables,"MaxStock",1))ul("money",("money: %.2f"):format(v(GameData,"CompanyMoney",0)))local rs=GameData:FindFirstChild("CurrentReviewScore")ul("review",rs and ("rating: %.2f"):format(rs.Value)or"rating: 0.00")local sink=c(workspace,"Kitchen","TheSink")ul("dishes","dishes: "..v(sink,"CleanDishAmount",0))local day=GameData:FindFirstChild("CurrentDay")if day then title.Text="day "..tostring(day.Value)end end)end)
+local clockWarned,clockLastTime,clockLabel={},"",nil
+scheduler:addLoop("clock",TIMINGS.clock,function()if not clockLabel then local pg=LocalPlayer:FindFirstChild("PlayerGui")if pg then local cg=pg:FindFirstChild("clockGui")if cg then local cf=cg:FindFirstChild("clockFrame")if cf then clockLabel=cf:FindFirstChild("clockLabel")end end end if not clockLabel then return end end pcall(function()local t=(clockLabel.Text or""):gsub("%s+",""):gsub("%[",""):gsub("%]",""):gsub("^0",""):upper()if t==clockLastTime then return end clockLastTime=t if({["4:40PM"]=true,["4:45PM"]=true,["4:50PM"]=true,["4:55PM"]=true})[t]and not clockWarned[t]then clockWarned[t]=true nt("remove sun tat","reminder",5)end if t=="5:05AM"then clockWarned={}end end)end)
+local WASH_KEYS={Q=0x51,E=0x45,R=0x52,F=0x46}
+local WashBusy,LastWash,WashDelay=false,0,0.1
+local function shouldWash()if WashBusy then return false end if not SETTINGS.Auto.Washing then return false end if isrbxactive and not isrbxactive()then return false end local gui=PlayerGui:FindFirstChild("DishWashingGui")if not gui or not gui.Address then return false end if mr("byte",gui.Address+ScreenGuiEnabled)~=1 then return false end local sink=workspace:FindFirstChild("Kitchen")and workspace.Kitchen:FindFirstChild("TheSink")if sink and sink:FindFirstChild("DirtyDishAmount")and sink.DirtyDishAmount.Value<=0 then return false end return gui end
+local function washTick()local gui=shouldWash()if not gui then return end if tick()-LastWash<WashDelay then return end WashBusy=true LastWash=tick()pcall(function()local keys=c(gui,"MainFrame","QueueBarFrame","Queue","KeysHolder")if keys then local children=keys:GetChildren()for i=1,#children do local v=children[i]if v:IsA("Frame")and v.Name=="KeyTemplate"then local l=c(v,"Container","TextLabel")if l then local key=l.Text:upper():gsub("%s+","")local vk=WASH_KEYS[key]if vk then pcall(function()kp(vk)task.wait(0.05)kr(vk)end)end end end end end end)WashBusy=false end
+scheduler:addLoop("washing",TIMINGS.washing,washTick)
+local RankCache,KnownStaff={},{}
+local function getGroupRank(uid)local s,r=pcall(game.HttpGet,game,"https://groups.roblox.com/v2/users/"..uid.."/groups/roles")if not s or r==""then return 0,"Unknown"end local ok,d=pcall(Http.JSONDecode,Http,r)if not ok or not d or not d.data then return 0,"Unknown"end for _,g in pairs(d.data)do if g.group and g.group.id==SETTINGS.Staff.GroupId then return g.role.rank,g.role.name end end return 0,"Unknown"end
+scheduler:addLoop("rankCacheClear",TIMINGS.rankCache,function()RankCache={}end)
+local function CheckStaff(p)if not p or not p.Parent then return end local uid=p.UserId if not uid or KnownStaff[uid]then return end local rank,role=0,"Unknown"if RankCache[uid]then rank,role=RankCache[uid].rank,RankCache[uid].role else rank,role=getGroupRank(uid)RankCache[uid]={rank=rank,role=role}end if rank>=SETTINGS.Staff.MinRank and not KnownStaff[uid]then KnownStaff[uid]=true if SETTINGS.Staff.Notify then nt(p.Name.." ("..role..") joined!","STAFF ALERT",8)end print("[STAFF] "..p.Name.." | "..role.." (Rank "..rank..")")if SETTINGS.Staff.Kick then p:Kick("Staff-only access.")end end end
+scheduler:addLoop("staffPoll",TIMINGS.staffPoll,function()for _,p in pairs(Players:GetPlayers())do CheckStaff(p)end end)for _,p in pairs(Players:GetPlayers())do CheckStaff(p)end
+local alertDrawings,notifiedNpcs={},{}
+local function showAlert(m,c,k)if alertDrawings[k]then pcall(alertDrawings[k].Remove,alertDrawings[k])end local t=Drawing.new("Text")t.Text=m t.Size=28 t.Color=c or Color3.new(1,1,1)t.Outline=false t.Center=true t.Font=Drawing.Fonts.SystemBold local cam=workspace.CurrentCamera t.Position=cam and Vector2.new(cam.ViewportSize.X/2,144)or Vector2.new(960,144)t.Visible=true alertDrawings[k]=t end
+local function removeAlert(k)if alertDrawings[k]then pcall(alertDrawings[k].Remove,alertDrawings[k])alertDrawings[k]=nil end end
+scheduler:addLoop("npcAlerts",TIMINGS.npcAlerts,function()local f=c(workspace,"NpcDestination","SpawnedNPCs")if not f then return end local cSeen,iSeen=false,false each(f,function(n)local a=n.Address if a then local s=n:GetAttribute("CurrentState")local isC=n:GetAttribute("Critic")==true and s~="Leaving"and s~="Left"and s~="Done"local isI=n:GetAttribute("Behavior")=="Inspector"if isC then cSeen=true end if isI then iSeen=true end if(isC or isI)and not notifiedNpcs[a]then notifiedNpcs[a]=true if isI then showAlert("health inspector",Color3.fromRGB(0,255,0),"inspector")else showAlert("critic",Color3.fromRGB(255,252,0),"critic")end end if not(isC or isI)then notifiedNpcs[a]=nil end end end)if not cSeen then removeAlert("critic")end if not iSeen then removeAlert("inspector")end end)
+scheduler:addLoop("npcPrompts",TIMINGS.npcPrompts,function()if not SETTINGS.Cheat.SeatCustomer then return end each(c(workspace,"NpcDestination","SpawnedNPCs"),function(n)local t=n:FindFirstChild("Torso")if t then local p=t:FindFirstChild("WaitProximityPrompt")if p and p.Address then pcall(function()mw("float",p.Address+HoldDuration,0)end)end end end)end)
+scheduler:addLoop("cleanup",TIMINGS.cleanup,function()notifiedNpcs={}end)
+local KeyState={X=false,Z=false}
+scheduler:addLoop("keybinds",TIMINGS.keybinds,function()local xDown,zDown=ikp(0x58),ikp(0x5A)if xDown and not KeyState.X then KeyState.X=true SETTINGS.Auto.Chloroform=not SETTINGS.Auto.Chloroform nt("Chloroform: "..(SETTINGS.Auto.Chloroform and"ON"or"OFF"),"X",2)end if zDown and not KeyState.Z then KeyState.Z=true SETTINGS.Auto.Washing=not SETTINGS.Auto.Washing nt("Auto Wash: "..(SETTINGS.Auto.Washing and"ON"or"OFF"),"Z",2)end if not xDown then KeyState.X=false end if not zDown then KeyState.Z=false end end)
+nt('Sushi Gambit loaded',"",4)
+if getgenv then getgenv().SushiGambitCleanup=function()scheduler:clearAll()for _,c in ipairs(Connections)do pcall(c.Disconnect,c)end pcall(Windows.Delete,Windows)for _,d in pairs(alertDrawings or{})do pcall(d.Remove,d)end KnownStaff,RankCache,notifiedNpcs,alertDrawings={},{},{},{}print("Cleanup complete")end end
