@@ -193,41 +193,36 @@ scheduler:addLoop("dasherPrompt", 0.5, function()
     end)
 end)
 
-local chloroTool, chloroLabel, lastChloroKey
+local chloroKeyHeld = false
 
-local function refreshChloroTool()
-    chloroTool = char and char:FindFirstChild("Chloroform Spray")
-    chloroLabel = nil
-    lastChloroKey = nil
+scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
+    if not SETTINGS.Auto.Chloroform.Enabled then
+        if chloroKeyHeld then
+            kr(0x51)
+            chloroKeyHeld = false
+        end
+        return
+    end
 
-    if not chloroTool then return end
+    local tool = LP.Character and LP.Character:FindFirstChild("Chloroform Spray")
+    if not tool or not tool:FindFirstChild("ChloroformChallenge", true) then
+        if chloroKeyHeld then
+            kr(0x51)
+            chloroKeyHeld = false
+        end
+        return
+    end
 
-    chloroLabel = child(
-        chloroTool,
-        "ChloroformChallenge",
-        "ButtonToHitFrame",
-        "Container",
-        "TextLabel"
-    )
-end
-
-scheduler:addLoop("chloroformRefresh", 0.25, refreshChloroTool)
-
-scheduler:addLoop("chloroform", 0.01, function()
-    if not SETTINGS.Auto.Chloroform.Enabled then return end
-    if not chloroTool or not chloroTool.Parent then return refreshChloroTool() end
-    if not chloroLabel or not chloroLabel.Parent then return refreshChloroTool() end
-
-    local key = chloroLabel.Text
-    if key == lastChloroKey then return end
-    lastChloroKey = key
-
-    if key == "Q" then
+    if not chloroKeyHeld then
         kp(0x51)
+        chloroKeyHeld = true
+    end
+end)
+
+scheduler:addLoop("chloroRelease", 0.02, function()
+    if chloroKeyHeld then
         kr(0x51)
-    elseif key == "E" then
-        kp(0x45)
-        kr(0x45)
+        chloroKeyHeld = false
     end
 end)
 
