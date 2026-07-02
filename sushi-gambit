@@ -142,6 +142,7 @@ end
 ScreenGuiEnabled = getOffset(raw, "Offsets", "GuiObject", "ScreenGui_Enabled") or 0x4cc
 HoldDuration = getOffset(raw, "Offsets", "ProximityPrompt", "HoldDuration") or 0x138
 PromptEnabled = getOffset(raw, "Offsets", "ProximityPrompt", "Enabled") or 0x14e
+PromptDistance = getOffset(raw, "Offsets", "ProximityPrompt", "MaxActivationDistance")
 
 local Vegetables, AssortedFish, HumanFlesh, Rice
 local function ensureIngredients()
@@ -152,11 +153,15 @@ local function ensureIngredients()
 end
 
 local function setPromptHold(prompt)
-    if prompt and prompt.Address then
-        pcall(function()
-            mw("float", prompt.Address + HoldDuration, 0)
-        end)
-    end
+    if not (prompt and prompt.Address) then return end
+
+    pcall(function()
+        mw("float", prompt.Address + HoldDuration, 0)
+
+        if PromptDistance then
+            mw("float", prompt.Address + PromptDistance, 20)
+        end
+    end)
 end
 
 local function patchKnownPrompts()
