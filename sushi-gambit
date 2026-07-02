@@ -41,25 +41,21 @@ end
 
 Connections[#Connections + 1] = RunS.Heartbeat:Connect(function(dt)
     for name, job in pairs(scheduler._loops) do
-        job.timer = job.timer + dt
+        job.timer += dt
         if job.timer >= job.interval then
             job.timer = 0
-            task.spawn(function()
-                runLoop(name, job)
-            end)
+            task.spawn(function() runLoop(name, job) end)
         end
     end
 end)
+
 local function nt(msg, title, duration) pcall(function() notify(msg, title or "", duration or 3) end) end
 local function child(obj, ...) for _, name in ipairs({ ... }) do obj = obj and obj:FindFirstChild(name) end return obj end
 local function each(obj, fn) if obj then for _, item in ipairs(obj:GetChildren()) do fn(item) end end end
 local function val(obj, name, default) obj = obj and obj:FindFirstChild(name) return obj and obj.Value or default or 0 end
 local function setVal(obj, name, value) obj = obj and obj:FindFirstChild(name) if obj then pcall(function() obj.Value = value end) end end
 
-local Windows = {
-    Elements = {}, Labels = {}, Position = Vector2.new(1695, 845),
-    Size = Vector2.new(195, 230), Ready = false
-}
+local Windows = { Elements = {}, Labels = {}, Position = Vector2.new(1695, 845), Size = Vector2.new(195, 230), Ready = false }
 
 function Windows:Show(state)
     for _, e in ipairs(self.Elements) do e.Visible = state end
@@ -68,16 +64,12 @@ end
 
 function Windows:Edit(pos, size)
     self.Position, self.Size = pos or self.Position, size or self.Size
-    local x, y = math.floor(self.Position.X), math.floor(self.Position.Y)
-    local w, h = math.floor(self.Size.X), math.floor(self.Size.Y)
-
+    local x, y, w, h = math.floor(self.Position.X), math.floor(self.Position.Y), math.floor(self.Size.X), math.floor(self.Size.Y)
     for i, e in ipairs(self.Elements) do
         if i == 1 then e.Position, e.Size = Vector2.new(x, y), Vector2.new(w, h) end
         if i == 2 then e.Position = Vector2.new(x + 12, y + 12) end
     end
-    for i, l in ipairs(self.Labels) do
-        l.drawing.Position = Vector2.new(x + 12, y + 38 + (i - 1) * 22)
-    end
+    for i, l in ipairs(self.Labels) do l.drawing.Position = Vector2.new(x + 12, y + 38 + (i - 1) * 22) end
 end
 
 function Windows:Delete()
@@ -88,10 +80,8 @@ end
 
 function Windows:AddLabel(text, color)
     local d = Drawing.new("Text")
-    d.Text, d.Size, d.Color = text or "", 22, color or Color3.new(1, 1, 1)
-    d.Outline, d.Visible, d.Font = true, false, FONT
+    d.Text, d.Size, d.Color, d.Outline, d.Visible, d.Font = text or "", 22, color or Color3.new(1, 1, 1), true, false, FONT
     d.Position = Vector2.new(self.Position.X + 12, self.Position.Y + 38 + #self.Labels * 22)
-
     local entry = { drawing = d }
     self.Labels[#self.Labels + 1] = entry
 
@@ -108,22 +98,17 @@ end
 
 do
     local bg = Drawing.new("Square")
-    bg.Position, bg.Size = Vector2.new(Windows.Position.X, Windows.Position.Y), Vector2.new(Windows.Size.X, Windows.Size.Y)
-    bg.Color, bg.Filled, bg.Visible = Color3.fromRGB(15, 15, 15), true, false
+    bg.Position, bg.Size, bg.Color, bg.Filled, bg.Visible = Vector2.new(Windows.Position.X, Windows.Position.Y), Vector2.new(Windows.Size.X, Windows.Size.Y), Color3.fromRGB(15, 15, 15), true, false
     Windows.Elements[#Windows.Elements + 1] = bg
 
     title = Drawing.new("Text")
-    title.Text, title.Size = "day", 20
-    title.Position = Vector2.new(Windows.Position.X + 12, Windows.Position.Y + 12)
-    title.Color, title.Outline, title.Visible, title.Font = Color3.new(1, 1, 1), true, false, FONT
+    title.Text, title.Size, title.Position, title.Color, title.Outline, title.Visible, title.Font = "day", 20, Vector2.new(Windows.Position.X + 12, Windows.Position.Y + 12), Color3.new(1, 1, 1), true, false, FONT
     Windows.Elements[#Windows.Elements + 1] = title
 end
 
 local Labels, lastLabel = {}, {}
 local function lab(key, text, color) Labels[key] = Windows:AddLabel(text, color) end
-local function ul(key, text)
-    if Labels[key] and lastLabel[key] ~= text then lastLabel[key] = text Labels[key]:SetText(text) end
-end
+local function ul(key, text) if Labels[key] and lastLabel[key] ~= text then lastLabel[key] = text Labels[key]:SetText(text) end end
 
 task.spawn(function()
     lab("meat", "meat: 0/0", Color3.fromRGB(255, 50, 50))
@@ -138,9 +123,7 @@ end)
 
 local raw, fetchDone
 task.spawn(function()
-    local ok, res = pcall(function()
-        return Http:JSONDecode(game:HttpGet("https://imtheo.lol/Offsets/OffsetsHex.json"))
-    end)
+    local ok, res = pcall(function() return Http:JSONDecode(game:HttpGet("https://imtheo.lol/Offsets/OffsetsHex.json")) end)
     raw, fetchDone = ok and res or nil, true
 end)
 
@@ -160,28 +143,22 @@ ScreenGuiEnabled = getOffset(raw, "Offsets", "GuiObject", "ScreenGui_Enabled") o
 HoldDuration = getOffset(raw, "Offsets", "ProximityPrompt", "HoldDuration") or 0x138
 PromptEnabled = getOffset(raw, "Offsets", "ProximityPrompt", "Enabled") or 0x14e
 
-
-
 local Vegetables, AssortedFish, HumanFlesh, Rice
 local function ensureIngredients()
     if Vegetables and AssortedFish and HumanFlesh and Rice then return end
     local ing = child(GameData, "Ingredients", "IngredientsStorage")
     if not ing then return end
-    Vegetables, AssortedFish = ing:FindFirstChild("Vegetables"), ing:FindFirstChild("AssortedFish")
-    HumanFlesh, Rice = ing:FindFirstChild("HumanFlesh"), ing:FindFirstChild("Rice")
+    Vegetables, AssortedFish, HumanFlesh, Rice = ing:FindFirstChild("Vegetables"), ing:FindFirstChild("AssortedFish"), ing:FindFirstChild("HumanFlesh"), ing:FindFirstChild("Rice")
 end
 
 local function setPromptHold(prompt)
-    if prompt and prompt.Address then
-        pcall(function()
-            mw("float", prompt.Address + HoldDuration, 0)
-        end)
-    end
+    if prompt and prompt.Address then pcall(function() mw("float", prompt.Address + HoldDuration, 0) end) end
 end
 
 scheduler:addLoop("computerPrompt", 5, function()
     setPromptHold(child(workspace, "RestaurantArea", "restaurant", "Table", "computer", "ProximityPrompt"))
 end)
+
 scheduler:addLoop("dasherPrompt", 0.5, function()
     each(child(workspace, "NpcDestination", "SpawnedNPCs"), function(npc)
         setPromptHold(child(npc, "Torso", "CatchDasherPrompt"))
@@ -189,37 +166,23 @@ scheduler:addLoop("dasherPrompt", 0.5, function()
 end)
 
 local chloroBusy = false
-
-local function tap(vk)
-    kp(vk)
-    task.wait(0.02)
-    kr(vk)
-end
+local function tap(vk) kp(vk) task.wait(0.02) kr(vk) end
 
 local function getActiveChloroChallenge()
-    local newest = nil
-
+    local newest
     for _, gui in ipairs(PlayerGui:GetChildren()) do
-        if gui.Name == "ChloroformChallenge"
-            and not gui:GetAttribute("Won")
-            and not gui:GetAttribute("Lost")
-        then
+        if gui.Name == "ChloroformChallenge" and not gui:GetAttribute("Won") and not gui:GetAttribute("Lost") then
             newest = gui
         end
     end
-
     return newest
 end
 
 scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
-    if chloroBusy or not SETTINGS.Auto.Chloroform.Enabled then
-        return
-    end
+    if chloroBusy or not SETTINGS.Auto.Chloroform.Enabled then return end
 
     local challenge = getActiveChloroChallenge()
-    if not challenge then
-        return
-    end
+    if not challenge then return end
 
     local label = child(challenge, "ButtonToHitFrame", "Container", "TextLabel")
     if not label then return end
@@ -228,26 +191,14 @@ scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
     if key ~= "Q" and key ~= "E" then return end
 
     chloroBusy = true
-
-    pcall(function()
-        tap(key == "Q" and 0x51 or 0x45)
-    end)
-
+    pcall(function() tap(key == "Q" and 0x51 or 0x45) end)
     chloroBusy = false
 end)
 
 local PStats = {
-    StaminaUsageMultiplier = -1,
-    StaminaGainMultiplier = 100,
-    StaminaUsageMultiplierNonHarvestRelated = 0,
-    WalkSpeed = 24,
-    SprintSpeed = 36,
-    SushiValueMultiplier = 15,
-    EffectiveServiceLevel = 9999,
-    ManualSeatingBoost = 10,
-    TipRevenueMultiplier = 15,
-    PersonalIncomeMultiplier = 10,
-    Charisma = 10
+    StaminaUsageMultiplier = -1, StaminaGainMultiplier = 100, StaminaUsageMultiplierNonHarvestRelated = 0,
+    WalkSpeed = 24, SprintSpeed = 36, SushiValueMultiplier = 15, EffectiveServiceLevel = 9999,
+    ManualSeatingBoost = 10, TipRevenueMultiplier = 15, PersonalIncomeMultiplier = 10, Charisma = 10
 }
 local GStats = { PatienceMultiplier = 3, TipChanceMultiplier = 5, MaxLineSize = 10, SpoilageRate = 0.3, MaxStockMultiplier = 1.5 }
 
@@ -290,6 +241,7 @@ end)
 
 local clockWarned, clockLastTime, clockLabel = {}, "", nil
 local reminderTimes = { ["4:40PM"] = true, ["4:45PM"] = true, ["4:50PM"] = true, ["4:55PM"] = true }
+
 scheduler:addLoop("clock", TIMINGS.clock, function()
     if not clockLabel then
         clockLabel = child(LP, "PlayerGui", "clockGui", "clockFrame", "clockLabel")
@@ -300,19 +252,26 @@ scheduler:addLoop("clock", TIMINGS.clock, function()
         local t = (clockLabel.Text or ""):gsub("%s+", ""):gsub("%[", ""):gsub("%]", ""):gsub("^0", ""):upper()
         if t == clockLastTime then return end
         clockLastTime = t
-        if reminderTimes[t] and not clockWarned[t] then clockWarned[t] = true nt("remove sun tat", "reminder", 5) end
+        if reminderTimes[t] and not clockWarned[t] then
+            clockWarned[t] = true
+            nt("remove sun tat", "reminder", 5)
+        end
         if t == "5:05AM" then clockWarned = {} end
     end)
 end)
 
 local WASH_KEYS, washingBusy, keysHolder = { Q = 0x51, E = 0x45, R = 0x52, F = 0x46 }, false, nil
+
 scheduler:addLoop("washing", TIMINGS.washing, function()
     if washingBusy or not SETTINGS.Auto.Washing.Enabled then return end
     washingBusy = true
 
     local ok, err = pcall(function()
         local gui = PlayerGui:FindFirstChild("DishWashingGui")
-        if not (gui and gui.Address) or mr("byte", gui.Address + ScreenGuiEnabled) ~= 1 then keysHolder = nil return end
+        if not (gui and gui.Address) or mr("byte", gui.Address + ScreenGuiEnabled) ~= 1 then
+            keysHolder = nil
+            return
+        end
 
         keysHolder = keysHolder and keysHolder.Parent and keysHolder or child(gui, "MainFrame", "QueueBarFrame", "Queue", "KeysHolder")
         if not keysHolder then return end
@@ -331,16 +290,13 @@ local GroupId, MinRank = SETTINGS.Staff.GroupId, SETTINGS.Staff.MinRank
 local KnownPlayers, LastPlayerList = {}, nil
 
 local function GetRankInGroup(uid, gid)
-    local ok, res = pcall(function()
-        return game:HttpGet("https://groups.roblox.com/v2/users/" .. uid .. "/groups/roles")
-    end)
+    local ok, res = pcall(function() return game:HttpGet("https://groups.roblox.com/v2/users/" .. uid .. "/groups/roles") end)
     if not ok or not res or res == "" then return nil, "Unknown" end
 
     for entry in res:gmatch('{"group".-"role".-}') do
         local id = tonumber(entry:match('"group".-"id"%s*:%s*(%d+)'))
         if id == gid then
-            return tonumber(entry:match('"rank"%s*:%s*(%d+)')) or 0,
-                entry:match('"role".-"name"%s*:%s*"([^"]+)"') or "Unknown"
+            return tonumber(entry:match('"rank"%s*:%s*(%d+)')) or 0, entry:match('"role".-"name"%s*:%s*"([^"]+)"') or "Unknown"
         end
     end
     return 0, "Unknown"
@@ -363,7 +319,10 @@ local function ScanStaff()
     local present, names = {}, {}
     for _, player in ipairs(Players:GetPlayers()) do
         names[#names + 1] = player.Name
-        if player.UserId then present[player.UserId] = true CheckStaff(player) end
+        if player.UserId then
+            present[player.UserId] = true
+            CheckStaff(player)
+        end
     end
 
     local text = #names > 0 and table.concat(names, ", ") or "None"
@@ -385,7 +344,10 @@ local function showAlert(message, color, key)
 end
 
 local function removeAlert(key)
-    if alertDrawings[key] then pcall(function() alertDrawings[key]:Remove() end) alertDrawings[key] = nil end
+    if alertDrawings[key] then
+        pcall(function() alertDrawings[key]:Remove() end)
+        alertDrawings[key] = nil
+    end
 end
 
 scheduler:addLoop("npcAlerts", TIMINGS.npcAlerts, function()
@@ -425,6 +387,7 @@ scheduler:addLoop("keybinds", TIMINGS.keybinds, function()
         SETTINGS.Auto.Chloroform.Enabled = not SETTINGS.Auto.Chloroform.Enabled
         nt("Chloroform: " .. (SETTINGS.Auto.Chloroform.Enabled and "ON" or "OFF"), "X", 2)
     end
+
     if zDown and not KeyState.Z then
         KeyState.Z = true
         SETTINGS.Auto.Washing.Enabled = not SETTINGS.Auto.Washing.Enabled
