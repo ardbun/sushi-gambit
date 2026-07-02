@@ -44,11 +44,12 @@ Connections[#Connections + 1] = RunS.Heartbeat:Connect(function(dt)
         job.timer = job.timer + dt
         if job.timer >= job.interval then
             job.timer = 0
-            runLoop(name, job)
+            task.spawn(function()
+                runLoop(name, job)
+            end)
         end
     end
 end)
-
 local function nt(msg, title, duration) pcall(function() notify(msg, title or "", duration or 3) end) end
 local function child(obj, ...) for _, name in ipairs({ ... }) do obj = obj and obj:FindFirstChild(name) end return obj end
 local function each(obj, fn) if obj then for _, item in ipairs(obj:GetChildren()) do fn(item) end end end
