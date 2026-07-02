@@ -143,6 +143,24 @@ ScreenGuiEnabled = getOffset(raw, "Offsets", "GuiObject", "ScreenGui_Enabled") o
 HoldDuration = getOffset(raw, "Offsets", "ProximityPrompt", "HoldDuration") or 0x138
 PromptEnabled = getOffset(raw, "Offsets", "ProximityPrompt", "Enabled") or 0x14e
 
+local function setPromptHold(prompt)
+    if prompt and prompt.Address then
+        pcall(function()
+            mw("float", prompt.Address + HoldDuration, 0)
+        end)
+    end
+end
+
+scheduler:addLoop("computerPrompt", 5, function()
+    setPromptHold(child(workspace, "RestaurantArea", "restaurant", "Table", "computer", "ProximityPrompt"))
+end)
+
+scheduler:addLoop("dasherPrompt", 0.5, function()
+    each(child(workspace, "NpcDestination", "SpawnedNPCs"), function(npc)
+        setPromptHold(child(npc, "Torso", "CatchDasherPrompt"))
+    end)
+end)
+
 local Vegetables, AssortedFish, HumanFlesh, Rice
 local function ensureIngredients()
     if Vegetables and AssortedFish and HumanFlesh and Rice then return end
