@@ -194,43 +194,75 @@ scheduler:addLoop("dasherPrompt", 0.5, function()
     end)
 end)
 
-local chloroKeyHeld = false
+local chloroBusy = false
+local lastChloroText = nil
+
+local function tap(vk)
+    kp(vk)
+    task.wait(0.02)
+    kr(vk)
+end
+
+local function getActiveChloroChallenge()
+    local newest = nil
+
+    for _, gui in ipairs(PlayerGui:GetChildren()) do
+        if gui.Name == "ChloroformChallenge"
+            and not gui:GetAttribute("Won")
+            and not gui:GetAttribute("Lost")
+        then
+            newest = gui
+        end
+    end
+
+    return newest
+end
 
 scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
-    if not SETTINGS.Auto.Chloroform.Enabled then
-        if chloroKeyHeld then
-            kr(0x51)
-            chloroKeyHeld = false
-        end
+    if chloroBusy or not SETTINGS.Auto.Chloroform.Enabled then return end
+
+    local challenge = getActiveChloroChallenge()
+    if not challenge then
+        lastChloroText = nil
         return
     end
 
-    local tool = LP.Character and LP.Character:FindFirstChild("Chloroform Spray")
-    if not tool or not tool:FindFirstChild("ChloroformChallenge", true) then
-        if chloroKeyHeld then
-            kr(0x51)
-            chloroKeyHeld = false
+    local label = child(challenge, "ButtonToHitFrame", "Container", "TextLabel")
+    if not label then return end
+
+    local key = label.Text
+    if key ~= "Q" and key ~= "E" then return end
+
+    if key ~= lastChloroText then
+        lastChloroText = key
+        print("[Chloro] key changed to", key)
+    end
+
+    chloroBusy = true
+
+    pcall(function()
+        if key == "Q" then
+            tap(0x51)
+        elseif key == "E" then
+            tap(0x45)
         end
-        return
-    end
+    end)
 
-    if not chloroKeyHeld then
-        kp(0x51)
-        chloroKeyHeld = true
-    end
-end)
-
-scheduler:addLoop("chloroRelease", 0.02, function()
-    if chloroKeyHeld then
-        kr(0x51)
-        chloroKeyHeld = false
-    end
+    chloroBusy = false
 end)
 
 local PStats = {
-    StaminaUsageMultiplier = -1, StaminaGainMultiplier = 100, StaminaUsageMultiplierNonHarvestRelated = 0,
-    WalkSpeed = 24, SprintSpeed = 36, SushiValueMultiplier = 15, EffectiveServiceLevel = 9999,
-    ManualSeatingBoost = 10, TipRevenueMultiplier = 15, PersonalIncomeMultiplier = 10, Charisma = 10
+    StaminaUsageMultiplier = -1,
+    StaminaGainMultiplier = 100,
+    StaminaUsageMultiplierNonHarvestRelated = 0,
+    WalkSpeed = 24,
+    SprintSpeed = 36,
+    SushiValueMultiplier = 15,
+    EffectiveServiceLevel = 9999,
+    ManualSeatingBoost = 10,
+    TipRevenueMultiplier = 15,
+    PersonalIncomeMultiplier = 10,
+    Charisma = 10
 }
 local GStats = { PatienceMultiplier = 3, TipChanceMultiplier = 5, MaxLineSize = 10, SpoilageRate = 0.3, MaxStockMultiplier = 1.5 }
 
