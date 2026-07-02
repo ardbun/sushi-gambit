@@ -219,7 +219,10 @@ local function getActiveChloroChallenge()
 end
 
 scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
-    if chloroBusy or not SETTINGS.Auto.Chloroform.Enabled then return end
+    if chloroBusy or not SETTINGS.Auto.Chloroform.Enabled then
+        lastChloroText = nil
+        return
+    end
 
     local challenge = getActiveChloroChallenge()
     if not challenge then
@@ -235,7 +238,6 @@ scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
 
     if key ~= lastChloroText then
         lastChloroText = key
-        print("[Chloro] key changed to", key)
     end
 
     chloroBusy = true
@@ -250,7 +252,6 @@ scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
 
     chloroBusy = false
 end)
-
 local PStats = {
     StaminaUsageMultiplier = -1,
     StaminaGainMultiplier = 100,
