@@ -44,7 +44,7 @@ Connections[#Connections + 1] = RunS.Heartbeat:Connect(function(dt)
         job.timer = job.timer + dt
         if job.timer >= job.interval then
             job.timer = 0
-            task.spawn(function() runLoop(name, job) end)
+            runLoop(name, job)
         end
     end
 end)
@@ -193,33 +193,42 @@ scheduler:addLoop("dasherPrompt", 0.5, function()
     end)
 end)
 
-scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
+local chloroTool, chloroLabel, lastChloroKey
+
+local function refreshChloroTool()
+    chloroTool = char and char:FindFirstChild("Chloroform Spray")
+    chloroLabel = nil
+    lastChloroKey = nil
+
+    if not chloroTool then return end
+
+    chloroLabel = child(
+        chloroTool,
+        "ChloroformChallenge",
+        "ButtonToHitFrame",
+        "Container",
+        "TextLabel"
+    )
+end
+
+scheduler:addLoop("chloroformRefresh", 0.25, refreshChloroTool)
+
+scheduler:addLoop("chloroform", 0.01, function()
     if not SETTINGS.Auto.Chloroform.Enabled then return end
-    if not char or not char.Parent then return end
+    if not chloroTool or not chloroTool.Parent then return refreshChloroTool() end
+    if not chloroLabel or not chloroLabel.Parent then return refreshChloroTool() end
 
-    local tool = char:FindFirstChild("Chloroform Spray")
-    if not tool then return end -- only runs while equipped
+    local key = chloroLabel.Text
+    if key == lastChloroKey then return end
+    lastChloroKey = key
 
-    local frame = tool:FindFirstChild("ChloroformChallenge")
-    frame = frame and frame:FindFirstChild("ButtonToHitFrame")
-    frame = frame and frame:FindFirstChild("Container")
-
-    local label = frame and frame:FindFirstChild("TextLabel")
-    if not label then return end
-
-    local key = label.Text
-
-    pcall(function()
-        if key == "Q" then
-            kp(0x51)
-            task.wait(0.01)
-            kr(0x51)
-        elseif key == "E" then
-            kp(0x45)
-            task.wait(0.01)
-            kr(0x45)
-        end
-    end)
+    if key == "Q" then
+        kp(0x51)
+        kr(0x51)
+    elseif key == "E" then
+        kp(0x45)
+        kr(0x45)
+    end
 end)
 
 local PStats = {
