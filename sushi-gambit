@@ -17,8 +17,8 @@ local SETTINGS = {
 }
 
 local TIMINGS = {
-    staticPrompts = 5, chloroform = 0.03, stats = 0.5, labels = 0.1, clock = 0.1,
-    washing = 0.04, npcAlerts = 0.5, npcPrompts = 0.2, cleanup = 60,
+    chloroform = 0.03, stats = 0.5, labels = 0.1, clock = 0.1,
+    washing = 0.04, npcAlerts = 0.5, cleanup = 60,
     keybinds = 0.03, staffPoll = 2
 }
 
@@ -55,7 +55,6 @@ local function child(obj, ...) for _, name in ipairs({ ... }) do obj = obj and o
 local function each(obj, fn) if obj then for _, item in ipairs(obj:GetChildren()) do fn(item) end end end
 local function val(obj, name, default) obj = obj and obj:FindFirstChild(name) return obj and obj.Value or default or 0 end
 local function setVal(obj, name, value) obj = obj and obj:FindFirstChild(name) if obj then pcall(function() obj.Value = value end) end end
-local function setPromptHold(prompt) if prompt and prompt.Address then pcall(function() mw("float", prompt.Address + HoldDuration, 0) end) end end
 
 local Windows = {
     Elements = {}, Labels = {}, Position = Vector2.new(1695, 845),
@@ -161,6 +160,8 @@ ScreenGuiEnabled = getOffset(raw, "Offsets", "GuiObject", "ScreenGui_Enabled") o
 HoldDuration = getOffset(raw, "Offsets", "ProximityPrompt", "HoldDuration") or 0x138
 PromptEnabled = getOffset(raw, "Offsets", "ProximityPrompt", "Enabled") or 0x14e
 
+
+
 local Vegetables, AssortedFish, HumanFlesh, Rice
 local function ensureIngredients()
     if Vegetables and AssortedFish and HumanFlesh and Rice then return end
@@ -170,24 +171,17 @@ local function ensureIngredients()
     HumanFlesh, Rice = ing:FindFirstChild("HumanFlesh"), ing:FindFirstChild("Rice")
 end
 
-local PROMPT_PATHS = {
-    { "Workspace", "RestaurantArea", "restaurant", "Table", "computer", "ProximityPrompt" },
-    { "Workspace", "RestaurantArea", "restaurant", "mainStuff", "conveyors", "keypad", "PromptPart", "ProximityPrompt" },
-    { "Workspace", "RestaurantArea", "restaurant", "FreezerDoor", "PromptHitbox", "ProximityPrompt" },
-    { "Workspace", "Toolbin", "PromptHitbox", "ProximityPrompt" },
-    { "Workspace", "RestaurantArea", "restaurant", "the waiter stand thingy", "Stations", "SeatingStation", "TriggerPart", "SeatCustomersPrompt" }
-}
-
-local function applyStaticPrompts()
-    for _, path in ipairs(PROMPT_PATHS) do
-        local obj = game
-        for _, name in ipairs(path) do obj = obj and obj:FindFirstChild(name) end
-        setPromptHold(obj)
+local function setPromptHold(prompt)
+    if prompt and prompt.Address then
+        pcall(function()
+            mw("float", prompt.Address + HoldDuration, 0)
+        end)
     end
 end
-applyStaticPrompts()
-scheduler:addLoop("staticPrompts", TIMINGS.staticPrompts, applyStaticPrompts)
 
+scheduler:addLoop("computerPrompt", 5, function()
+    setPromptHold(child(workspace, "RestaurantArea", "restaurant", "Table", "computer", "ProximityPrompt"))
+end)
 scheduler:addLoop("dasherPrompt", 0.5, function()
     each(child(workspace, "NpcDestination", "SpawnedNPCs"), function(npc)
         setPromptHold(child(npc, "Torso", "CatchDasherPrompt"))
@@ -195,7 +189,6 @@ scheduler:addLoop("dasherPrompt", 0.5, function()
 end)
 
 local chloroBusy = false
-local lastChloroText = nil
 
 local function tap(vk)
     kp(vk)
@@ -220,13 +213,11 @@ end
 
 scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
     if chloroBusy or not SETTINGS.Auto.Chloroform.Enabled then
-        lastChloroText = nil
         return
     end
 
     local challenge = getActiveChloroChallenge()
     if not challenge then
-        lastChloroText = nil
         return
     end
 
@@ -236,22 +227,15 @@ scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
     local key = label.Text
     if key ~= "Q" and key ~= "E" then return end
 
-    if key ~= lastChloroText then
-        lastChloroText = key
-    end
-
     chloroBusy = true
 
     pcall(function()
-        if key == "Q" then
-            tap(0x51)
-        elseif key == "E" then
-            tap(0x45)
-        end
+        tap(key == "Q" and 0x51 or 0x45)
     end)
 
     chloroBusy = false
 end)
+
 local PStats = {
     StaminaUsageMultiplier = -1,
     StaminaGainMultiplier = 100,
@@ -428,13 +412,6 @@ scheduler:addLoop("npcAlerts", TIMINGS.npcAlerts, function()
 
     if not criticSeen then removeAlert("critic") end
     if not inspectorSeen then removeAlert("inspector") end
-end)
-
-scheduler:addLoop("npcPrompts", TIMINGS.npcPrompts, function()
-    if not SETTINGS.Cheat.SeatCustomer then return end
-    each(child(workspace, "NpcDestination", "SpawnedNPCs"), function(npc)
-        setPromptHold(child(npc, "Torso", "WaitProximityPrompt"))
-    end)
 end)
 
 scheduler:addLoop("cleanup", TIMINGS.cleanup, function() notifiedNpcs = {} end)
