@@ -183,16 +183,22 @@ scheduler:addLoop("dasherPrompt", 0.5, function()
 end)
 
 local chloroBusy = false
-local function tap(vk) kp(vk) task.wait(0.02) kr(vk) end
-
 local function getActiveChloroChallenge()
     local newest
+
     for _, gui in ipairs(PlayerGui:GetChildren()) do
-        if gui.Name == "ChloroformChallenge" and not gui:GetAttribute("Won") and not gui:GetAttribute("Lost") then
+        if gui.Name == "ChloroformChallenge"
+            and not gui:GetAttribute("Won")
+            and not gui:GetAttribute("Lost")
+        then
             newest = gui
         end
     end
-    return newest
+
+    if newest then return newest end
+
+    local tool = LP.Character and LP.Character:FindFirstChild("Chloroform Spray")
+    return tool and tool:FindFirstChild("ChloroformChallenge")
 end
 
 scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
@@ -208,7 +214,8 @@ scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
     if key ~= "Q" and key ~= "E" then return end
 
     chloroBusy = true
-    pcall(function() tap(key == "Q" and 0x51 or 0x45) end)
+    kp(key == "Q" and 0x51 or 0x45)
+    kr(key == "Q" and 0x51 or 0x45)
     chloroBusy = false
 end)
 
@@ -277,30 +284,35 @@ scheduler:addLoop("clock", TIMINGS.clock, function()
     end)
 end)
 
-local WASH_KEYS, washingBusy, keysHolder = { Q = 0x51, E = 0x45, R = 0x52, F = 0x46 }, false, nil
+local WASH_KEYS = { Q = 0x51, E = 0x45, R = 0x52, F = 0x46 }
 
-scheduler:addLoop("washing", TIMINGS.washing, function()
-    if washingBusy or not SETTINGS.Auto.Washing.Enabled then return end
-    washingBusy = true
+scheduler:addLoop("washing", 0.05, function()
+    if not SETTINGS.Auto.Washing.Enabled then return end
 
-    local ok, err = pcall(function()
-        local gui = PlayerGui:FindFirstChild("DishWashingGui")
-        if not (gui and gui.Address) or mr("byte", gui.Address + ScreenGuiEnabled) ~= 1 then
-            keysHolder = nil
-            return
+    local gui = PlayerGui:FindFirstChild("DishWashingGui")
+    if not gui or not gui.Address then return end
+
+    local sink = workspace:FindFirstChild("Kitchen")
+        and workspace.Kitchen:FindFirstChild("TheSink")
+
+    local amount = sink and sink:FindFirstChild("DirtyDishAmount")
+    if amount and amount.Value == 0 then return end
+
+    if mr("byte", gui.Address + ScreenGuiEnabled) ~= 1 then return end
+
+    local keysHolder = child(gui, "MainFrame", "QueueBarFrame", "Queue", "KeysHolder")
+    if not keysHolder then return end
+
+    for _, frame in ipairs(keysHolder:GetChildren()) do
+        if frame:IsA("Frame") and frame.Name == "KeyTemplate" then
+            local vk = WASH_KEYS[frame:GetAttribute("Key")]
+            if vk then
+                kp(vk)
+                kr(vk)
+                task.wait(0.01)
+            end
         end
-
-        keysHolder = keysHolder and keysHolder.Parent and keysHolder or child(gui, "MainFrame", "QueueBarFrame", "Queue", "KeysHolder")
-        if not keysHolder then return end
-
-        for _, frame in ipairs(keysHolder:GetChildren()) do
-            local vk = frame:IsA("Frame") and frame.Name == "KeyTemplate" and WASH_KEYS[frame:GetAttribute("Key")]
-            if vk then kp(vk) kr(vk) task.wait(0.035) end
-        end
-    end)
-
-    if not ok then warn("washing error: " .. tostring(err)) end
-    washingBusy = false
+    end
 end)
 
 local GroupId, MinRank = SETTINGS.Staff.GroupId, SETTINGS.Staff.MinRank
