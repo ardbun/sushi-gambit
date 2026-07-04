@@ -435,7 +435,7 @@ task.spawn(function()
     end
 end)
 
-nt("loaded", "", 4)
+notify("loaded", "", 1)
 
 if getgenv then
     getgenv().SushiGambitCleanup = function()
