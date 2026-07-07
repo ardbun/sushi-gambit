@@ -129,7 +129,7 @@ end)
 
 local fetchStart = tick()
 repeat task.wait(0.1) until fetchDone or tick() - fetchStart > 5
-raw = raw or { Offsets = { GuiObject = { ScreenGui_Enabled = "0x4cc" }, ProximityPrompt = { HoldDuration = "0x138", Enabled = "0x14e" } } }
+raw = raw or { Offsets = { GuiObject = { ScreenGui_Enabled = "0x4cc" } } }
 
 local function getOffset(t, ...)
     for _, key in ipairs({ ... }) do
@@ -140,9 +140,9 @@ local function getOffset(t, ...)
 end
 
 ScreenGuiEnabled = getOffset(raw, "Offsets", "GuiObject", "ScreenGui_Enabled") or 0x4cc
-HoldDuration = getOffset(raw, "Offsets", "ProximityPrompt", "HoldDuration") or 0x138
-PromptEnabled = getOffset(raw, "Offsets", "ProximityPrompt", "Enabled") or 0x14e
-PromptDistance = getOffset(raw, "Offsets", "ProximityPrompt", "MaxActivationDistance")
+
+-- CORRECT HoldDuration offset found via memory scan (0x120 = 3.0 seconds)
+local HoldDuration = 0x120
 
 local Vegetables, AssortedFish, HumanFlesh, Rice
 local function ensureIngredients()
@@ -157,10 +157,6 @@ local function setPromptHold(prompt)
 
     pcall(function()
         mw("float", prompt.Address + HoldDuration, 0)
-
-        if PromptDistance then
-            mw("float", prompt.Address + PromptDistance, 20)
-        end
     end)
 end
 
@@ -170,17 +166,15 @@ local function patchKnownPrompts()
     setPromptHold(child(workspace, "RestaurantArea", "restaurant", "FreezerDoor", "PromptHitbox", "ProximityPrompt"))
     setPromptHold(child(workspace, "Toolbin", "PromptHitbox", "ProximityPrompt"))
     setPromptHold(child(workspace, "RestaurantArea", "restaurant", "the waiter stand thingy", "Stations", "SeatingStation", "TriggerPart", "SeatCustomersPrompt"))
-end
-
-patchKnownPrompts()
-scheduler:addLoop("knownPrompts", 5, patchKnownPrompts)
-
-scheduler:addLoop("dasherPrompt", 0.5, function()
+    
     each(child(workspace, "NpcDestination", "SpawnedNPCs"), function(npc)
         setPromptHold(child(npc, "Torso", "CatchDasherPrompt"))
         setPromptHold(child(npc, "Torso", "WaitProximityPrompt"))
     end)
-end)
+end
+
+patchKnownPrompts()
+scheduler:addLoop("knownPrompts", 2, patchKnownPrompts)
 
 local chloroBusy = false
 local function getActiveChloroChallenge()
@@ -425,14 +419,6 @@ scheduler:addLoop("keybinds", TIMINGS.keybinds, function()
 
     if not xDown then KeyState.X = false end
     if not zDown then KeyState.Z = false end
-end)
-
-task.spawn(function()
-    while alive do
-        local prompt = child(workspace, "RestaurantArea", "restaurant", "Table", "computer", "ProximityPrompt")
-        if prompt and prompt.Address then pcall(function() mw("byte", prompt.Address + PromptEnabled, 1) end) end
-        task.wait(0.1)
-    end
 end)
 
 notify("loaded", "", 1)
