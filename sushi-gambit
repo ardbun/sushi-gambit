@@ -173,7 +173,7 @@ local function patchKnownPrompts()
 end
 
 patchKnownPrompts()
-scheduler:addLoop("knownPrompts", 2, patchKnownPrompts)
+scheduler:addLoop("knownPrompts", 0.1, patchKnownPrompts)
 
 local chloroBusy = false
 local function getActiveChloroChallenge()
