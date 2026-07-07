@@ -176,22 +176,33 @@ patchKnownPrompts()
 scheduler:addLoop("knownPrompts", 0.1, patchKnownPrompts)
 
 local chloroBusy = false
+local function tap(vk)
+    -- Only send keys if chat is NOT open (check if chat input is focused)
+    local chatFrame = LP.PlayerGui:FindFirstChild("Chat")
+    if chatFrame then
+        local chatInput = chatFrame:FindFirstChild("ChatInput")
+        if chatInput and chatInput:FindFirstChild("TextChatBar") then
+            local textBar = chatInput:FindFirstChild("TextChatBar")
+            if textBar and textBar:IsA("Frame") then
+                -- If chat bar is visible, don't send keys
+                if textBar.Visible then return end
+            end
+        end
+    end
+    
+    kp(vk)
+    task.wait(0.02)
+    kr(vk)
+end
+
 local function getActiveChloroChallenge()
     local newest
-
     for _, gui in ipairs(PlayerGui:GetChildren()) do
-        if gui.Name == "ChloroformChallenge"
-            and not gui:GetAttribute("Won")
-            and not gui:GetAttribute("Lost")
-        then
+        if gui.Name == "ChloroformChallenge" and not gui:GetAttribute("Won") and not gui:GetAttribute("Lost") then
             newest = gui
         end
     end
-
-    if newest then return newest end
-
-    local tool = LP.Character and LP.Character:FindFirstChild("Chloroform Spray")
-    return tool and tool:FindFirstChild("ChloroformChallenge")
+    return newest
 end
 
 scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
@@ -207,8 +218,28 @@ scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
     if key ~= "Q" and key ~= "E" then return end
 
     chloroBusy = true
-    kp(key == "Q" and 0x51 or 0x45)
-    kr(key == "Q" and 0x51 or 0x45)
+    pcall(function()
+        local vk = key == "Q" and 0x51 or 0x45
+        
+        -- Check if chat is open before sending
+        local chatOpen = false
+        local chatFrame = LP.PlayerGui:FindFirstChild("Chat")
+        if chatFrame then
+            local chatInput = chatFrame:FindFirstChild("ChatInput")
+            if chatInput then
+                local textBar = chatInput:FindFirstChild("TextChatBar")
+                if textBar and textBar:IsA("Frame") and textBar.Visible then
+                    chatOpen = true
+                end
+            end
+        end
+        
+        if not chatOpen then
+            kp(vk)
+            task.wait(0.02)
+            kr(vk)
+        end
+    end)
     chloroBusy = false
 end)
 
