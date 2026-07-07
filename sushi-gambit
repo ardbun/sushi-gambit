@@ -141,7 +141,6 @@ end
 
 ScreenGuiEnabled = getOffset(raw, "Offsets", "GuiObject", "ScreenGui_Enabled") or 0x4cc
 
--- CORRECT HoldDuration offset found via memory scan (0x120 = 3.0 seconds)
 local HoldDuration = 0x120
 
 local Vegetables, AssortedFish, HumanFlesh, Rice
