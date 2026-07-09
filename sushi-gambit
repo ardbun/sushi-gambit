@@ -5,7 +5,7 @@ local PlayerStats,PlayerGui=LP:WaitForChild("PlayerStats"),LP:WaitForChild("Play
 local mr,mw=memory_read or function()return 0 end,memory_write or function()end
 local kp,kr,ikp=keypress or function()end,keyrelease or function()end,iskeypressed or function()return false end
 local FONT,alive=Drawing.Fonts.SystemBold,true
-local SETTINGS={Auto={Washing={Enabled=false},Chloroform={Enabled=false}},Cheat={CleanDish=true,SeatCustomer=true,Greenbar=true,SpongeEffect=true},Staff={GroupId=33171215,MinRank=245,Notify=true}}
+local SETTINGS={Auto={Washing={Enabled=false,delay=.15},Chloroform={Enabled=false}},Cheat={CleanDish=true,SeatCustomer=true,Greenbar=true,SpongeEffect=true},Staff={GroupId=33171215,MinRank=245,Notify=true}}
 local TIMINGS={chloroform=.03,stats=.5,labels=.1,clock=.1,washing=.04,npcAlerts=.5,cleanup=60,keybinds=.03,staffPoll=2}
 local scheduler,Connections={_loops={}},{}
 local alertDrawings,notifiedNpcs={},{}
@@ -53,7 +53,8 @@ local clockWarned,clockLastTime,clockLabel={},"",nil
 local reminderTimes={["4:40PM"]=true,["4:45PM"]=true,["4:50PM"]=true,["4:55PM"]=true}
 scheduler:addLoop("clock",TIMINGS.clock,function()if not clockLabel then clockLabel=child(LP,"PlayerGui","clockGui","clockFrame","clockLabel")if not clockLabel then return end end pcall(function()local t=(clockLabel.Text or""):gsub("%s+",""):gsub("%[",""):gsub("%]",""):gsub("^0",""):upper()if t==clockLastTime then return end clockLastTime=t if reminderTimes[t]and not clockWarned[t]then clockWarned[t]=true nt("remove sun tat","reminder",5)end if t=="5:05AM"then clockWarned={}end end)end)
 local WASH_KEYS={Q=0x51,E=0x45,R=0x52,F=0x46}
-scheduler:addLoop("washing",.05,function()if not SETTINGS.Auto.Washing.Enabled then return end local g=PlayerGui:FindFirstChild("DishWashingGui")if not g or not g.Address then return end local s=workspace:FindFirstChild("Kitchen")and workspace.Kitchen:FindFirstChild("TheSink")local a=s and s:FindFirstChild("DirtyDishAmount")if a and a.Value==0 then return end if mr("byte",g.Address+ScreenGuiEnabled)~=1 then return end local k=child(g,"MainFrame","QueueBarFrame","Queue","KeysHolder")if not k then return end for _,f in ipairs(k:GetChildren())do if f:IsA("Frame")and f.Name=="KeyTemplate"then local v=WASH_KEYS[f:GetAttribute("Key")]if v then kp(v)kr(v)task.wait(.01)end end end end)
+local washDelay=.05
+scheduler:addLoop("washing",.05,function()if not SETTINGS.Auto.Washing.Enabled then return end local g=PlayerGui:FindFirstChild("DishWashingGui")if not g or not g.Address then return end local s=workspace:FindFirstChild("Kitchen")and workspace.Kitchen:FindFirstChild("TheSink")local a=s and s:FindFirstChild("DirtyDishAmount")if a and a.Value==0 then return end if mr("byte",g.Address+ScreenGuiEnabled)~=1 then return end local k=child(g,"MainFrame","QueueBarFrame","Queue","KeysHolder")if not k then return end for _,f in ipairs(k:GetChildren())do if f:IsA("Frame")and f.Name=="KeyTemplate"then local v=WASH_KEYS[f:GetAttribute("Key")]if v then kp(v)kr(v)task.wait(washDelay)end end end end)
 local GroupId,MinRank=SETTINGS.Staff.GroupId,SETTINGS.Staff.MinRank
 local KnownPlayers,LastPlayerList={},nil
 local function GetRankInGroup(uid,gid)local o,r=pcall(function()return game:HttpGet("https://groups.roblox.com/v2/users/"..uid.."/groups/roles")end)if not o or not r or r==""then return nil,"Unknown"end for e in r:gmatch('{"group".-"role".-}')do local id=tonumber(e:match('"group".-"id"%s*:%s*(%d+)'))if id==gid then return tonumber(e:match('"rank"%s*:%s*(%d+)'))or 0,e:match('"role".-"name"%s*:%s*"([^"]+)"')or"Unknown"end end return 0,"Unknown"end
