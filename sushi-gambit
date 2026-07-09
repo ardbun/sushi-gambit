@@ -213,6 +213,8 @@ function Windows:AddLabel(t, c)
     return h
 end
 
+local title
+
 do
     local b = Drawing.new("Square")
     b.Position = Vector2.new(Windows.Position.X, Windows.Position.Y)
@@ -222,7 +224,7 @@ do
     b.Visible = false
     Windows.Elements[#Windows.Elements + 1] = b
 
-    local title = Drawing.new("Text")
+    title = Drawing.new("Text")
     title.Text = "day"
     title.Size = 20
     title.Position = Vector2.new(Windows.Position.X + 12, Windows.Position.Y + 12)
