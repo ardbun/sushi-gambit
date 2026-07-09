@@ -6,7 +6,7 @@ local mr,mw=memory_read or function()return 0 end,memory_write or function()end
 local kp,kr,ikp=keypress or function()end,keyrelease or function()end,iskeypressed or function()return false end
 local FONT,alive=Drawing.Fonts.SystemBold,true
 local SETTINGS={Auto={Washing={Enabled=false,delay=.15},Chloroform={Enabled=false}},Cheat={CleanDish=true,SeatCustomer=true,Greenbar=true,SpongeEffect=true},Staff={GroupId=33171215,MinRank=245,Notify=true}}
-local TIMINGS={chloroform=.03,stats=.5,labels=.1,clock=.1,washing=.04,npcAlerts=.5,cleanup=60,keybinds=.03,staffPoll=2}
+local TIMINGS={chloroform=.02,stats=.5,labels=.1,clock=.1,washing=.04,npcAlerts=.5,cleanup=60,keybinds=.03,staffPoll=2}
 local scheduler,Connections={_loops={}},{}
 local alertDrawings,notifiedNpcs={},{}
 function scheduler:addLoop(n,i,f)self._loops[n]={interval=i,timer=0,fn=f,running=false}end
