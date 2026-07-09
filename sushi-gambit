@@ -34,9 +34,10 @@ local fetchStart=tick()repeat task.wait(.1)until fetchDone or tick()-fetchStart>
 local function getOffset(t,...)for _,k in ipairs({...})do if type(t)~="table"then return nil end t=t[k]end return t and tonumber(t,16)end
 ScreenGuiEnabled=getOffset(raw,"Offsets","GuiObject","ScreenGui_Enabled")or 0x4cc
 HoldDuration=0x120
+PromptDistance=0x128
 local Vegetables,AssortedFish,HumanFlesh,Rice
 local function ensureIngredients()if Vegetables and AssortedFish and HumanFlesh and Rice then return end local ing=child(GameData,"Ingredients","IngredientsStorage")if not ing then return end Vegetables,AssortedFish,HumanFlesh,Rice=ing:FindFirstChild("Vegetables"),ing:FindFirstChild("AssortedFish"),ing:FindFirstChild("HumanFlesh"),ing:FindFirstChild("Rice")end
-local function setPromptHold(p)if not(p and p.Address)then return end pcall(function()mw("float",p.Address+HoldDuration,0)end)end
+local function setPromptHold(p)if not(p and p.Address)then return end pcall(function()mw("float",p.Address+HoldDuration,0)mw("float",p.Address+PromptDistance,50)end)end
 local function patchKnownPrompts()setPromptHold(child(workspace,"RestaurantArea","restaurant","Table","computer","ProximityPrompt"))setPromptHold(child(workspace,"RestaurantArea","restaurant","mainStuff","conveyors","keypad","PromptPart","ProximityPrompt"))setPromptHold(child(workspace,"RestaurantArea","restaurant","FreezerDoor","PromptHitbox","ProximityPrompt"))setPromptHold(child(workspace,"Toolbin","PromptHitbox","ProximityPrompt"))setPromptHold(child(workspace,"RestaurantArea","restaurant","the waiter stand thingy","Stations","SeatingStation","TriggerPart","SeatCustomersPrompt"))each(child(workspace,"NpcDestination","SpawnedNPCs"),function(n)setPromptHold(child(n,"Torso","CatchDasherPrompt"))setPromptHold(child(n,"Torso","WaitProximityPrompt"))end)end
 patchKnownPrompts()scheduler:addLoop("knownPrompts",.1,patchKnownPrompts)
 scheduler:addLoop("computerBlackout",.1,function()pcall(function()local p=child(workspace,"RestaurantArea","restaurant","Table","computer","ProximityPrompt")if p and p.Address then mw("byte",p.Address+0x136,1)end end)end)
