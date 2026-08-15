@@ -137,7 +137,7 @@ local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or V
 local Windows = {
     Elements = {},
     Labels = {},
-    Position = Vector2.new(math.max(vp.X - 225, 0), math.max(vp.Y - 235, 0)),
+    Position = Vector2.new(1695, 845),
     Size = Vector2.new(195, 280)
 }
 
