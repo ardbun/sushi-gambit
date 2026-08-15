@@ -138,7 +138,7 @@ local Windows = {
     Elements = {},
     Labels = {},
     Position = Vector2.new(1695, 845),
-    Size = Vector2.new(195, 280)
+    Size = Vector2.new(195, 285)
 }
 
 function Windows:Show(s)
@@ -241,6 +241,7 @@ lab("bill", "bill: $0.00", Color3.fromRGB(40, 200, 40))
 lab("rev", "rev: $0.00", Color3.fromRGB(30, 150, 30))
 lab("review", "rating: 0.00", Color3.new(1, 1, 1))
 lab("dishes", "dishes: 0", Color3.new(1, 1, 1))
+lab("seated", "seated: 0/18", Color3.fromRGB(255, 200, 100))
 
 local ScreenGuiEnabled = 0x4c4
 local HoldDuration = 0x120
@@ -270,6 +271,8 @@ local function setPromptHold(p)
         mw("float", p.Address + HoldDuration, 0)
     end)
 end
+
+local SeatsFolder = child(workspace, "RestaurantArea", "restaurant", "mainStuff", "chairs")
 
 local function patchKnownPrompts()
     setPromptHold(child(workspace, "RestaurantArea", "restaurant", "Table", "computer", "ProximityPrompt"))
@@ -472,6 +475,16 @@ scheduler:addLoop("labels", TIMINGS.labels, function()
         local s = GameData:FindFirstChild("CurrentReviewScore")
         ul("review", s and ("rating: %.0f"):format(s.Value) or "rating: 0")
         ul("dishes", "dishes: " .. val(child(workspace, "Kitchen", "TheSink"), "CleanDishAmount", 0))
+
+        local seated = 0
+        if SeatsFolder then
+            for _, ch in ipairs(SeatsFolder:GetChildren()) do
+                if ch.ClassName == "Model" and ch:GetAttribute("SeatOpen") == false then
+                    seated = seated + 1
+                end
+            end
+        end
+        ul("seated", "seated: " .. seated .. "/18")
 
         local d = GameData:FindFirstChild("CurrentDay")
         if d then
