@@ -276,7 +276,7 @@ local function patchKnownPrompts()
     setPromptHold(child(workspace, "RestaurantArea", "restaurant", "mainStuff", "conveyors", "keypad", "PromptPart", "ProximityPrompt"))
     setPromptHold(child(workspace, "RestaurantArea", "restaurant", "FreezerDoor", "PromptHitbox", "ProximityPrompt"))
     setPromptHold(child(workspace, "Toolbin", "PromptHitbox", "ProximityPrompt"))
-
+    setPromptHold(child(workspace, "RestaurantArea", "restaurant", "the waiter stand thingy", "Stations", "SeatingStation", "TriggerPart", "SeatCustomersPrompt"))
     each(child(workspace, "NpcDestination", "SpawnedNPCs"), function(n)
         setPromptHold(child(n, "Torso", "CatchDasherPrompt"))
         setPromptHold(child(n, "Torso", "WaitProximityPrompt"))
@@ -387,6 +387,7 @@ local PStats = {
     StaminaUsageMultiplierNonHarvestRelated = 0,
     WalkSpeed = 26,
     EffectiveServiceLevel = 9999,
+    ManualSeatingBoost = 10,
     Charisma = 10
 }
 
@@ -771,9 +772,7 @@ for _, tbl in ipairs({ PStats, GStats }) do
     end
 end
 if #missing > 0 then
-    print("stat objects present: " .. (total - #missing) .. "/" .. total .. ", missing: " .. table.concat(missing, ", "))
 else
-    print("stat objects present: " .. total .. "/" .. total)
 end
 
 if not HAS.memory or not HAS.keys then
