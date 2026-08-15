@@ -138,7 +138,7 @@ local Windows = {
     Elements = {},
     Labels = {},
     Position = Vector2.new(1695, 845),
-    Size = Vector2.new(195, 290)
+    Size = Vector2.new(195, 295)
 }
 
 function Windows:Show(s)
