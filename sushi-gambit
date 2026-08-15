@@ -531,8 +531,13 @@ end)
 
 local WASH_KEYS = { Q = 0x51, E = 0x45, R = 0x52, F = 0x46 }
 
-scheduler:addLoop("washing", TIMINGS.washing, function()
+local lastWashKey = nil
+local lastWashTime = 0
+local washCooldown = 0.035
+
+scheduler:addLoop("washing", 0.01, function()
     if not SETTINGS.Auto.Washing.Enabled then
+        lastWashKey = nil
         return
     end
 
@@ -541,31 +546,58 @@ scheduler:addLoop("washing", TIMINGS.washing, function()
         return
     end
 
-    local sink = workspace:FindFirstChild("Kitchen") and workspace.Kitchen:FindFirstChild("TheSink")
-    local amount = sink and sink:FindFirstChild("DirtyDishAmount")
-    if amount and amount.Value == 0 then
-        return
-    end
-
     if mr("byte", g.Address + ScreenGuiEnabled) ~= 1 then
+        lastWashKey = nil
         return
     end
 
-    local holder = child(g, "MainFrame", "QueueBarFrame", "Queue", "KeysHolder")
+    local holder = child(
+        g,
+        "MainFrame",
+        "QueueBarFrame",
+        "Queue",
+        "KeysHolder"
+    )
+
     if not holder then
         return
     end
 
+    local key
+
     for _, f in ipairs(holder:GetChildren()) do
         if f:IsA("Frame") and f.Name == "KeyTemplate" then
-            local vk = WASH_KEYS[f:GetAttribute("Key")]
-            if vk then
-                kp(vk)
-                kr(vk)
-                return
+            local k = f:GetAttribute("Key")
+
+            if WASH_KEYS[k] then
+                key = k
+                break
             end
         end
     end
+
+    if not key then
+        lastWashKey = nil
+        return
+    end
+
+    local now = tick()
+
+    -- Don't repeatedly press the exact same queue entry.
+    if key == lastWashKey and now - lastWashTime < washCooldown then
+        return
+    end
+
+    lastWashKey = key
+    lastWashTime = now
+
+    local vk = WASH_KEYS[key]
+
+    pcall(function()
+        kp(vk)
+        task.wait(0.025)
+        kr(vk)
+    end)
 end)
 
 local GroupId, MinRank = SETTINGS.Staff.GroupId, SETTINGS.Staff.MinRank
