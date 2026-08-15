@@ -531,26 +531,62 @@ end)
 
 local WASH_KEYS = { Q = 0x51, E = 0x45, R = 0x52, F = 0x46 }
 
-local lastWashKey = nil
-local lastWashTime = 0
-local washCooldown = 0.035
+local washState = {
+    lastEntry = nil,
+    lastQueueId = nil,
+    lastKey = nil
+}
 
-scheduler:addLoop("washing", 0.01, function()
+local function getQueueEntryId(entry)
+    if not entry then return nil end
+    
+    local key = entry:GetAttribute("Key") or ""
+    local addr = entry.Address
+    
+    if addr then
+        return tostring(addr) .. ":" .. key
+    end
+    return tostring(entry) .. ":" .. key
+end
+
+local function findFirstQueueEntry(holder)
+    if not holder then return nil, nil end
+    
+    for _, child in ipairs(holder:GetChildren()) do
+        if child:IsA("Frame") and child.Name == "KeyTemplate" then
+            local key = child:GetAttribute("Key")
+            if WASH_KEYS[key] then
+                return child, key
+            end
+        end
+    end
+    
+    return nil, nil
+end
+
+scheduler:addLoop("washing", 0.03, function()
     if not SETTINGS.Auto.Washing.Enabled then
-        lastWashKey = nil
+        washState.lastEntry = nil
+        washState.lastQueueId = nil
+        washState.lastKey = nil
         return
     end
-
+    
     local g = PlayerGui:FindFirstChild("DishWashingGui")
     if not g or not g.Address then
+        washState.lastEntry = nil
+        washState.lastQueueId = nil
+        washState.lastKey = nil
         return
     end
-
+    
     if mr("byte", g.Address + ScreenGuiEnabled) ~= 1 then
-        lastWashKey = nil
+        washState.lastEntry = nil
+        washState.lastQueueId = nil
+        washState.lastKey = nil
         return
     end
-
+    
     local holder = child(
         g,
         "MainFrame",
@@ -558,46 +594,40 @@ scheduler:addLoop("washing", 0.01, function()
         "Queue",
         "KeysHolder"
     )
-
+    
     if not holder then
+        washState.lastEntry = nil
+        washState.lastQueueId = nil
+        washState.lastKey = nil
         return
     end
-
-    local key
-
-    for _, f in ipairs(holder:GetChildren()) do
-        if f:IsA("Frame") and f.Name == "KeyTemplate" then
-            local k = f:GetAttribute("Key")
-
-            if WASH_KEYS[k] then
-                key = k
-                break
-            end
-        end
-    end
-
-    if not key then
-        lastWashKey = nil
+    
+    local currentEntry, currentKey = findFirstQueueEntry(holder)
+    
+    if not currentEntry or not currentKey then
+        washState.lastEntry = nil
+        washState.lastQueueId = nil
+        washState.lastKey = nil
         return
     end
-
-    local now = tick()
-
-    -- Don't repeatedly press the exact same queue entry.
-    if key == lastWashKey and now - lastWashTime < washCooldown then
+    
+    local currentId = getQueueEntryId(currentEntry)
+    
+    if currentEntry == washState.lastEntry and currentId == washState.lastQueueId then
         return
     end
-
-    lastWashKey = key
-    lastWashTime = now
-
-    local vk = WASH_KEYS[key]
-
-    pcall(function()
-        kp(vk)
-        task.wait(0.025)
-        kr(vk)
-    end)
+    
+    washState.lastEntry = currentEntry
+    washState.lastQueueId = currentId
+    washState.lastKey = currentKey
+    
+    local vk = WASH_KEYS[currentKey]
+    
+    local ok, err = pcall(kp, vk)
+    if ok then
+        task.wait(0.02)
+        pcall(kr, vk)
+    end
 end)
 
 local GroupId, MinRank = SETTINGS.Staff.GroupId, SETTINGS.Staff.MinRank
