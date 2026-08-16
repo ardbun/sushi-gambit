@@ -287,7 +287,7 @@ local function patchKnownPrompts()
 end
 
 patchKnownPrompts()
-scheduler:addLoop("knownPrompts", 1, patchKnownPrompts)
+scheduler:addLoop("knownPrompts", 0.15, patchKnownPrompts)
 
 local computerPrompt
 local function getComputerPrompt()
