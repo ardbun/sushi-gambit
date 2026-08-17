@@ -35,8 +35,7 @@ local SETTINGS = {
     },
     Cheat = {
         CleanDish = true,
-        Greenbar = true,
-        GStats = true
+        Greenbar = true
     },
     Staff = {
         GroupId = 33171215,
@@ -247,10 +246,10 @@ local ScreenGuiEnabled = 0x4c4
 local HoldDuration = 0x120
 local PromptEnabled = 0x136
 
-local Vegetables, AssortedFish, HumanFlesh, Rice
+local Vegetables, AssortedFish, HumanFlesh, Rice, Coffee
 
 local function ensureIngredients()
-    if Vegetables and AssortedFish and HumanFlesh and Rice then
+    if Vegetables and AssortedFish and HumanFlesh and Rice and Coffee then
         return
     end
     local ing = child(GameData, "Ingredients", "IngredientsStorage")
@@ -261,6 +260,7 @@ local function ensureIngredients()
     AssortedFish = ing:FindFirstChild("AssortedFish")
     HumanFlesh = ing:FindFirstChild("HumanFlesh")
     Rice = ing:FindFirstChild("Rice")
+    Coffee = ing:FindFirstChild("Coffee")
 end
 
 local function setPromptHold(p)
@@ -321,7 +321,7 @@ local function getActiveChloroChallenge()
 end
 
 scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
-    if chloroBusy or not SETTINGS.Auto.Chloroform.Enabled then
+    if chloroBusy then
         return
     end
     local c = getActiveChloroChallenge()
@@ -390,16 +390,7 @@ local PStats = {
     StaminaUsageMultiplierNonHarvestRelated = 0,
     WalkSpeed = 26,
     EffectiveServiceLevel = 9999,
-    ManualSeatingBoost = 10,
-    Charisma = 10
-}
-
-local GStats = {
-    PatienceMultiplier = 3,
-    TipChanceMultiplier = 5,
-    MaxLineSize = 10,
-    SpoilageRate = 0.3,
-    MaxStockMultiplier = 1.5
+    ManualSeatingBoost = 10
 }
 
 scheduler:addLoop("statSpoof", TIMINGS.stats, function()
@@ -412,11 +403,6 @@ scheduler:addLoop("statSpoof", TIMINGS.stats, function()
         end
         for n, v in pairs(PStats) do
             setStat(n, v)
-        end
-        if SETTINGS.Cheat.GStats then
-            for n, v in pairs(GStats) do
-                setStat(n, v)
-            end
         end
         local s = LP:FindFirstChild("Stats")
         if s then
@@ -451,7 +437,7 @@ local dataReady = false
 scheduler:addLoop("labels", TIMINGS.labels, function()
     pcall(function()
         ensureIngredients()
-        if not dataReady and Vegetables and AssortedFish and HumanFlesh and Rice then
+        if not dataReady and Vegetables and AssortedFish and HumanFlesh and Rice and Coffee then
             dataReady = true
             Windows:Show(true)
         end
@@ -748,17 +734,8 @@ scheduler:addLoop("npcAlerts", TIMINGS.npcAlerts, function()
     end
 end)
 
-local KeyState = { X = false, Z = false }
-
 scheduler:addLoop("keybinds", TIMINGS.keybinds, function()
-    local x = ikp(0x58)
     local z = ikp(0x5A)
-
-    if x and not KeyState.X then
-        KeyState.X = true
-        SETTINGS.Auto.Chloroform.Enabled = not SETTINGS.Auto.Chloroform.Enabled
-        nt("Chloroform: " .. (SETTINGS.Auto.Chloroform.Enabled and "ON" or "OFF"), "X", 2)
-    end
 
     if z and not KeyState.Z then
         KeyState.Z = true
@@ -766,9 +743,6 @@ scheduler:addLoop("keybinds", TIMINGS.keybinds, function()
         nt("Auto Wash: " .. (SETTINGS.Auto.Washing.Enabled and "ON" or "OFF"), "Z", 2)
     end
 
-    if not x then
-        KeyState.X = false
-    end
     if not z then
         KeyState.Z = false
     end
@@ -776,7 +750,7 @@ end)
 
 local missing = {}
 local total = 0
-for _, tbl in ipairs({ PStats, GStats }) do
+for _, tbl in ipairs({ PStats }) do
     for n in pairs(tbl) do
         total = total + 1
         if not getStat(n) then
@@ -785,7 +759,7 @@ for _, tbl in ipairs({ PStats, GStats }) do
     end
 end
 if #missing > 0 then
-else
+    warn("missing stats: " .. table.concat(missing, ", "))
 end
 
 if not HAS.memory or not HAS.keys then
