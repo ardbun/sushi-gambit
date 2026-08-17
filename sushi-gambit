@@ -740,8 +740,6 @@ scheduler:addLoop("keybinds", TIMINGS.keybinds, function()
     local z = ikp(0x5A)
 
     if z and not KeyState.Z then
-
-    if z and not KeyState.Z then
         KeyState.Z = true
         SETTINGS.Auto.Washing.Enabled = not SETTINGS.Auto.Washing.Enabled
         nt("Auto Wash: " .. (SETTINGS.Auto.Washing.Enabled and "ON" or "OFF"), "Z", 2)
