@@ -734,8 +734,12 @@ scheduler:addLoop("npcAlerts", TIMINGS.npcAlerts, function()
     end
 end)
 
+local KeyState = { Z = false }
+
 scheduler:addLoop("keybinds", TIMINGS.keybinds, function()
     local z = ikp(0x5A)
+
+    if z and not KeyState.Z then
 
     if z and not KeyState.Z then
         KeyState.Z = true
