@@ -49,7 +49,7 @@ local TIMINGS = {
     stats = 0.5,
     labels = 0.2,
     clock = 0.5,
-    washing = 0.05,
+    washing = 0.01,
     npcAlerts = 0.5,
     keybinds = 0.03,
     staffPoll = 2
@@ -582,7 +582,9 @@ scheduler:addLoop("washing", TIMINGS.washing, function()
 
     local currentId = getEntryId(currentEntry)
 
-    if currentId == washState.id and currentKey == washState.key then
+    if currentId == nil then
+        washState.id = nil
+        washState.key = nil
         return
     end
 
@@ -592,7 +594,7 @@ scheduler:addLoop("washing", TIMINGS.washing, function()
     local vk = WASH_KEYS[currentKey]
 
     if pcall(kp, vk) then
-        task.wait(0.02)
+        task.wait(0.005)
         pcall(kr, vk)
     end
 end)
