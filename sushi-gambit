@@ -284,6 +284,8 @@ local function patchKnownPrompts()
         setPromptHold(child(n, "Torso", "CatchDasherPrompt"))
         setPromptHold(child(n, "Torso", "WaitProximityPrompt"))
     end)
+    -- Add trash bin prompt to make it instant
+    setPromptHold(child(workspace, "Kitchen", "Trash", "PromptHitbox", "ProximityPrompt"))
 end
 
 patchKnownPrompts()
@@ -538,6 +540,7 @@ local function findFirstQueueEntry(holder)
     return nil, nil
 end
 
+-- FIXED: Auto-wash now processes ALL keys in the queue instead of just the first one
 scheduler:addLoop("washing", TIMINGS.washing, function()
     if not SETTINGS.Auto.Washing.Enabled or not HAS.memory then
         washState.id = nil
@@ -572,30 +575,19 @@ scheduler:addLoop("washing", TIMINGS.washing, function()
         return
     end
 
-    local currentEntry, currentKey = findFirstQueueEntry(holder)
-
-    if not currentEntry or not currentKey then
-        washState.id = nil
-        washState.key = nil
-        return
-    end
-
-    local currentId = getEntryId(currentEntry)
-
-    if currentId == nil then
-        washState.id = nil
-        washState.key = nil
-        return
-    end
-
-    washState.id = currentId
-    washState.key = currentKey
-
-    local vk = WASH_KEYS[currentKey]
-
-    if pcall(kp, vk) then
-        task.wait(0.005)
-        pcall(kr, vk)
+    -- Process ALL keys in queue, not just the first one
+    for _, c in ipairs(holder:GetChildren()) do
+        if c.Name == "KeyTemplate" then
+            local label = child(c, "Container", "TextLabel")
+            local key = label and (label.Text or ""):upper():gsub("%s+", "")
+            local vk = WASH_KEYS[key]
+            if vk then
+                if pcall(kp, vk) then
+                    task.wait()
+                    pcall(kr, vk)
+                end
+            end
+        end
     end
 end)
 
