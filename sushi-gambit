@@ -45,7 +45,7 @@ local SETTINGS = {
 }
 
 local TIMINGS = {
-    chloroform = 0.01,
+    chloroform = 0.015,
     stats = 0.5,
     labels = 0.2,
     clock = 0.5,
@@ -568,6 +568,19 @@ scheduler:addLoop("washing", TIMINGS.washing, function()
     )
 
     if not holder then
+        washState.id = nil
+        washState.key = nil
+        return
+    end
+
+    local keyCount = 0
+    for _, c in ipairs(holder:GetChildren()) do
+        if c.Name == "KeyTemplate" then
+            keyCount = keyCount + 1
+        end
+    end
+
+    if keyCount == 0 then
         washState.id = nil
         washState.key = nil
         return
