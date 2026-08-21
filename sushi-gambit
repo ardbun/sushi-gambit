@@ -45,7 +45,7 @@ local SETTINGS = {
 }
 
 local TIMINGS = {
-    chloroform = 0.015,
+    chloroform = 0.05,
     stats = 0.5,
     labels = 0.2,
     clock = 0.5,
@@ -284,6 +284,7 @@ local function patchKnownPrompts()
         setPromptHold(child(n, "Torso", "CatchDasherPrompt"))
         setPromptHold(child(n, "Torso", "WaitProximityPrompt"))
     end)
+    -- Add trash bin prompt to make it instant
     setPromptHold(child(workspace, "Kitchen", "Trash", "PromptHitbox", "ProximityPrompt"))
 end
 
@@ -389,7 +390,7 @@ local PStats = {
     StaminaUsageMultiplier = -1,
     StaminaGainMultiplier = 100,
     StaminaUsageMultiplierNonHarvestRelated = 0,
-    WalkSpeed = 28,
+    WalkSpeed = 26,
     EffectiveServiceLevel = 9999,
     ManualSeatingBoost = 10
 }
@@ -539,6 +540,7 @@ local function findFirstQueueEntry(holder)
     return nil, nil
 end
 
+-- FIXED: Auto-wash now processes ALL keys in the queue instead of just the first one
 scheduler:addLoop("washing", TIMINGS.washing, function()
     if not SETTINGS.Auto.Washing.Enabled or not HAS.memory then
         washState.id = nil
@@ -573,19 +575,7 @@ scheduler:addLoop("washing", TIMINGS.washing, function()
         return
     end
 
-    local keyCount = 0
-    for _, c in ipairs(holder:GetChildren()) do
-        if c.Name == "KeyTemplate" then
-            keyCount = keyCount + 1
-        end
-    end
-
-    if keyCount == 0 then
-        washState.id = nil
-        washState.key = nil
-        return
-    end
-
+    -- Process ALL keys in queue, not just the first one
     for _, c in ipairs(holder:GetChildren()) do
         if c.Name == "KeyTemplate" then
             local label = child(c, "Container", "TextLabel")
