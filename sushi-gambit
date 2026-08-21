@@ -652,7 +652,7 @@ scheduler:addLoop("washing", TIMINGS.washing, function()
     -- Only auto-wash if there are dirty dishes
     local sink = child(workspace, "Kitchen", "TheSink")
     local dirtyDishes = sink and sink:FindFirstChild("DirtyDishAmount")
-    if dirtyDishes and dirtyDishes.Value <= 0 then
+    if dirtyDishes and dirtyDishes.Value ~= nil and dirtyDishes.Value <= 0 then
         return
     end
 
