@@ -183,7 +183,7 @@ local Windows = {
     Elements = {},
     Labels = {},
     Position = Vector2.new(1695, 845),
-    Size = Vector2.new(195, 315)
+    Size = Vector2.new(195, 320)
 }
 
 
@@ -262,7 +262,7 @@ do
 
     title = Drawing.new("Text")
     title.Text = "day"
-    title.Size = 20
+    title.Size = 22
     title.Position = Vector2.new(Windows.Position.X + 12, Windows.Position.Y + 12)
     title.Color = Color3.new(1, 1, 1)
     title.Outline = true
@@ -427,6 +427,12 @@ scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
     if k ~= "Q" and k ~= "E" then
         return
     end
+    -- Prevent key spamming when game is not focused
+    local coreGui = game:GetService("CoreGui")
+    if coreGui and coreGui:FindFirstChild("RobloxPromptGui") then
+        local enabled = coreGui.RobloxPromptGui.promptOverlay.Enabled
+        if not enabled then return end
+    end
     chloroBusy = true
     pcall(function()
         local vk = k == "Q" and 0x51 or 0x45
@@ -489,7 +495,10 @@ local PStats = {
 }
 
 
-scheduler:addLoop("statSpoof", TIMINGS.stats, function()
+local Connections = {}
+
+
+Connections[#Connections + 1] = RunS.Heartbeat:Connect(function(dt)
     pcall(function()
         if SETTINGS.Cheat.CleanDish then
             setStat("EffectiveCleaningLevel", 9999)
@@ -506,6 +515,9 @@ scheduler:addLoop("statSpoof", TIMINGS.stats, function()
         end
     end)
 end)
+
+-- Remove the scheduler loop since we're using Heartbeat instead
+scheduler:remove("statSpoof")
 
 
 local CurrentBill = GameData:FindFirstChild("CurrentBill")
@@ -649,10 +661,10 @@ scheduler:addLoop("washing", TIMINGS.washing, function()
     end
 
 
-    -- Only auto-wash if there are dirty dishes
+    -- Only auto-wash if there are clean/available dishes
     local sink = child(workspace, "Kitchen", "TheSink")
-    local dirtyDishes = sink and sink:FindFirstChild("DirtyDishAmount")
-    if dirtyDishes and dirtyDishes.Value ~= nil and dirtyDishes.Value <= 0 then
+    local cleanDishes = sink and sink:FindFirstChild("CleanDishAmount")
+    if cleanDishes and cleanDishes.Value ~= nil and cleanDishes.Value <= 0 then
         return
     end
 
@@ -681,7 +693,7 @@ scheduler:addLoop("washing", TIMINGS.washing, function()
             local vk = WASH_KEYS[key]
             if vk then
                 if pcall(kp, vk) then
-                    task.wait()
+                    task.wait(0.01)
                     pcall(kr, vk)
                 end
                 return
