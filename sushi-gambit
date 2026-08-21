@@ -567,7 +567,7 @@ scheduler:addLoop("labels", TIMINGS.labels, function()
 
         local s = GameData:FindFirstChild("CurrentReviewScore")
         ul("review", s and ("rating: %.0f"):format(s.Value) or "rating: 0")
-        ul("dishes", "dishes: " .. val(child(workspace, "Kitchen", "TheSink"), "DirtyDishAmount", 0))
+        ul("dishes", "dishes: " .. val(child(workspace, "Kitchen", "TheSink"), "CleanDishAmount", 0))
 
 
         local seated = 0
