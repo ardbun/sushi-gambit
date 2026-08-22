@@ -51,7 +51,7 @@ local SETTINGS = {
 
 
 local TIMINGS = {
-    chloroform = 0.03,
+    chloroform = 0.02,
     stats = 0.5,
     labels = 0.2,
     clock = 0.5,
@@ -415,6 +415,7 @@ scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
     if chloroBusy then
         return
     end
+    chloroBusy = true
     local c = getActiveChloroChallenge()
     if not c then
         return
@@ -427,31 +428,11 @@ scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
     if k ~= "Q" and k ~= "E" then
         return
     end
-    -- Prevent key spamming when game is not focused
-    local coreGui = game:GetService("CoreGui")
-    if coreGui and coreGui:FindFirstChild("RobloxPromptGui") then
-        local enabled = coreGui.RobloxPromptGui.promptOverlay.Enabled
-        if not enabled then return end
-    end
-    chloroBusy = true
     pcall(function()
         local vk = k == "Q" and 0x51 or 0x45
-        local chatOpen = false
-        local cf = LP.PlayerGui:FindFirstChild("Chat")
-        if cf then
-            local ci = cf:FindFirstChild("ChatInput")
-            if ci then
-                local tb = ci:FindFirstChild("TextChatBar")
-                if tb and tb:IsA("Frame") and tb.Visible then
-                    chatOpen = true
-                end
-            end
-        end
-        if not chatOpen then
-            kp(vk)
-            task.wait(0.005)
-            kr(vk)
-        end
+        kp(vk)
+        task.wait(0.005)
+        kr(vk)
     end)
     chloroBusy = false
 end)
@@ -661,10 +642,10 @@ scheduler:addLoop("washing", TIMINGS.washing, function()
     end
 
 
-    -- Only auto-wash if there are clean/available dishes
+    -- Only auto-wash if there are dirty dishes to wash
     local sink = child(workspace, "Kitchen", "TheSink")
-    local cleanDishes = sink and sink:FindFirstChild("CleanDishAmount")
-    if cleanDishes and cleanDishes.Value ~= nil and cleanDishes.Value <= 0 then
+    local dirtyDishes = sink and sink:FindFirstChild("DirtyDishAmount")
+    if dirtyDishes and dirtyDishes.Value ~= nil and dirtyDishes.Value <= 0 then
         return
     end
 
