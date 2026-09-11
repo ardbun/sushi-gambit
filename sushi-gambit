@@ -51,7 +51,7 @@ local SETTINGS = {
 
 
 local TIMINGS = {
-    chloroform = 0.02,
+    chloroform = 0.03,
     stats = 0.5,
     labels = 0.2,
     clock = 0.5,
@@ -402,9 +402,21 @@ local chloroBusy = false
 local function getActiveChloroChallenge()
     local target
     for _, g in ipairs(PlayerGui:GetChildren()) do
-        if g.Name == "ChloroformChallenge" and not g:GetAttribute("Won") and not g:GetAttribute("Lost") then
-            target = g
-            break
+        -- Accept multiple possible GUI names the game might use
+        if g.Name == "ChloroformChallenge" or g.Name == "Chloroform" or g.Name:lower():find("chloro") then
+            -- Check it has the button frame we expect, or try to find it
+            if child(g, "ButtonToHitFrame") then
+                if not g:GetAttribute("Won") and not g:GetAttribute("Lost") then
+                    target = g
+                    break
+                end
+            elseif g:FindFirstChild("Container") and g.Container:FindFirstChild("TextLabel") then
+                -- Alternative structure: Chloroform > Container > TextLabel
+                if not g:GetAttribute("Won") and not g:GetAttribute("Lost") then
+                    target = g
+                    break
+                end
+            end
         end
     end
     return target
@@ -418,14 +430,23 @@ scheduler:addLoop("chloroform", TIMINGS.chloroform, function()
     chloroBusy = true
     local c = getActiveChloroChallenge()
     if not c then
+        chloroBusy = false
         return
     end
     local l = child(c, "ButtonToHitFrame", "Container", "TextLabel")
+    if not l then
+        -- Try alternative: c > Container > TextLabel
+        local alt = child(c, "Container")
+        if alt then
+            l = child(alt, "TextLabel")
+        end
+    end
     if not l then
         return
     end
     local k = l.Text
     if k ~= "Q" and k ~= "E" then
+        chloroBusy = false
         return
     end
     pcall(function()
