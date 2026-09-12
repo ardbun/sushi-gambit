@@ -51,7 +51,7 @@ local SETTINGS = {
 
 
 local TIMINGS = {
-    chloroform = 0.03,
+    chloroform = 0.015,
     stats = 0.5,
     labels = 0.2,
     clock = 0.5,
