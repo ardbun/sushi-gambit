@@ -49,8 +49,7 @@ local TIMINGS = {
     chloroform = 0.02,
     stats = 0.5,
     labels = 0.2,
-    clock = 0.5,
-    washing = 0.02,
+    washing = 0.005,
     greenbar = 0.05,
     npcAlerts = 0.5,
     keybinds = 0.03,
@@ -59,7 +58,9 @@ local TIMINGS = {
 }
 
 local HOLD_DURATION = 0x110
-local GREEN_ZONE_WIDTH = 0.5
+-- Let the game's own minigame calculation place the zone. The reference value
+-- keeps the result centered instead of fighting the bar's layout.
+local EFFECTIVE_COOKING_LEVEL = 1000
 
 local memCache = {}
 local scheduler = { _loops = {} }
@@ -166,8 +167,8 @@ end
 local Windows = {
     Elements = {},
     Labels = {},
-    Position = Vector2.new(1695, 845),
-    Size = Vector2.new(195, 320)
+    Position = Vector2.new(1690, 849),
+    Size = Vector2.new(270, 370)
 }
 
 function Windows:Show(s)
@@ -233,12 +234,21 @@ do
     b.Size = Windows.Size
     b.Color = Color3.fromRGB(15, 15, 15)
     b.Filled = true
+    b.Transparency = 0.88
     b.Visible = false
     Windows.Elements[#Windows.Elements + 1] = b
 
+    local accent = Drawing.new("Square")
+    accent.Position = Vector2.new(Windows.Position.X, Windows.Position.Y)
+    accent.Size = Vector2.new(4, Windows.Size.Y)
+    accent.Color = Color3.fromRGB(70, 210, 190)
+    accent.Filled = true
+    accent.Visible = false
+    Windows.Elements[#Windows.Elements + 1] = accent
+
     title = Drawing.new("Text")
-    title.Text = "day"
-    title.Size = 22
+    title.Text = "SUSHI GAMBIT // HUB"
+    title.Size = 23
     title.Position = Vector2.new(Windows.Position.X + 12, Windows.Position.Y + 12)
     title.Color = Color3.new(1, 1, 1)
     title.Outline = true
@@ -313,7 +323,6 @@ local function setPromptHold(p)
 end
 
 local function patchKnownPrompts()
-    setPromptHold(child(workspace, "RestaurantArea", "restaurant", "Table", "computer", "ProximityPrompt"))
     setPromptHold(child(workspace, "RestaurantArea", "restaurant", "mainStuff", "conveyors", "keypad", "PromptPart", "ProximityPrompt"))
     setPromptHold(child(workspace, "RestaurantArea", "restaurant", "FreezerDoor", "PromptHitbox", "ProximityPrompt"))
     setPromptHold(child(workspace, "Toolbin", "PromptHitbox", "ProximityPrompt"))
@@ -380,24 +389,6 @@ local function findCutBar(i)
 	return child(PlayerGui, "MakeSushiMinigame", "Wrapper", "CutBar")
 end
 
-scheduler:addLoop("greenbar", TIMINGS.greenbar, function()
-	if not SETTINGS.Cheat.Greenbar then
-		return
-	end
-	for i = 1, 2 do
-		local cb = findCutBar(i)
-		if cb then
-			local green = cb:FindFirstChild("GreenBar")
-			if green then
-				pcall(function()
-					green.Position = UDim2.fromScale(0.5, 0.5)
-					green.Size = UDim2.fromScale(GREEN_ZONE_WIDTH, 1)
-				end)
-			end
-		end
-	end
-end)
-
 local statRoots = {
     PlayerStats,
     GameData,
@@ -438,9 +429,8 @@ Connections[#Connections + 1] = RunS.Heartbeat:Connect(function(dt)
             setStat("EffectiveCleaningLevel", 9999)
         end
         if SETTINGS.Cheat.Greenbar then
-            local acc = LP:FindFirstChild("Accessories")
-            local eq = acc and acc:FindFirstChild("EquippedOutfit")
-            setStat("EffectiveCookingLevel", (eq and eq.Value == "ChefOutfit") and 650 or 160)
+            -- The game's minigame derives GreenBar width from this stat.
+            setStat("EffectiveCookingLevel", EFFECTIVE_COOKING_LEVEL)
         end
         for n, v in pairs(PStats) do
             setStat(n, v)
@@ -523,37 +513,7 @@ scheduler:addLoop("labels", TIMINGS.labels, function()
 
         local d = GameData:FindFirstChild("CurrentDay")
         if d then
-            title.Text = "day " .. tostring(d.Value)
-        end
-    end)
-end)
-
-local clockWarned = {}
-local clockLastTime = ""
-local reminderTimes = {
-    ["4:40PM"] = true,
-    ["4:45PM"] = true,
-    ["4:50PM"] = true,
-    ["4:55PM"] = true
-}
-
-scheduler:addLoop("clock", TIMINGS.clock, function()
-    local clockLabel = child(LP, "PlayerGui", "clockGui", "clockFrame", "clockLabel")
-    if not clockLabel then
-        return
-    end
-    pcall(function()
-        local t = (clockLabel.Text or ""):gsub("%s+", ""):gsub("%[", ""):gsub("%]", ""):gsub("^0", ""):upper()
-        if t == clockLastTime then
-            return
-        end
-        clockLastTime = t
-        if reminderTimes[t] and not clockWarned[t] then
-            clockWarned[t] = true
-            nt("remove sun tat", "reminder", 5)
-        end
-        if t == "5:05AM" then
-            clockWarned = {}
+            title.Text = "sushi gambit // day " .. tostring(d.Value)
         end
     end)
 end)
@@ -561,6 +521,8 @@ end)
 local WASH_KEYS = { Q = 0x51, E = 0x45, R = 0x52, F = 0x46 }
 
 local washLastPress = 0
+local WASH_PRESS_INTERVAL = 0.015
+local WASH_HOLD_TIME = 0.002
 
 scheduler:addLoop("washing", TIMINGS.washing, function()
     if not SETTINGS.Auto.Washing.Enabled or not HAS.keys then
@@ -599,12 +561,12 @@ scheduler:addLoop("washing", TIMINGS.washing, function()
     table.sort(entries, function(a, b) return a.x > b.x end)
 
     local now = tick()
-    if now - washLastPress < 0.06 then
+    if now - washLastPress < WASH_PRESS_INTERVAL then
         return
     end
     washLastPress = now
     pcall(kp, entries[1].vk)
-    task.wait(0.012)
+    task.wait(WASH_HOLD_TIME)
     pcall(kr, entries[1].vk)
 end)
 
