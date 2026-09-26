@@ -513,7 +513,7 @@ scheduler:addLoop("labels", TIMINGS.labels, function()
 
         local d = GameData:FindFirstChild("CurrentDay")
         if d then
-            title.Text = "sushi gambit // day " .. tostring(d.Value)
+            title.Text = "day " .. tostring(d.Value)
         end
     end)
 end)
